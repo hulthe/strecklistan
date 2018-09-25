@@ -1,6 +1,13 @@
 use diesel::prelude::*;
+use rocket::request::FromForm;
 use chrono::NaiveDateTime;
 use super::schema::events;
+
+#[derive(FromForm)]
+pub struct EventRange {
+    pub low: i32,
+    pub high: i32,
+}
 
 #[derive(Queryable, Serialize)]
 pub struct Event {
