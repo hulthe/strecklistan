@@ -1,5 +1,3 @@
-use diesel::prelude::*;
-use rocket::request::FromForm;
 use chrono::NaiveDateTime;
 use super::schema::events;
 

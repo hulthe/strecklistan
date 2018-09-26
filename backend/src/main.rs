@@ -19,76 +19,45 @@ extern crate chrono;
 mod schema;
 mod models;
 mod database;
+mod util;
 
 use rocket_contrib::Json;
-use rocket::response::status;
-use rocket::http::Status;
 use diesel::prelude::*;
-use diesel::result::Error as DieselError;
 use self::models::{Event, NewEvent, EventRange};
 use self::database::establish_connection;
 use self::schema::events;
+use self::util::ErrorJson;
 
-fn map_diesel_error(err: DieselError) -> status::Custom<Json> {
-    match err {
-        DieselError::NotFound => status::Custom(
-            Status::NotFound,
-            Json(json!({
-                "status": 404,
-                "description": "Not Found",
-            })),
-        ),
-        err => status::Custom(
-            Status::InternalServerError,
-            Json(json!({
-                "status": 500,
-                "description": err.to_string(),
-            })),
-        ),
-    }
-}
 
 #[get("/events?<range>")]
-fn get_events(range: EventRange) -> Result<Json, status::Custom<Json>> {
+fn get_events(range: EventRange) -> Result<Json<Vec<Event>>, ErrorJson> {
     use self::schema::events::dsl::*;
 
     let connection = establish_connection();
     let results: Vec<Event> = events.order_by(start_time.asc())
-        .load(&connection)
-        .map_err(map_diesel_error)?;
-    Ok(Json(json!({
-        "events": results,
-    })))
+        .load(&connection)?;
+    Ok(Json(results))
 }
 
 #[get("/event/<event_id>")]
-fn get_event(event_id: i32) -> Result<Json<Event>, status::Custom<Json>>{
+fn get_event(event_id: i32) -> Result<Json<Event>, ErrorJson>{
     use self::schema::events::dsl::*;
 
     let connection = establish_connection();
     let result = events.find(event_id)
-        .first::<Event>(&connection)
-        .map_err(map_diesel_error);
-
-    match result {
-        Ok(event) => Ok(Json(event)),
-        Err(err) => Err(err),
-    }
+        .first::<Event>(&connection)?;
+    Ok(Json(result))
 }
 
 #[post("/event", format = "application/json", data="<event>")]
-fn post_event(event: Json<NewEvent>) -> Result<Json<Event>, status::Custom<Json>>{
+fn post_event(event: Json<NewEvent>) -> Result<Json<Event>, ErrorJson>{
     let event = event.into_inner();
     let connection = establish_connection();
 
-    let result: Result<Event, _> = diesel::insert_into(events::table)
+    let result = diesel::insert_into(events::table)
         .values(event)
-        .get_result(&connection)
-        .map_err(map_diesel_error);
-    match result {
-        Ok(event) => Ok(Json(event)),
-        Err(err) => Err(err),
-    }
+        .get_result(&connection)?;
+    Ok(Json(result))
 }
 
 
@@ -100,4 +69,3 @@ fn main() {
                post_event
         ]).launch();
 }
-
