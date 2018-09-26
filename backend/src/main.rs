@@ -21,6 +21,8 @@ mod models;
 mod database;
 mod util;
 
+use rocket::Request;
+use rocket::http::Status;
 use rocket_contrib::Json;
 use diesel::prelude::*;
 use self::models::{Event, NewEvent, EventRange};
@@ -60,12 +62,18 @@ fn post_event(event: Json<NewEvent>) -> Result<Json<Event>, ErrorJson>{
     Ok(Json(result))
 }
 
+#[catch(404)]
+fn not_found(_: &Request) -> ErrorJson { Status::NotFound.into() }
+
 
 fn main() {
     rocket::ignite()
+        .catch(catchers![
+            not_found,
+        ])
         .mount("/", routes![
                get_events,
                get_event,
-               post_event
+               post_event,
         ]).launch();
 }

@@ -19,6 +19,15 @@ impl Responder<'static> for ErrorJson {
     }
 }
 
+impl From<Status> for ErrorJson {
+    fn from(status: Status) -> ErrorJson {
+        ErrorJson{
+            description: status.reason.to_string(),
+            status: status,
+        }
+    }
+}
+
 impl From<DieselError> for ErrorJson {
     fn from(e: DieselError) -> ErrorJson {
         match e {
