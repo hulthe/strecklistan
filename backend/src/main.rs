@@ -1,5 +1,6 @@
 #![feature(custom_derive)]
 #![feature(plugin)]
+#![feature(specialization)]
 #![plugin(rocket_codegen)]
 
 // Disable warnings caused by nightly rust phasing out this feature
@@ -25,6 +26,7 @@ use rocket::Request;
 use rocket::http::Status;
 use rocket_contrib::Json;
 use diesel::prelude::*;
+use chrono::Local;
 use self::models::{Event, NewEvent, EventRange};
 use self::database::establish_connection;
 use self::schema::events;
@@ -35,10 +37,45 @@ use self::util::ErrorJson;
 fn get_events(range: EventRange) -> Result<Json<Vec<Event>>, ErrorJson> {
     use self::schema::events::dsl::*;
 
+    range.validate()?;
+
+    let now = Local::now().naive_local();
     let connection = establish_connection();
-    let results: Vec<Event> = events.order_by(start_time.asc())
-        .load(&connection)?;
-    Ok(Json(results))
+
+    let mut previous: Vec<Event> = if range.low < 0 {
+        events.filter(end_time.le(now))
+            .order_by(start_time.desc())
+            .limit(-range.low)
+            .load(&connection)?
+    } else { Vec::new() };
+
+    let mut upcoming: Vec<Event> = if range.high > 0 {
+        events.filter(end_time.gt(now))
+            .order_by(start_time.asc())
+            .limit(range.high)
+            .load(&connection)?
+    } else { Vec::new() };
+
+    if range.high < 0 {
+        if (-range.high) as usize>= previous.len() {
+            previous = Vec::new();
+        } else {
+            previous.drain(..(-range.high as usize));
+        }
+    }
+
+    if range.low > 0 {
+        if range.low as usize >= upcoming.len() {
+            upcoming = Vec::new();
+        } else {
+            upcoming.drain(..(range.low as usize));
+        }
+    }
+
+    upcoming.reverse();
+
+    upcoming.append(&mut previous);
+    Ok(Json(upcoming))
 }
 
 #[get("/event/<event_id>")]

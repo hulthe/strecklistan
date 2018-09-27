@@ -1,10 +1,24 @@
+use rocket::http::Status;
 use chrono::NaiveDateTime;
 use super::schema::events;
+use super::util::ErrorJson;
 
 #[derive(FromForm)]
 pub struct EventRange {
-    pub low: i32,
-    pub high: i32,
+    pub low: i64,
+    pub high: i64,
+}
+
+impl EventRange {
+    pub fn validate(&self) -> Result<(), ErrorJson> {
+        match self.low >= self.high {
+            false => Ok(()),
+            true => Err(ErrorJson {
+                status: Status::BadRequest,
+                description: "EventRange: high must be greater than low".into(),
+            }),
+        }
+    }
 }
 
 #[derive(Queryable, Serialize)]
