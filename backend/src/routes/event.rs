@@ -81,3 +81,63 @@ pub fn post_event(event: Json<NewEvent>) -> Result<Json<Event>, ErrorJson>{
         .get_result(&connection)?;
     Ok(Json(result))
 }
+
+
+#[cfg(test)]
+mod tests {
+    use rocket::local::Client;
+    use rocket::http::{Status, ContentType};
+    use chrono::{Local, Duration};
+    use serde_json;
+    use super::NewEvent;
+
+    fn generate_new_events(old: usize, new: usize) -> Vec<NewEvent> {
+
+        let mut events = vec![];
+
+        let new_event = |time| -> NewEvent {
+            NewEvent{
+                title: "My Event".into(),
+                background: "http://site/image.png".into(),
+                location: "Somewhere".into(),
+                start_time: time,
+                end_time: time + Duration::hours(2),
+                price: None,
+            }
+        };
+
+        let now = Local::now().naive_local();
+
+        for i in 0..old {
+            let time = now + Duration::weeks(2 * i as i64);
+            events.push(new_event(time));
+        }
+
+        for i in 0..new {
+            let time = now - Duration::weeks(2 * i as i64);
+            events.push(new_event(time));
+        }
+
+        events
+    }
+
+    #[test]
+    fn event_creation() {
+        let rocket = rocket::ignite().mount("/", routes![
+            super::get_events,
+            super::get_event,
+            super::post_event,
+        ]);
+        let client = Client::new(rocket).expect("valid rocket instance");
+        let events = generate_new_events(10, 10);
+
+        for event in events {
+            let response = client.post("/event")
+                .body(serde_json::to_string(&event).expect("Could not serialize NewEvent"))
+                .header(ContentType::JSON)
+                .dispatch();
+
+            assert_eq!(response.status(), Status::Ok);
+        }
+    }
+}

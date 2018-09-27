@@ -33,7 +33,7 @@ pub struct Event {
     pub published: bool,
 }
 
-#[derive(Insertable, Deserialize)]
+#[derive(Insertable, Serialize, Deserialize)]
 #[table_name="events"]
 pub struct NewEvent {
     pub title: String,
