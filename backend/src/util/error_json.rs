@@ -4,6 +4,15 @@ use rocket::http::Status;
 use rocket_contrib::Json;
 use diesel::result::Error as DieselError;
 
+/// An error message which can be serialized as JSON.
+///
+/// #### Example JSON
+/// ```json
+/// {
+///   "status": 404,
+///   "description": "Not Found"
+/// }
+/// ```
 #[derive(Debug)]
 pub struct ErrorJson {
     pub status: Status,
