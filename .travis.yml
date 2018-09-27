@@ -7,7 +7,9 @@ services:
 install:
   - "cargo install diesel_cli"
 before_script:
+  - "cd $TRAVIS_BUILD_DIR/backend"
   - "diesel setup"
   - "diesel migration run"
 script:
+  - "cd $TRAVIS_BUILD_DIR/backend"
   - "cargo test"
