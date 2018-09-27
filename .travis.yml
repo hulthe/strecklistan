@@ -1,0 +1,13 @@
+language: rust
+rust:
+  - nightly
+services:
+  - postgresql
+
+install:
+  - "cargo install diesel_cli"
+before_script:
+  - "diesel setup"
+  - "diesel migration run"
+script:
+  - "cargo test"
