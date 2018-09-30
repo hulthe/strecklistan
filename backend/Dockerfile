@@ -25,7 +25,7 @@ FROM debian:stable-slim
 ENV ROCKET_ENV="staging"
 
 # Basic default configuration for database, suitable for dev.
-ENV DATABASE_URL="postgres://postgres@localhost/laggit"
+ENV DATABASE_URL="postgres://postgres@database/laggit"
 
 # Install dependencies
 RUN apt-get update \
