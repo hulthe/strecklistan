@@ -21,10 +21,12 @@ pub struct ErrorJson {
 
 impl Responder<'static> for ErrorJson {
     fn respond_to(self, req: &Request) -> Result<Response<'static>, Status> {
-        Json(json!({
+        let mut response = Json(json!({
             "status": self.status.code,
             "description": self.description,
-        })).respond_to(req)
+        })).respond_to(req)?;
+        response.set_status(self.status);
+        Ok(response)
     }
 }
 
