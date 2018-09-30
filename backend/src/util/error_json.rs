@@ -3,6 +3,7 @@ use rocket::response::{Response, Responder};
 use rocket::http::Status;
 use rocket_contrib::Json;
 use diesel::result::Error as DieselError;
+use diesel::ConnectionError as DieselConnectionError;
 
 /// An error message which can be serialized as JSON.
 ///
@@ -53,7 +54,7 @@ impl From<DieselError> for ErrorJson {
         match e {
             DieselError::NotFound => ErrorJson {
                 status: Status::NotFound,
-                description: "Not Found".into(),
+                description: "Not Found in Database".into(),
             },
             err => ErrorJson {
                 status: Status::InternalServerError,
@@ -62,3 +63,13 @@ impl From<DieselError> for ErrorJson {
         }
     }
 }
+
+impl From<DieselConnectionError> for ErrorJson {
+    fn from(e: DieselConnectionError) -> ErrorJson {
+        ErrorJson {
+            status: Status::InternalServerError,
+            description: e.to_string(),
+        }
+    }
+}
+

@@ -32,7 +32,10 @@ use self::routes::event;
 
 
 #[catch(404)]
-pub fn not_found(_: &Request) -> ErrorJson { Status::NotFound.into() }
+pub fn not_found(_: &Request) -> ErrorJson { ErrorJson {
+    status: Status::NotFound.into(),
+    description: "Route Not Found".into(),
+}}
 
 
 fn main() {

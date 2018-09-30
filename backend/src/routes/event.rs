@@ -17,7 +17,7 @@ pub fn get_events(range: EventRange) -> Result<Json<Vec<Event>>, ErrorJson> {
     range.validate()?;
 
     let now = Local::now().naive_local();
-    let connection = establish_connection();
+    let connection = establish_connection()?;
 
     let mut previous: Vec<Event> = if range.low < 0 {
         events.filter(end_time.le(now))
@@ -62,7 +62,7 @@ pub fn get_events(range: EventRange) -> Result<Json<Vec<Event>>, ErrorJson> {
 pub fn get_event(event_id: i32) -> Result<Json<Event>, ErrorJson>{
     use super::super::schema::events::dsl::*;
 
-    let connection = establish_connection();
+    let connection = establish_connection()?;
     let result = events.find(event_id)
         .first::<Event>(&connection)?;
     Ok(Json(result))
@@ -74,7 +74,7 @@ pub fn get_event(event_id: i32) -> Result<Json<Event>, ErrorJson>{
 #[post("/event", format = "application/json", data="<event>")]
 pub fn post_event(event: Json<NewEvent>) -> Result<Json<Event>, ErrorJson>{
     let event = event.into_inner();
-    let connection = establish_connection();
+    let connection = establish_connection()?;
 
     let result = diesel::insert_into(events::table)
         .values(event)
