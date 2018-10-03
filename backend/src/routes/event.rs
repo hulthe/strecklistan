@@ -1,33 +1,35 @@
 use rocket_contrib::Json;
 use chrono::Local;
 use diesel::prelude::*;
-use super::super::models::{Event, NewEvent, EventRange};
-use super::super::database::establish_connection;
-use super::super::schema::events;
-use super::super::util::ErrorJson;
+use models::{Event, EventWithSignups as EventWS, NewEvent, EventRange};
+use database::establish_connection;
+use schema::tables::events;
+use util::ErrorJson;
+
 
 /// Route `GET /events?high=x&low=y`
 ///
 /// Return all events in the range `low..high`, where `0..1` yields the
 /// upcoming event and `-1..0` yields the most recently completed event.
 #[get("/events?<range>")]
-pub fn get_events(range: EventRange) -> Result<Json<Vec<Event>>, ErrorJson> {
-    use super::super::schema::events::dsl::*;
+pub fn get_events(range: EventRange) ->
+Result<Json<Vec<EventWS>>, ErrorJson> {
+    use schema::views::events_with_signups::dsl::*;
 
     range.validate()?;
 
     let now = Local::now().naive_local();
     let connection = establish_connection()?;
 
-    let mut previous: Vec<Event> = if range.low < 0 {
-        events.filter(end_time.le(now))
+    let mut previous: Vec<EventWS> = if range.low < 0 {
+        events_with_signups.filter(end_time.le(now))
             .order_by(start_time.desc())
             .limit(-range.low)
             .load(&connection)?
     } else { Vec::new() };
 
-    let mut upcoming: Vec<Event> = if range.high > 0 {
-        events.filter(end_time.gt(now))
+    let mut upcoming: Vec<EventWS> = if range.high > 0 {
+        events_with_signups.filter(end_time.gt(now))
             .order_by(start_time.asc())
             .limit(range.high)
             .load(&connection)?
@@ -59,12 +61,12 @@ pub fn get_events(range: EventRange) -> Result<Json<Vec<Event>>, ErrorJson> {
 ///
 /// Get a specific event by its id parameter.
 #[get("/event/<event_id>")]
-pub fn get_event(event_id: i32) -> Result<Json<Event>, ErrorJson>{
-    use super::super::schema::events::dsl::*;
+pub fn get_event(event_id: i32) -> Result<Json<EventWS>, ErrorJson>{
+    use schema::views::events_with_signups::dsl::*;
 
     let connection = establish_connection()?;
-    let result = events.find(event_id)
-        .first::<Event>(&connection)?;
+    let result = events_with_signups.find(event_id)
+        .first::<EventWS>(&connection)?;
     Ok(Json(result))
 }
 
