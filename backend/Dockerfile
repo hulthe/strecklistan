@@ -33,7 +33,7 @@ RUN apt-get update \
  && apt-get autoremove && apt-get autoclean
 
 # Copy diesel_cli
-COPY --from=build_stage /usr/local/cargo/bin/diesel /usr/local/bin/diesel_cli
+COPY --from=build_stage /usr/local/cargo/bin/diesel /usr/local/bin/
 
 # Copy application binary
 COPY --from=build_stage /app/target/release/laggit_backend /usr/local/bin/
