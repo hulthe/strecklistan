@@ -14,13 +14,13 @@ table! {
 table! {
     event_signups (id) {
         id -> Int4,
-        event_id -> Nullable<Int4>,
+        event -> Int4,
         name -> Varchar,
         email -> Varchar,
     }
 }
 
-joinable!(event_signups -> events (event_id));
+joinable!(event_signups -> events (event));
 
 allow_tables_to_appear_in_same_query!(
     events,

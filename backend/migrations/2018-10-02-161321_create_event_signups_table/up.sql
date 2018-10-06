@@ -1,6 +1,6 @@
 CREATE TABLE event_signups (
     id SERIAL PRIMARY KEY,
-    event_id INTEGER REFERENCES events(id) ON DELETE CASCADE,
+    event INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) NOT NULL
 );
@@ -15,10 +15,10 @@ FROM
         (
             SELECT
                 count(id),
-                event_id
+                event
             FROM
                 event_signups
             GROUP BY
-                event_id
+                event
         ) t_signup_count
-    ON events.id = t_signup_count.event_id;
+    ON events.id = t_signup_count.event;

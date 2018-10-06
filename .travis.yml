@@ -5,6 +5,8 @@ services:
   - postgresql
 env:
   - "DATABASE_URL=postgres://postgres@localhost/laggit"
+    # Disable concurrent tests
+  - "RUST_TEST_THREADS=1"
 install:
   - "cargo install diesel_cli"
 before_script:
