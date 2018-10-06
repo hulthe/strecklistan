@@ -4,9 +4,9 @@ rust:
 services:
   - postgresql
 env:
-  - "DATABASE_URL=postgres://postgres@localhost/laggit"
     # Disable concurrent tests
   - "RUST_TEST_THREADS=1"
+    "DATABASE_URL=postgres://postgres@localhost/laggit"
 install:
   - "cargo install diesel_cli"
 before_script:
