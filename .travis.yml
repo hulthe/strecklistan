@@ -3,14 +3,11 @@ rust:
   - nightly
 services:
   - postgresql
-env:
-    # Disable concurrent tests
-  - "RUST_TEST_THREADS=1"
-    "DATABASE_URL=postgres://postgres@localhost/laggit"
 install:
   - "cargo install diesel_cli"
 before_script:
   - "cd $TRAVIS_BUILD_DIR/backend"
+  - "mv travis.env .env"
   - "diesel setup"
   - "diesel migration run"
 script:
