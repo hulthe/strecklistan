@@ -1,33 +1,35 @@
 use rocket_contrib::Json;
 use chrono::Local;
 use diesel::prelude::*;
-use super::super::models::{Event, NewEvent, EventRange};
-use super::super::database::establish_connection;
-use super::super::schema::events;
-use super::super::util::ErrorJson;
+use models::{Event, EventWithSignups as EventWS, NewEvent, EventRange};
+use database::establish_connection;
+use schema::tables::events;
+use util::ErrorJson;
+
 
 /// Route `GET /events?high=x&low=y`
 ///
 /// Return all events in the range `low..high`, where `0..1` yields the
 /// upcoming event and `-1..0` yields the most recently completed event.
 #[get("/events?<range>")]
-pub fn get_events(range: EventRange) -> Result<Json<Vec<Event>>, ErrorJson> {
-    use super::super::schema::events::dsl::*;
+pub fn get_events(range: EventRange) ->
+Result<Json<Vec<EventWS>>, ErrorJson> {
+    use schema::views::events_with_signups::dsl::*;
 
     range.validate()?;
 
     let now = Local::now().naive_local();
     let connection = establish_connection()?;
 
-    let mut previous: Vec<Event> = if range.low < 0 {
-        events.filter(end_time.le(now))
+    let mut previous: Vec<EventWS> = if range.low < 0 {
+        events_with_signups.filter(end_time.le(now))
             .order_by(start_time.desc())
             .limit(-range.low)
             .load(&connection)?
     } else { Vec::new() };
 
-    let mut upcoming: Vec<Event> = if range.high > 0 {
-        events.filter(end_time.gt(now))
+    let mut upcoming: Vec<EventWS> = if range.high > 0 {
+        events_with_signups.filter(end_time.gt(now))
             .order_by(start_time.asc())
             .limit(range.high)
             .load(&connection)?
@@ -59,12 +61,12 @@ pub fn get_events(range: EventRange) -> Result<Json<Vec<Event>>, ErrorJson> {
 ///
 /// Get a specific event by its id parameter.
 #[get("/event/<event_id>")]
-pub fn get_event(event_id: i32) -> Result<Json<Event>, ErrorJson>{
-    use super::super::schema::events::dsl::*;
+pub fn get_event(event_id: i32) -> Result<Json<EventWS>, ErrorJson>{
+    use schema::views::events_with_signups::dsl::*;
 
     let connection = establish_connection()?;
-    let result = events.find(event_id)
-        .first::<Event>(&connection)?;
+    let result = events_with_signups.find(event_id)
+        .first::<EventWS>(&connection)?;
     Ok(Json(result))
 }
 
@@ -87,57 +89,72 @@ pub fn post_event(event: Json<NewEvent>) -> Result<Json<Event>, ErrorJson>{
 mod tests {
     use rocket::local::Client;
     use rocket::http::{Status, ContentType};
-    use chrono::{Local, Duration};
-    use serde_json;
-    use super::NewEvent;
-
-    fn generate_new_events(old: usize, new: usize) -> Vec<NewEvent> {
-
-        let mut events = vec![];
-
-        let new_event = |time| -> NewEvent {
-            NewEvent{
-                title: "My Event".into(),
-                background: "http://site/image.png".into(),
-                location: "Somewhere".into(),
-                start_time: time,
-                end_time: time + Duration::hours(2),
-                price: None,
-            }
-        };
-
-        let now = Local::now().naive_local();
-
-        for i in 0..old {
-            let time = now + Duration::weeks(2 * i as i64);
-            events.push(new_event(time));
-        }
-
-        for i in 0..new {
-            let time = now - Duration::weeks(2 * i as i64);
-            events.push(new_event(time));
-        }
-
-        events
-    }
+    use diesel::RunQueryDsl;
+    use database::establish_connection;
+    use schema::tables::events;
+    use util::testing::{
+        generate_new_events,
+        DatabaseDropper,
+    };
+    use super::{
+        Event,
+        EventWS,
+    };
 
     #[test]
     fn event_creation() {
+        let _state = DatabaseDropper{};
         let rocket = rocket::ignite().mount("/", routes![
-            super::get_events,
-            super::get_event,
             super::post_event,
         ]);
         let client = Client::new(rocket).expect("valid rocket instance");
         let events = generate_new_events(10, 10);
 
         for event in events {
-            let response = client.post("/event")
-                .body(serde_json::to_string(&event).expect("Could not serialize NewEvent"))
+            let mut response = client.post("/event")
+                .body(serde_json::to_string(&event)
+                      .expect("Could not serialize NewEvent"))
                 .header(ContentType::JSON)
                 .dispatch();
 
             assert_eq!(response.status(), Status::Ok);
+            let body = response.body_string().expect("Response has no body");
+            let event: Event = serde_json::from_str(&body)
+                .expect("Could not deserialize JSON into Event");
+            assert_eq!(event.title, "My Event");
         }
+    }
+
+    #[test]
+    fn get_event_list() {
+        let _state = DatabaseDropper{};
+
+        {
+            let connection = establish_connection()
+                .expect("Could not connect to testing database");
+            for event in generate_new_events(10, 10).into_iter() {
+                diesel::insert_into(events::table)
+                    .values(event)
+                    .execute(&connection)
+                    .expect("Could not populate testing database");
+            }
+        }
+
+        let rocket = rocket::ignite().mount("/", routes![
+            super::get_events,
+        ]);
+
+        let client = Client::new(rocket).expect("valid rocket instance");
+
+        let mut response = client.get("/events?low=-10&high=11")
+            .dispatch();
+
+        assert_eq!(response.status(), Status::Ok);
+        let body = response.body_string().expect("Response has no body");
+        let events: Vec<EventWS> = serde_json::from_str(&body)
+            .expect("Could not deserialize JSON into Vec<EventWS>");
+        println!("{:#?}", events);
+        assert_eq!(events.len(), 20);
+        assert!(events.iter().all(|event| event.title == "My Event"));
     }
 }

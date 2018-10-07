@@ -28,7 +28,10 @@ pub mod routes;
 use rocket::Request;
 use rocket::http::Status;
 use self::util::ErrorJson;
-use self::routes::event;
+use self::routes::{
+    event,
+    signup,
+};
 
 
 #[catch(404)]
@@ -47,5 +50,8 @@ fn main() {
                event::get_events,
                event::get_event,
                event::post_event,
+               signup::get_event_signups,
+               signup::get_signup,
+               signup::post_signup,
         ]).launch();
 }

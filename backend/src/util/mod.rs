@@ -1,4 +1,5 @@
 pub mod error_json;
+pub mod testing;
 
 // Re-exporting module members for convenience
 #[doc(inline)]

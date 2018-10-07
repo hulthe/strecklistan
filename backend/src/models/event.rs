@@ -1,7 +1,7 @@
 use rocket::http::Status;
 use chrono::NaiveDateTime;
-use super::schema::events;
-use super::util::ErrorJson;
+use schema::tables::events;
+use util::ErrorJson;
 
 #[derive(FromForm)]
 pub struct EventRange {
@@ -21,7 +21,20 @@ impl EventRange {
     }
 }
 
-#[derive(Queryable, Serialize)]
+#[derive(Queryable, Serialize, Deserialize, Debug)]
+pub struct EventWithSignups {
+    pub id: i32,
+    pub title: String,
+    pub background: String,
+    pub location: String,
+    pub start_time: NaiveDateTime,
+    pub end_time: NaiveDateTime,
+    pub price: i32,
+    pub published: bool,
+    pub signups: i64,
+}
+
+#[derive(Queryable, Serialize, Deserialize, Debug)]
 pub struct Event {
     pub id: i32,
     pub title: String,
@@ -33,7 +46,7 @@ pub struct Event {
     pub published: bool,
 }
 
-#[derive(Insertable, Serialize, Deserialize)]
+#[derive(Insertable, Serialize, Deserialize, Debug)]
 #[table_name="events"]
 pub struct NewEvent {
     pub title: String,

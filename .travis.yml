@@ -3,14 +3,13 @@ rust:
   - nightly
 services:
   - postgresql
-env:
-  - "DATABASE_URL=postgres://postgres@localhost/laggit"
 install:
   - "cargo install diesel_cli"
 before_script:
   - "cd $TRAVIS_BUILD_DIR/backend"
+  - "mv travis.env .env"
   - "diesel setup"
   - "diesel migration run"
 script:
   - "cd $TRAVIS_BUILD_DIR/backend"
-  - "cargo test"
+  - "cargo test -- --test-threads=1"
