@@ -3,6 +3,10 @@ rust:
   - nightly
 services:
   - postgresql
+cache:
+  directories:
+    - $HOME/.cargo
+    - $TRAVIS_BUILD_DIR/backend/target
 install:
   - "cargo install diesel_cli"
 before_script:
