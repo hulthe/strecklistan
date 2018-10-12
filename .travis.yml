@@ -4,7 +4,7 @@ rust:
 services:
   - postgresql
 install:
-  - "cargo install diesel_cli"
+  - "cargo install diesel_cli || true"
 before_script:
   - "cd $TRAVIS_BUILD_DIR/backend"
   - "mv travis.env .env"
