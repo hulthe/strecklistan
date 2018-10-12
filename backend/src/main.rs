@@ -28,22 +28,13 @@ pub mod routes;
 
 use std::env;
 use dotenv::dotenv;
-use rocket::Request;
-use rocket::http::Status;
 use diesel_migrations::{setup_database, run_pending_migrations};
 use database::establish_connection;
-use util::ErrorJson;
+use util::catchers;
 use routes::{
     event,
     signup,
 };
-
-
-#[catch(404)]
-pub fn not_found(_: &Request) -> ErrorJson { ErrorJson {
-    status: Status::NotFound.into(),
-    description: "Route Not Found".into(),
-}}
 
 
 fn main() {
@@ -65,7 +56,8 @@ fn main() {
 
     rocket::ignite()
         .catch(catchers![
-            not_found,
+            catchers::not_found,
+            catchers::unauthorized,
         ])
         .mount("/", routes![
                event::get_events,

@@ -1,4 +1,5 @@
 pub mod error_json;
+pub mod catchers;
 pub mod testing;
 
 // Re-exporting module members for convenience
