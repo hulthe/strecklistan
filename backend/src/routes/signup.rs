@@ -52,18 +52,17 @@ mod tests {
     use rocket::http::{Status, ContentType};
     use diesel::RunQueryDsl;
     use schema::tables::events;
-    use schema::tables::event_signups;
     use database::establish_connection;
     use models::{Event, Signup};
     use util::testing::{
         generate_new_events,
         generate_event_signups,
-        DatabaseDropper,
+        DatabaseState,
     };
 
     #[test]
     fn create_signup() {
-        let _state = DatabaseDropper{};
+        let _state = DatabaseState::new();
         let connection = establish_connection().unwrap();
         let rocket = rocket::ignite().mount("/", routes![
             super::post_signup,
