@@ -1,3 +1,4 @@
+use dotenv::dotenv;
 use database::establish_connection;
 use schema::tables::events;
 use schema::tables::event_signups;
@@ -49,9 +50,17 @@ pub fn generate_event_signups(count: usize, event: i32) -> Vec<NewSignup> {
     signups
 }
 
-pub struct DatabaseDropper {}
+pub struct DatabaseState {}
 
-impl Drop for DatabaseDropper {
+impl DatabaseState {
+    pub fn new() -> DatabaseState {
+        dotenv().ok();
+        establish_connection().expect("Could not connect to database");
+        DatabaseState{}
+    }
+}
+
+impl Drop for DatabaseState {
     fn drop(&mut self) {
         let connection = establish_connection()
             .expect("Could not connect to testing database");

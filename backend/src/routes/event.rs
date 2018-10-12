@@ -94,7 +94,7 @@ mod tests {
     use schema::tables::events;
     use util::testing::{
         generate_new_events,
-        DatabaseDropper,
+        DatabaseState,
     };
     use super::{
         Event,
@@ -103,7 +103,7 @@ mod tests {
 
     #[test]
     fn event_creation() {
-        let _state = DatabaseDropper{};
+        let _state = DatabaseState::new();
         let rocket = rocket::ignite().mount("/", routes![
             super::post_event,
         ]);
@@ -127,7 +127,7 @@ mod tests {
 
     #[test]
     fn get_event_list() {
-        let _state = DatabaseDropper{};
+        let _state = DatabaseState::new();
 
         {
             let connection = establish_connection()
