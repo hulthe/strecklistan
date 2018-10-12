@@ -1,19 +1,16 @@
-use dotenv::dotenv;
+use chrono::{Duration, Local};
 use database::establish_connection;
-use schema::tables::events;
-use schema::tables::event_signups;
 use diesel::RunQueryDsl;
-use chrono::{Local, Duration};
-use models::{
-    NewEvent,
-    NewSignup,
-};
+use dotenv::dotenv;
+use models::{NewEvent, NewSignup};
+use schema::tables::event_signups;
+use schema::tables::events;
 
 pub fn generate_new_events(old: usize, new: usize) -> Vec<NewEvent> {
     let mut events = vec![];
 
     let new_event = |time, p| -> NewEvent {
-        NewEvent{
+        NewEvent {
             title: "My Event".into(),
             background: "http://site/image.png".into(),
             location: "Somewhere".into(),
@@ -26,13 +23,13 @@ pub fn generate_new_events(old: usize, new: usize) -> Vec<NewEvent> {
     let now = Local::now().naive_local();
 
     for i in 0..old {
-        let time = now - Duration::weeks(2 * (i+1) as i64);
-        events.push(new_event(time, -(i as i32)-1));
+        let time = now - Duration::weeks(2 * (i + 1) as i64);
+        events.push(new_event(time, -(i as i32) - 1));
     }
 
     for i in 0..new {
-        let time = now + Duration::weeks(2 * (i+1) as i64);
-        events.push(new_event(time, (i as i32)+1));
+        let time = now + Duration::weeks(2 * (i + 1) as i64);
+        events.push(new_event(time, (i as i32) + 1));
     }
 
     events
@@ -41,7 +38,7 @@ pub fn generate_new_events(old: usize, new: usize) -> Vec<NewEvent> {
 pub fn generate_event_signups(count: usize, event: i32) -> Vec<NewSignup> {
     let mut signups = vec![];
     for i in 0..count {
-        signups.push(NewSignup{
+        signups.push(NewSignup {
             event,
             name: format!("Alice Bobsson the {}nthdst", i),
             email: "alice.bob@nsa.gov".into(),
@@ -56,14 +53,13 @@ impl DatabaseState {
     pub fn new() -> DatabaseState {
         dotenv().ok();
         establish_connection().expect("Could not connect to database");
-        DatabaseState{}
+        DatabaseState {}
     }
 }
 
 impl Drop for DatabaseState {
     fn drop(&mut self) {
-        let connection = establish_connection()
-            .expect("Could not connect to testing database");
+        let connection = establish_connection().expect("Could not connect to testing database");
         diesel::delete(events::table)
             .execute(&connection)
             .expect("Could not truncate testing database table");

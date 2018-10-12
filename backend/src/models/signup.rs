@@ -9,7 +9,7 @@ pub struct Signup {
 }
 
 #[derive(Insertable, Serialize, Deserialize, Debug, PartialEq)]
-#[table_name="event_signups"]
+#[table_name = "event_signups"]
 pub struct NewSignup {
     pub event: i32,
     pub name: String,

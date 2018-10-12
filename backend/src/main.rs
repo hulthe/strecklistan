@@ -3,7 +3,6 @@
 #![feature(specialization)]
 #![feature(extern_prelude)]
 #![plugin(rocket_codegen)]
-
 // Disable warnings caused by nightly rust phasing out this feature
 #![allow(proc_macro_derive_resolution_fallback)]
 
@@ -17,25 +16,21 @@ extern crate serde;
 extern crate serde_json;
 #[macro_use]
 extern crate serde_derive;
-extern crate dotenv;
 extern crate chrono;
+extern crate dotenv;
 
-mod schema;
 mod database;
 pub mod models;
-pub mod util;
 pub mod routes;
+mod schema;
+pub mod util;
 
-use std::env;
-use dotenv::dotenv;
-use diesel_migrations::{setup_database, run_pending_migrations};
 use database::establish_connection;
+use diesel_migrations::{run_pending_migrations, setup_database};
+use dotenv::dotenv;
+use routes::{event, signup};
+use std::env;
 use util::catchers;
-use routes::{
-    event,
-    signup,
-};
-
 
 fn main() {
     dotenv().ok();
@@ -44,27 +39,25 @@ fn main() {
         .map(|s| s.parse().unwrap_or(false))
         .unwrap_or(false);
     if run_migrations {
-        let connection = establish_connection()
-            .expect("Could not connect to database");
+        let connection = establish_connection().expect("Could not connect to database");
 
-        setup_database(&connection)
-            .expect("Could not set up database");
+        setup_database(&connection).expect("Could not set up database");
 
-        run_pending_migrations(&connection)
-            .expect("Could not run database migrations");
+        run_pending_migrations(&connection).expect("Could not run database migrations");
     }
 
     rocket::ignite()
-        .catch(catchers![
-            catchers::not_found,
-            catchers::unauthorized,
-        ])
-        .mount("/", routes![
-               event::get_events,
-               event::get_event,
-               event::post_event,
-               signup::get_event_signups,
-               signup::get_signup,
-               signup::post_signup,
-        ]).launch();
+        .catch(catchers![catchers::not_found, catchers::unauthorized,])
+        .mount(
+            "/",
+            routes![
+                event::get_events,
+                event::get_event,
+                event::post_event,
+                signup::get_event_signups,
+                signup::get_signup,
+                signup::post_signup,
+            ],
+        )
+        .launch();
 }

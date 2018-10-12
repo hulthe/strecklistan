@@ -1,15 +1,9 @@
 pub mod event;
 pub mod signup;
+pub mod user;
 
-pub use self::event::{
-    Event,
-    EventWithSignups,
-    NewEvent,
-    EventRange
-};
+pub use self::event::{Event, EventRange, EventWithSignups, NewEvent};
 
-pub use self::signup::{
-    Signup,
-    NewSignup,
-};
+pub use self::signup::{NewSignup, Signup};
 
+pub use self::user::User;

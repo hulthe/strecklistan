@@ -1,9 +1,9 @@
-use rocket::Request;
-use rocket::response::{Response, Responder};
-use rocket::http::Status;
-use rocket_contrib::Json;
 use diesel::result::Error as DieselError;
 use diesel::ConnectionError as DieselConnectionError;
+use rocket::http::Status;
+use rocket::response::{Responder, Response};
+use rocket::Request;
+use rocket_contrib::Json;
 
 /// An error message which can be serialized as JSON.
 ///
@@ -25,7 +25,8 @@ impl Responder<'static> for ErrorJson {
         let mut response = Json(json!({
             "status": self.status.code,
             "description": self.description,
-        })).respond_to(req)?;
+        }))
+        .respond_to(req)?;
         response.set_status(self.status);
         Ok(response)
     }
@@ -72,4 +73,3 @@ impl From<DieselConnectionError> for ErrorJson {
         }
     }
 }
-

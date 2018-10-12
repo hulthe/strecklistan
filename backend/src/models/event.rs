@@ -1,5 +1,5 @@
-use rocket::http::Status;
 use chrono::NaiveDateTime;
+use rocket::http::Status;
 use schema::tables::events;
 use util::ErrorJson;
 
@@ -47,7 +47,7 @@ pub struct Event {
 }
 
 #[derive(Insertable, Serialize, Deserialize, Debug)]
-#[table_name="events"]
+#[table_name = "events"]
 pub struct NewEvent {
     pub title: String,
     pub background: String,
