@@ -26,12 +26,14 @@ Then make sure to setup your local ``.env``-file. ::
 
     $EDITOR .env
 
-For handling migrations you need to use ``diesel_cli``. ::
+For handling migrations you need to use the ``diesel`` CLI. ::
 
     cargo install diesel_cli
 
-    diesel_cli setup
+    diesel setup # Create database
+
+    diesel migration run # Run migrations, generate rust bindings
 
 You can then build the application using cargo. ::
 
-    cargo run
+    cargo run # Or cargo build if you just want the binary
