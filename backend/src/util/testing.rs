@@ -59,10 +59,12 @@ impl DatabaseState {
 
 impl Drop for DatabaseState {
     fn drop(&mut self) {
-        let connection = establish_connection().expect("Could not connect to testing database");
-        diesel::delete(events::table)
-            .execute(&connection)
-            .expect("Could not truncate testing database table");
+        let connection = establish_connection().expect(
+            "Could not connect to testing database",
+        );
+        diesel::delete(events::table).execute(&connection).expect(
+            "Could not truncate testing database table",
+        );
         diesel::delete(event_signups::table)
             .execute(&connection)
             .expect("Could not truncate testing database table");

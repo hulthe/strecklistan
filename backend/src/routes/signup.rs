@@ -19,10 +19,13 @@ pub fn get_signup(signup_id: i32) -> Result<Json<Signup>, ErrorJson> {
 ///
 /// Get all signups for a specific event
 #[get("/event/<event_id>/signups")]
-pub fn get_event_signups(event_id: i32) -> Result<Json<Vec<Signup>>, ErrorJson> {
+pub fn get_event_signups(
+    event_id: i32,
+) -> Result<Json<Vec<Signup>>, ErrorJson> {
     use schema::tables::event_signups::dsl::*;
     let connection = establish_connection()?;
-    let result: Vec<Signup> = event_signups.filter(event.eq(event_id)).load(&connection)?;
+    let result: Vec<Signup> =
+        event_signups.filter(event.eq(event_id)).load(&connection)?;
     // TODO: return 404 on non-existent event
     Ok(Json(result))
 }
@@ -51,7 +54,8 @@ mod tests {
     use rocket::http::{ContentType, Status};
     use rocket::local::Client;
     use schema::tables::events;
-    use util::testing::{generate_event_signups, generate_new_events, DatabaseState};
+    use util::testing::{generate_event_signups, generate_new_events,
+                        DatabaseState};
 
     #[test]
     fn create_signup() {
@@ -77,25 +81,30 @@ mod tests {
             for new_signup in signups {
                 let mut response = client
                     .post("/signup")
-                    .body(
-                        serde_json::to_string(&new_signup).expect("Could not serialize NewSignup"),
-                    )
+                    .body(serde_json::to_string(&new_signup).expect(
+                        "Could not serialize NewSignup",
+                    ))
                     .header(ContentType::JSON)
                     .dispatch();
 
                 assert_eq!(response.status(), Status::Ok);
 
-                let body = response.body_string().expect("Response has no body");
-                let signup: Signup =
-                    serde_json::from_str(&body).expect("Could not deserialize JSON into Signup");
+                let body =
+                    response.body_string().expect("Response has no body");
+                let signup: Signup = serde_json::from_str(&body).expect(
+                    "Could not deserialize JSON into Signup",
+                );
                 assert_eq!(signup.name, new_signup.name);
                 assert_eq!(signup.email, new_signup.email);
                 assert_eq!(signup.event, new_signup.event);
 
-                let mut response = client.get(format!("/signup/{}", signup.id)).dispatch();
-                let body = response.body_string().expect("Response has no body");
-                let signup2: Signup =
-                    serde_json::from_str(&body).expect("Could not deserialize JSON into Signup");
+                let mut response =
+                    client.get(format!("/signup/{}", signup.id)).dispatch();
+                let body =
+                    response.body_string().expect("Response has no body");
+                let signup2: Signup = serde_json::from_str(&body).expect(
+                    "Could not deserialize JSON into Signup",
+                );
                 assert_eq!(signup, signup2);
             }
         }

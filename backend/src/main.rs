@@ -39,11 +39,14 @@ fn main() {
         .map(|s| s.parse().unwrap_or(false))
         .unwrap_or(false);
     if run_migrations {
-        let connection = establish_connection().expect("Could not connect to database");
+        let connection =
+            establish_connection().expect("Could not connect to database");
 
         setup_database(&connection).expect("Could not set up database");
 
-        run_pending_migrations(&connection).expect("Could not run database migrations");
+        run_pending_migrations(&connection).expect(
+            "Could not run database migrations",
+        );
     }
 
     rocket::ignite()

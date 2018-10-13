@@ -69,9 +69,9 @@ pub fn get_event(event_id: i32) -> Result<Json<EventWS>, ErrorJson> {
     use schema::views::events_with_signups::dsl::*;
 
     let connection = establish_connection()?;
-    let result = events_with_signups
-        .find(event_id)
-        .first::<EventWS>(&connection)?;
+    let result = events_with_signups.find(event_id).first::<EventWS>(
+        &connection,
+    )?;
     Ok(Json(result))
 }
 
@@ -109,14 +109,17 @@ mod tests {
         for event in events {
             let mut response = client
                 .post("/event")
-                .body(serde_json::to_string(&event).expect("Could not serialize NewEvent"))
+                .body(serde_json::to_string(&event).expect(
+                    "Could not serialize NewEvent",
+                ))
                 .header(ContentType::JSON)
                 .dispatch();
 
             assert_eq!(response.status(), Status::Ok);
             let body = response.body_string().expect("Response has no body");
-            let event: Event =
-                serde_json::from_str(&body).expect("Could not deserialize JSON into Event");
+            let event: Event = serde_json::from_str(&body).expect(
+                "Could not deserialize JSON into Event",
+            );
             assert_eq!(event.title, "My Event");
         }
     }
@@ -126,7 +129,9 @@ mod tests {
         let _state = DatabaseState::new();
 
         {
-            let connection = establish_connection().expect("Could not connect to testing database");
+            let connection = establish_connection().expect(
+                "Could not connect to testing database",
+            );
             for event in generate_new_events(10, 10).into_iter() {
                 diesel::insert_into(events::table)
                     .values(event)
@@ -143,8 +148,9 @@ mod tests {
 
         assert_eq!(response.status(), Status::Ok);
         let body = response.body_string().expect("Response has no body");
-        let events: Vec<EventWS> =
-            serde_json::from_str(&body).expect("Could not deserialize JSON into Vec<EventWS>");
+        let events: Vec<EventWS> = serde_json::from_str(&body).expect(
+            "Could not deserialize JSON into Vec<EventWS>",
+        );
         println!("{:#?}", events);
         assert_eq!(events.len(), 20);
         assert!(events.iter().all(|event| event.title == "My Event"));
