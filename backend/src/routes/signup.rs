@@ -2,13 +2,13 @@ use database::establish_connection;
 use diesel::prelude::*;
 use models::signup::{NewSignup, Signup};
 use rocket_contrib::Json;
-use util::ErrorJson;
+use util::StatusJson;
 
 /// Route `GET /signup/<signup_id>`
 ///
 /// Get a specific event signup by its id parameter.
 #[get("/signup/<signup_id>")]
-pub fn get_signup(signup_id: i32) -> Result<Json<Signup>, ErrorJson> {
+pub fn get_signup(signup_id: i32) -> Result<Json<Signup>, StatusJson> {
     use schema::tables::event_signups::dsl::*;
     let connection = establish_connection()?;
     let result: Signup = event_signups.find(signup_id).first(&connection)?;
@@ -21,7 +21,7 @@ pub fn get_signup(signup_id: i32) -> Result<Json<Signup>, ErrorJson> {
 #[get("/event/<event_id>/signups")]
 pub fn get_event_signups(
     event_id: i32,
-) -> Result<Json<Vec<Signup>>, ErrorJson> {
+) -> Result<Json<Vec<Signup>>, StatusJson> {
     use schema::tables::event_signups::dsl::*;
     let connection = establish_connection()?;
     let result: Vec<Signup> =
@@ -34,7 +34,7 @@ pub fn get_event_signups(
 ///
 /// Post a new event.
 #[post("/signup", format = "application/json", data = "<signup>")]
-pub fn post_signup(signup: Json<NewSignup>) -> Result<Json<Signup>, ErrorJson> {
+pub fn post_signup(signup: Json<NewSignup>) -> Result<Json<Signup>, StatusJson> {
     use schema::tables::event_signups;
     let signup = signup.into_inner();
     let connection = establish_connection()?;

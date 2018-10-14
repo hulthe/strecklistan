@@ -4,14 +4,14 @@ use diesel::prelude::*;
 use models::{Event, EventRange, EventWithSignups as EventWS, NewEvent};
 use rocket_contrib::Json;
 use schema::tables::events;
-use util::ErrorJson;
+use util::StatusJson;
 
 /// Route `GET /events?high=x&low=y`
 ///
 /// Return all events in the range `low..high`, where `0..1` yields the
 /// upcoming event and `-1..0` yields the most recently completed event.
 #[get("/events?<range>")]
-pub fn get_events(range: EventRange) -> Result<Json<Vec<EventWS>>, ErrorJson> {
+pub fn get_events(range: EventRange) -> Result<Json<Vec<EventWS>>, StatusJson> {
     use schema::views::events_with_signups::dsl::*;
 
     range.validate()?;
@@ -65,7 +65,7 @@ pub fn get_events(range: EventRange) -> Result<Json<Vec<EventWS>>, ErrorJson> {
 ///
 /// Get a specific event by its id parameter.
 #[get("/event/<event_id>")]
-pub fn get_event(event_id: i32) -> Result<Json<EventWS>, ErrorJson> {
+pub fn get_event(event_id: i32) -> Result<Json<EventWS>, StatusJson> {
     use schema::views::events_with_signups::dsl::*;
 
     let connection = establish_connection()?;
@@ -79,7 +79,7 @@ pub fn get_event(event_id: i32) -> Result<Json<EventWS>, ErrorJson> {
 ///
 /// Post a new event.
 #[post("/event", format = "application/json", data = "<event>")]
-pub fn post_event(event: Json<NewEvent>) -> Result<Json<Event>, ErrorJson> {
+pub fn post_event(event: Json<NewEvent>) -> Result<Json<Event>, StatusJson> {
     let event = event.into_inner();
     let connection = establish_connection()?;
 
