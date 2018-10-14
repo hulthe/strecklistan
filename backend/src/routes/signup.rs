@@ -34,7 +34,9 @@ pub fn get_event_signups(
 ///
 /// Post a new event.
 #[post("/signup", format = "application/json", data = "<signup>")]
-pub fn post_signup(signup: Json<NewSignup>) -> Result<Json<Signup>, StatusJson> {
+pub fn post_signup(
+    signup: Json<NewSignup>,
+) -> Result<Json<Signup>, StatusJson> {
     use schema::tables::event_signups;
     let signup = signup.into_inner();
     let connection = establish_connection()?;

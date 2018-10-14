@@ -24,6 +24,7 @@ table! {
     users (name) {
         name -> Varchar,
         display_name -> Nullable<Varchar>,
+        salted_pass -> Varchar,
     }
 }
 

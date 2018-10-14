@@ -14,3 +14,8 @@ pub fn not_found(_: &Request) -> StatusJson {
 pub fn unauthorized(_: &Request) -> StatusJson {
     Status::Unauthorized.into()
 }
+
+#[catch(400)]
+pub fn bad_request(_: &Request) -> StatusJson {
+    Status::BadRequest.into()
+}

@@ -14,7 +14,7 @@ use rocket_contrib::Json;
 ///   "description": "Not Found"
 /// }
 /// ```
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct StatusJson {
     pub status: Status,
     pub description: String,

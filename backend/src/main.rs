@@ -18,6 +18,8 @@ extern crate serde_json;
 extern crate serde_derive;
 extern crate chrono;
 extern crate dotenv;
+extern crate orion;
+extern crate hex;
 
 mod database;
 pub mod models;
@@ -28,7 +30,7 @@ pub mod util;
 use database::establish_connection;
 use diesel_migrations::{run_pending_migrations, setup_database};
 use dotenv::dotenv;
-use routes::{event, signup};
+use routes::{session, event, signup};
 use std::env;
 use util::catchers;
 
@@ -50,10 +52,17 @@ fn main() {
     }
 
     rocket::ignite()
-        .catch(catchers![catchers::not_found, catchers::unauthorized,])
+        .catch(catchers![
+            catchers::not_found,
+            catchers::unauthorized,
+            catchers::bad_request,
+        ])
         .mount(
             "/",
             routes![
+                session::user_info,
+                session::login,
+                session::register,
                 event::get_events,
                 event::get_event,
                 event::post_event,

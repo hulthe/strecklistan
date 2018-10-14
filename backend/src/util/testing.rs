@@ -5,6 +5,7 @@ use dotenv::dotenv;
 use models::{NewEvent, NewSignup};
 use schema::tables::event_signups;
 use schema::tables::events;
+use schema::tables::users;
 
 pub fn generate_new_events(old: usize, new: usize) -> Vec<NewEvent> {
     let mut events = vec![];
@@ -68,5 +69,8 @@ impl Drop for DatabaseState {
         diesel::delete(event_signups::table)
             .execute(&connection)
             .expect("Could not truncate testing database table");
+        diesel::delete(users::table).execute(&connection).expect(
+            "Could not truncate testing database table",
+        );
     }
 }
