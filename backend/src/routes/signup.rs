@@ -56,6 +56,7 @@ mod tests {
     use rocket::http::{ContentType, Status};
     use rocket::local::Client;
     use schema::tables::events;
+    use util::catchers::catchers;
     use util::testing::{generate_event_signups, generate_new_events,
                         DatabaseState};
 
@@ -63,7 +64,7 @@ mod tests {
     fn create_signup() {
         let _state = DatabaseState::new();
         let connection = establish_connection().unwrap();
-        let rocket = rocket::ignite().mount(
+        let rocket = rocket::ignite().catch(catchers()).mount(
             "/",
             routes![
                 super::post_signup,

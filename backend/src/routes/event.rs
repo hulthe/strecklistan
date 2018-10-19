@@ -97,12 +97,13 @@ mod tests {
     use rocket::http::{ContentType, Status};
     use rocket::local::Client;
     use schema::tables::events;
+    use util::catchers::catchers;
     use util::testing::{generate_new_events, DatabaseState};
 
     #[test]
     fn event_creation() {
         let _state = DatabaseState::new();
-        let rocket = rocket::ignite().mount("/", routes![super::post_event,]);
+        let rocket = rocket::ignite().catch(catchers()).mount("/", routes![super::post_event,]);
         let client = Client::new(rocket).expect("valid rocket instance");
         let events = generate_new_events(10, 10);
 

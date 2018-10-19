@@ -118,6 +118,7 @@ mod tests {
     use rocket::http::{ContentType, Status, Cookie};
     use rocket::local::Client;
     use schema::tables::users;
+    use util::catchers::catchers;
     use util::testing::DatabaseState;
 
     #[test]
@@ -142,7 +143,7 @@ mod tests {
             .execute(&connection)
             .expect("Could not add new user for testing");
 
-        let rocket = rocket::ignite().mount("/", routes![login, user_info]);
+        let rocket = rocket::ignite().catch(catchers()).mount("/", routes![login, user_info]);
         let client = Client::new(rocket).expect("valid rocket instance");
 
 

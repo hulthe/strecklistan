@@ -32,7 +32,7 @@ use diesel_migrations::{run_pending_migrations, setup_database};
 use dotenv::dotenv;
 use routes::{session, event, signup};
 use std::env;
-use util::catchers;
+use util::catchers::catchers;
 
 fn main() {
     dotenv().ok();
@@ -52,11 +52,7 @@ fn main() {
     }
 
     rocket::ignite()
-        .catch(catchers![
-            catchers::not_found,
-            catchers::unauthorized,
-            catchers::bad_request,
-        ])
+        .catch(catchers())
         .mount(
             "/",
             routes![
