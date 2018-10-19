@@ -20,9 +20,18 @@ table! {
     }
 }
 
+table! {
+    users (name) {
+        name -> Varchar,
+        display_name -> Nullable<Varchar>,
+        salted_pass -> Varchar,
+    }
+}
+
 joinable!(event_signups -> events (event));
 
 allow_tables_to_appear_in_same_query!(
     events,
     event_signups,
+    users,
 );
