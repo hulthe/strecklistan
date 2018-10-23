@@ -25,7 +25,8 @@ impl Responder<'static> for StatusJson {
         let mut response = Json(json!({
             "status": self.status.code,
             "description": self.description,
-        })).respond_to(req)?;
+        }))
+        .respond_to(req)?;
         response.set_status(self.status);
         Ok(response)
     }

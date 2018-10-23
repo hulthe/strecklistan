@@ -1,11 +1,11 @@
 use chrono::{Duration, Local};
+use database::{create_pool, DatabasePool};
 use diesel::RunQueryDsl;
 use dotenv::dotenv;
 use models::{NewEvent, NewSignup};
 use schema::tables::event_signups;
 use schema::tables::events;
 use schema::tables::users;
-use database::{DatabasePool, create_pool};
 
 pub fn generate_new_events(old: usize, new: usize) -> Vec<NewEvent> {
     let mut events = vec![];
@@ -65,17 +65,18 @@ impl DatabaseState {
 
 impl Drop for DatabaseState {
     fn drop(&mut self) {
-        let connection = self.db_pool.get().expect(
-            "Could not get database connection",
-        );
-        diesel::delete(events::table).execute(&connection).expect(
-            "Could not truncate testing database table",
-        );
+        let connection = self
+            .db_pool
+            .get()
+            .expect("Could not get database connection");
+        diesel::delete(events::table)
+            .execute(&connection)
+            .expect("Could not truncate testing database table");
         diesel::delete(event_signups::table)
             .execute(&connection)
             .expect("Could not truncate testing database table");
-        diesel::delete(users::table).execute(&connection).expect(
-            "Could not truncate testing database table",
-        );
+        diesel::delete(users::table)
+            .execute(&connection)
+            .expect("Could not truncate testing database table");
     }
 }

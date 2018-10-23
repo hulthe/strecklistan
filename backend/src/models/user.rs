@@ -1,12 +1,12 @@
-use std::time::{SystemTime, UNIX_EPOCH};
-use std::env;
+use database::{DatabaseConn, DatabasePool};
 use diesel::prelude::*;
-use rocket::http::{Status, Cookies, Cookie};
+use rocket::http::{Cookie, Cookies, Status};
 use rocket::request::{self, FromRequest, Request};
 use rocket::{Outcome, State};
-use serde_json;
 use schema::tables::users;
-use database::{DatabasePool, DatabaseConn};
+use serde_json;
+use std::env;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 /// This struct defines a user object
 ///
@@ -34,8 +34,7 @@ pub fn set_user_session(user: &User, cookies: &mut Cookies) {
             .unwrap()
             .as_secs(),
     };
-    let serialized =
-        serde_json::to_string(&session).expect("Could not serialize session");
+    let serialized = serde_json::to_string(&session).expect("Could not serialize session");
     cookies.add_private(Cookie::new(SESSION_COOKIE_KEY, serialized));
     println!("Saved user {} in {}", &user.name, SESSION_COOKIE_KEY);
 }
@@ -52,10 +51,9 @@ impl<'a, 'r> FromRequest<'a, 'r> for User {
         let mut cookies = request.cookies();
         let db_pool: State<DatabasePool> = request.guard()?;
 
-        let session: Option<Session> =
-            cookies.get_private(SESSION_COOKIE_KEY).and_then(|user| {
-                serde_json::from_str(user.value()).ok()
-            });
+        let session: Option<Session> = cookies
+            .get_private(SESSION_COOKIE_KEY)
+            .and_then(|user| serde_json::from_str(user.value()).ok());
 
         if session.is_none() {
             return Outcome::Failure((Status::Unauthorized, ()));
@@ -63,10 +61,9 @@ impl<'a, 'r> FromRequest<'a, 'r> for User {
 
         let session = session.unwrap();
 
-        if let Some(session_lifetime) =
-            env::var("SESSION_LIFETIME").ok().and_then(|lifetime| {
-                lifetime.parse().ok()
-            })
+        if let Some(session_lifetime) = env::var("SESSION_LIFETIME")
+            .ok()
+            .and_then(|lifetime| lifetime.parse().ok())
         {
             let unix_time: u64 = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
@@ -76,7 +73,7 @@ impl<'a, 'r> FromRequest<'a, 'r> for User {
             if session.last_seen > unix_time {
                 eprintln!(
                     "Client `last_seen` variable is set as the future. \
-                           Is the server system time misconfigured?"
+                     Is the server system time misconfigured?"
                 );
                 return Outcome::Failure((Status::InternalServerError, ()));
             } else if unix_time - session.last_seen > session_lifetime {

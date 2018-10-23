@@ -1,10 +1,10 @@
 use chrono::Local;
+use database::DatabasePool;
 use diesel::prelude::*;
 use models::{Event, EventRange, EventWithSignups as EventWS, NewEvent};
 use rocket::State;
 use rocket_contrib::Json;
 use schema::tables::events;
-use database::DatabasePool;
 use util::StatusJson;
 
 /// Route `GET /events?high=x&low=y`
@@ -12,7 +12,10 @@ use util::StatusJson;
 /// Return all events in the range `low..high`, where `0..1` yields the
 /// upcoming event and `-1..0` yields the most recently completed event.
 #[get("/events?<range>")]
-pub fn get_events(range: EventRange, db_pool: State<DatabasePool>) -> Result<Json<Vec<EventWS>>, StatusJson> {
+pub fn get_events(
+    range: EventRange,
+    db_pool: State<DatabasePool>,
+) -> Result<Json<Vec<EventWS>>, StatusJson> {
     use schema::views::events_with_signups::dsl::*;
 
     range.validate()?;
@@ -70,9 +73,9 @@ pub fn get_event(event_id: i32, db_pool: State<DatabasePool>) -> Result<Json<Eve
     use schema::views::events_with_signups::dsl::*;
 
     let connection = db_pool.inner().get()?;
-    let result = events_with_signups.find(event_id).first::<EventWS>(
-        &connection,
-    )?;
+    let result = events_with_signups
+        .find(event_id)
+        .first::<EventWS>(&connection)?;
     Ok(Json(result))
 }
 
@@ -80,7 +83,10 @@ pub fn get_event(event_id: i32, db_pool: State<DatabasePool>) -> Result<Json<Eve
 ///
 /// Post a new event.
 #[post("/event", format = "application/json", data = "<event>")]
-pub fn post_event(event: Json<NewEvent>, db_pool: State<DatabasePool>) -> Result<Json<Event>, StatusJson> {
+pub fn post_event(
+    event: Json<NewEvent>,
+    db_pool: State<DatabasePool>,
+) -> Result<Json<Event>, StatusJson> {
     let event = event.into_inner();
     let connection = db_pool.inner().get()?;
 
@@ -105,24 +111,22 @@ mod tests {
         let (_state, db_pool) = DatabaseState::new();
         let rocket = rocket::ignite()
             .manage(db_pool)
-            .catch(catchers()).mount("/", routes![super::post_event,]);
+            .catch(catchers())
+            .mount("/", routes![super::post_event,]);
         let client = Client::new(rocket).expect("valid rocket instance");
         let events = generate_new_events(10, 10);
 
         for event in events {
             let mut response = client
                 .post("/event")
-                .body(serde_json::to_string(&event).expect(
-                    "Could not serialize NewEvent",
-                ))
+                .body(serde_json::to_string(&event).expect("Could not serialize NewEvent"))
                 .header(ContentType::JSON)
                 .dispatch();
 
             assert_eq!(response.status(), Status::Ok);
             let body = response.body_string().expect("Response has no body");
-            let event: Event = serde_json::from_str(&body).expect(
-                "Could not deserialize JSON into Event",
-            );
+            let event: Event =
+                serde_json::from_str(&body).expect("Could not deserialize JSON into Event");
             assert_eq!(event.title, "My Event");
         }
     }
@@ -132,8 +136,7 @@ mod tests {
         let (_state, db_pool) = DatabaseState::new();
 
         {
-            let connection = db_pool.get()
-                .expect("Could not get database connection");
+            let connection = db_pool.get().expect("Could not get database connection");
             for event in generate_new_events(10, 10).into_iter() {
                 diesel::insert_into(events::table)
                     .values(event)
@@ -152,9 +155,8 @@ mod tests {
 
         assert_eq!(response.status(), Status::Ok);
         let body = response.body_string().expect("Response has no body");
-        let events: Vec<EventWS> = serde_json::from_str(&body).expect(
-            "Could not deserialize JSON into Vec<EventWS>",
-        );
+        let events: Vec<EventWS> =
+            serde_json::from_str(&body).expect("Could not deserialize JSON into Vec<EventWS>");
         println!("{:#?}", events);
         assert_eq!(events.len(), 20);
         assert!(events.iter().all(|event| event.title == "My Event"));

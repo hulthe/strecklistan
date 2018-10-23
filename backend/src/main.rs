@@ -18,20 +18,20 @@ extern crate serde_json;
 extern crate serde_derive;
 extern crate chrono;
 extern crate dotenv;
-extern crate orion;
 extern crate hex;
+extern crate orion;
 
+mod database;
 pub mod models;
 pub mod routes;
 mod schema;
-mod database;
 pub mod util;
 
+use database::create_pool;
 use diesel_migrations::{run_pending_migrations, setup_database};
 use dotenv::dotenv;
-use routes::{session, event, signup};
+use routes::{event, session, signup};
 use std::env;
-use database::create_pool;
 use util::catchers::catchers;
 
 fn main() {
@@ -43,14 +43,11 @@ fn main() {
         .map(|s| s.parse().unwrap_or(false))
         .unwrap_or(false);
     if run_migrations {
-        let connection =
-            db_pool.get().expect("Could not connect to database");
+        let connection = db_pool.get().expect("Could not connect to database");
 
         setup_database(&connection).expect("Could not set up database");
 
-        run_pending_migrations(&connection).expect(
-            "Could not run database migrations",
-        );
+        run_pending_migrations(&connection).expect("Could not run database migrations");
     }
 
     rocket::ignite()
