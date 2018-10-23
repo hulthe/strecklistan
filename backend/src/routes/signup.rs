@@ -1,16 +1,17 @@
-use database::establish_connection;
 use diesel::prelude::*;
 use models::signup::{NewSignup, Signup};
+use rocket::State;
 use rocket_contrib::Json;
+use database::DatabasePool;
 use util::StatusJson;
 
 /// Route `GET /signup/<signup_id>`
 ///
 /// Get a specific event signup by its id parameter.
 #[get("/signup/<signup_id>")]
-pub fn get_signup(signup_id: i32) -> Result<Json<Signup>, StatusJson> {
+pub fn get_signup(signup_id: i32, db_pool: State<DatabasePool>) -> Result<Json<Signup>, StatusJson> {
     use schema::tables::event_signups::dsl::*;
-    let connection = establish_connection()?;
+    let connection = db_pool.inner().get()?;
     let result: Signup = event_signups.find(signup_id).first(&connection)?;
     Ok(Json(result))
 }
@@ -20,10 +21,10 @@ pub fn get_signup(signup_id: i32) -> Result<Json<Signup>, StatusJson> {
 /// Get all signups for a specific event
 #[get("/event/<event_id>/signups")]
 pub fn get_event_signups(
-    event_id: i32,
+    event_id: i32, db_pool: State<DatabasePool>,
 ) -> Result<Json<Vec<Signup>>, StatusJson> {
     use schema::tables::event_signups::dsl::*;
-    let connection = establish_connection()?;
+    let connection = db_pool.inner().get()?;
     let result: Vec<Signup> =
         event_signups.filter(event.eq(event_id)).load(&connection)?;
     // TODO: return 404 on non-existent event
@@ -35,11 +36,11 @@ pub fn get_event_signups(
 /// Post a new event.
 #[post("/signup", format = "application/json", data = "<signup>")]
 pub fn post_signup(
-    signup: Json<NewSignup>,
+    signup: Json<NewSignup>, db_pool: State<DatabasePool>,
 ) -> Result<Json<Signup>, StatusJson> {
     use schema::tables::event_signups;
     let signup = signup.into_inner();
-    let connection = establish_connection()?;
+    let connection = db_pool.inner().get()?;
 
     let result = diesel::insert_into(event_signups::table)
         .values(signup)
@@ -50,7 +51,6 @@ pub fn post_signup(
 
 #[cfg(test)]
 mod tests {
-    use database::establish_connection;
     use diesel::RunQueryDsl;
     use models::{Event, Signup};
     use rocket::http::{ContentType, Status};
@@ -62,10 +62,12 @@ mod tests {
 
     #[test]
     fn create_signup() {
-        let _state = DatabaseState::new();
-        let connection = establish_connection().unwrap();
-        let rocket = rocket::ignite().catch(catchers()).mount(
-            "/",
+        let (_state, db_pool)= DatabaseState::new();
+        let connection = db_pool.get().expect("Could not get database connection");
+        let rocket = rocket::ignite()
+            .manage(db_pool)
+            .catch(catchers())
+            .mount("/",
             routes![
                 super::post_signup,
                 super::get_signup,

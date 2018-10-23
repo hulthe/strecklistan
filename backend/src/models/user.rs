@@ -3,10 +3,10 @@ use std::env;
 use diesel::prelude::*;
 use rocket::http::{Status, Cookies, Cookie};
 use rocket::request::{self, FromRequest, Request};
-use rocket::Outcome;
+use rocket::{Outcome, State};
 use serde_json;
-use database::establish_connection;
 use schema::tables::users;
+use database::{DatabasePool, DatabaseConn};
 
 /// This struct defines a user object
 ///
@@ -40,10 +40,9 @@ pub fn set_user_session(user: &User, cookies: &mut Cookies) {
     println!("Saved user {} in {}", &user.name, SESSION_COOKIE_KEY);
 }
 
-fn get_user(user_name: String) -> Option<User> {
+fn get_user(user_name: String, connection: &DatabaseConn) -> Option<User> {
     use schema::tables::users::dsl::*;
-    let connection = establish_connection().ok()?;
-    users.find(user_name).first(&connection).ok()
+    users.find(user_name).first(connection).ok()
 }
 
 impl<'a, 'r> FromRequest<'a, 'r> for User {
@@ -51,6 +50,7 @@ impl<'a, 'r> FromRequest<'a, 'r> for User {
 
     fn from_request(request: &'a Request<'r>) -> request::Outcome<User, ()> {
         let mut cookies = request.cookies();
+        let db_pool: State<DatabasePool> = request.guard()?;
 
         let session: Option<Session> =
             cookies.get_private(SESSION_COOKIE_KEY).and_then(|user| {
@@ -84,10 +84,14 @@ impl<'a, 'r> FromRequest<'a, 'r> for User {
             }
         }
 
-        if let Some(user) = get_user(session.username) {
-            Outcome::Success(user)
+        if let Ok(connection) = db_pool.inner().get() {
+            if let Some(user) = get_user(session.username, &connection) {
+                Outcome::Success(user)
+            } else {
+                Outcome::Failure((Status::Unauthorized, ()))
+            }
         } else {
-            Outcome::Failure((Status::Unauthorized, ()))
+            Outcome::Failure((Status::InternalServerError, ()))
         }
     }
 }

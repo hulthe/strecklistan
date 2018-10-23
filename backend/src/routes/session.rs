@@ -1,11 +1,12 @@
-use database::establish_connection;
 use diesel::prelude::*;
 use models::user::{User, Credentials, set_user_session};
+use rocket::State;
 use rocket::http::{Status, Cookies};
 use rocket_contrib::Json;
 use orion::default::{pbkdf2, pbkdf2_verify};
 use orion::utilities::errors::UnknownCryptoError;
 use hex;
+use database::DatabasePool;
 use util::StatusJson as SJ;
 
 /// Route `GET /me`
@@ -29,9 +30,10 @@ pub fn user_info(user: User) -> Json {
 pub fn login(
     credentials: Json<Credentials>,
     mut cookies: Cookies,
+    db_pool: State<DatabasePool>,
 ) -> Result<SJ, SJ> {
     use schema::tables::users::dsl::*;
-    let connection = establish_connection()?;
+    let connection = db_pool.inner().get()?;
     let unauthorized_error = SJ {
         status: Status::Unauthorized,
         description: "Invalid Credentials".into(),
@@ -77,9 +79,9 @@ fn generate_salted_hash<T: AsRef<[u8]>>(
 ///
 /// Create a new user
 #[post("/register", data = "<credentials>")]
-pub fn register(credentials: Json<Credentials>) -> Result<SJ, SJ> {
+pub fn register(credentials: Json<Credentials>, db_pool: State<DatabasePool>) -> Result<SJ, SJ> {
     use schema::tables::users;
-    let connection = establish_connection()?;
+    let connection = db_pool.inner().get()?;
 
     let user = User {
         name: credentials.name.clone(),
@@ -113,7 +115,6 @@ pub fn register(credentials: Json<Credentials>) -> Result<SJ, SJ> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use database::establish_connection;
     use diesel::RunQueryDsl;
     use rocket::http::{ContentType, Status, Cookie};
     use rocket::local::Client;
@@ -123,7 +124,7 @@ mod tests {
 
     #[test]
     fn log_in() {
-        let _state = DatabaseState::new();
+        let (_state, db_pool) = DatabaseState::new();
 
         let credentials = Credentials {
             name: "test_user".into(),
@@ -137,13 +138,15 @@ mod tests {
                 "Could not create password hash",
             ),
         };
-        let connection = establish_connection().unwrap();
+        let connection = db_pool.get().expect("Could not get database connection");
         diesel::insert_into(users::table)
             .values(user)
             .execute(&connection)
             .expect("Could not add new user for testing");
 
-        let rocket = rocket::ignite().catch(catchers()).mount("/", routes![login, user_info]);
+        let rocket = rocket::ignite()
+            .manage(db_pool)
+            .catch(catchers()).mount("/", routes![login, user_info]);
         let client = Client::new(rocket).expect("valid rocket instance");
 
 

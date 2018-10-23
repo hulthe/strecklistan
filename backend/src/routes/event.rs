@@ -1,9 +1,10 @@
 use chrono::Local;
-use database::establish_connection;
 use diesel::prelude::*;
 use models::{Event, EventRange, EventWithSignups as EventWS, NewEvent};
+use rocket::State;
 use rocket_contrib::Json;
 use schema::tables::events;
+use database::DatabasePool;
 use util::StatusJson;
 
 /// Route `GET /events?high=x&low=y`
@@ -11,13 +12,13 @@ use util::StatusJson;
 /// Return all events in the range `low..high`, where `0..1` yields the
 /// upcoming event and `-1..0` yields the most recently completed event.
 #[get("/events?<range>")]
-pub fn get_events(range: EventRange) -> Result<Json<Vec<EventWS>>, StatusJson> {
+pub fn get_events(range: EventRange, db_pool: State<DatabasePool>) -> Result<Json<Vec<EventWS>>, StatusJson> {
     use schema::views::events_with_signups::dsl::*;
 
     range.validate()?;
 
     let now = Local::now().naive_local();
-    let connection = establish_connection()?;
+    let connection = db_pool.inner().get()?;
 
     let mut previous: Vec<EventWS> = if range.low < 0 {
         events_with_signups
@@ -65,10 +66,10 @@ pub fn get_events(range: EventRange) -> Result<Json<Vec<EventWS>>, StatusJson> {
 ///
 /// Get a specific event by its id parameter.
 #[get("/event/<event_id>")]
-pub fn get_event(event_id: i32) -> Result<Json<EventWS>, StatusJson> {
+pub fn get_event(event_id: i32, db_pool: State<DatabasePool>) -> Result<Json<EventWS>, StatusJson> {
     use schema::views::events_with_signups::dsl::*;
 
-    let connection = establish_connection()?;
+    let connection = db_pool.inner().get()?;
     let result = events_with_signups.find(event_id).first::<EventWS>(
         &connection,
     )?;
@@ -79,9 +80,9 @@ pub fn get_event(event_id: i32) -> Result<Json<EventWS>, StatusJson> {
 ///
 /// Post a new event.
 #[post("/event", format = "application/json", data = "<event>")]
-pub fn post_event(event: Json<NewEvent>) -> Result<Json<Event>, StatusJson> {
+pub fn post_event(event: Json<NewEvent>, db_pool: State<DatabasePool>) -> Result<Json<Event>, StatusJson> {
     let event = event.into_inner();
-    let connection = establish_connection()?;
+    let connection = db_pool.inner().get()?;
 
     let result = diesel::insert_into(events::table)
         .values(event)
@@ -92,7 +93,6 @@ pub fn post_event(event: Json<NewEvent>) -> Result<Json<Event>, StatusJson> {
 #[cfg(test)]
 mod tests {
     use super::{Event, EventWS};
-    use database::establish_connection;
     use diesel::RunQueryDsl;
     use rocket::http::{ContentType, Status};
     use rocket::local::Client;
@@ -102,8 +102,10 @@ mod tests {
 
     #[test]
     fn event_creation() {
-        let _state = DatabaseState::new();
-        let rocket = rocket::ignite().catch(catchers()).mount("/", routes![super::post_event,]);
+        let (_state, db_pool) = DatabaseState::new();
+        let rocket = rocket::ignite()
+            .manage(db_pool)
+            .catch(catchers()).mount("/", routes![super::post_event,]);
         let client = Client::new(rocket).expect("valid rocket instance");
         let events = generate_new_events(10, 10);
 
@@ -127,12 +129,11 @@ mod tests {
 
     #[test]
     fn get_event_list() {
-        let _state = DatabaseState::new();
+        let (_state, db_pool) = DatabaseState::new();
 
         {
-            let connection = establish_connection().expect(
-                "Could not connect to testing database",
-            );
+            let connection = db_pool.get()
+                .expect("Could not get database connection");
             for event in generate_new_events(10, 10).into_iter() {
                 diesel::insert_into(events::table)
                     .values(event)
@@ -141,7 +142,9 @@ mod tests {
             }
         }
 
-        let rocket = rocket::ignite().mount("/", routes![super::get_events,]);
+        let rocket = rocket::ignite()
+            .manage(db_pool)
+            .mount("/", routes![super::get_events,]);
 
         let client = Client::new(rocket).expect("valid rocket instance");
 
