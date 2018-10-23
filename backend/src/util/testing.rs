@@ -1,5 +1,5 @@
 use chrono::{Duration, Local};
-use database::establish_connection;
+use database::{create_pool, DatabasePool};
 use diesel::RunQueryDsl;
 use dotenv::dotenv;
 use models::{NewEvent, NewSignup};
@@ -48,29 +48,35 @@ pub fn generate_event_signups(count: usize, event: i32) -> Vec<NewSignup> {
     signups
 }
 
-pub struct DatabaseState {}
+pub struct DatabaseState {
+    db_pool: DatabasePool,
+}
 
 impl DatabaseState {
-    pub fn new() -> DatabaseState {
+    pub fn new() -> (DatabaseState, DatabasePool) {
         dotenv().ok();
-        establish_connection().expect("Could not connect to database");
-        DatabaseState {}
+        let db_pool = create_pool().expect("Could not create database pool");
+        let state = DatabaseState {
+            db_pool: db_pool.clone(),
+        };
+        (state, db_pool)
     }
 }
 
 impl Drop for DatabaseState {
     fn drop(&mut self) {
-        let connection = establish_connection().expect(
-            "Could not connect to testing database",
-        );
-        diesel::delete(events::table).execute(&connection).expect(
-            "Could not truncate testing database table",
-        );
+        let connection = self
+            .db_pool
+            .get()
+            .expect("Could not get database connection");
+        diesel::delete(events::table)
+            .execute(&connection)
+            .expect("Could not truncate testing database table");
         diesel::delete(event_signups::table)
             .execute(&connection)
             .expect("Could not truncate testing database table");
-        diesel::delete(users::table).execute(&connection).expect(
-            "Could not truncate testing database table",
-        );
+        diesel::delete(users::table)
+            .execute(&connection)
+            .expect("Could not truncate testing database table");
     }
 }

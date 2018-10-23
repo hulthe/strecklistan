@@ -6,4 +6,4 @@ pub use self::event::{Event, EventRange, EventWithSignups, NewEvent};
 
 pub use self::signup::{NewSignup, Signup};
 
-pub use self::user::{User, Credentials};
+pub use self::user::{Credentials, User};

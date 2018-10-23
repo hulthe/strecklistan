@@ -1,7 +1,6 @@
 #![feature(custom_derive)]
 #![feature(plugin)]
 #![feature(specialization)]
-#![feature(extern_prelude)]
 #![plugin(rocket_codegen)]
 // Disable warnings caused by nightly rust phasing out this feature
 #![allow(proc_macro_derive_resolution_fallback)]
@@ -12,14 +11,15 @@ extern crate rocket_contrib;
 #[macro_use]
 extern crate diesel;
 extern crate diesel_migrations;
+extern crate r2d2;
 extern crate serde;
 extern crate serde_json;
 #[macro_use]
 extern crate serde_derive;
 extern crate chrono;
 extern crate dotenv;
-extern crate orion;
 extern crate hex;
+extern crate orion;
 
 mod database;
 pub mod models;
@@ -27,31 +27,31 @@ pub mod routes;
 mod schema;
 pub mod util;
 
-use database::establish_connection;
+use database::create_pool;
 use diesel_migrations::{run_pending_migrations, setup_database};
 use dotenv::dotenv;
-use routes::{session, event, signup};
+use routes::{event, session, signup};
 use std::env;
 use util::catchers::catchers;
 
 fn main() {
     dotenv().ok();
 
+    let db_pool = create_pool().expect("Could not create database pool");
+
     let run_migrations = env::var("RUN_MIGRATIONS")
         .map(|s| s.parse().unwrap_or(false))
         .unwrap_or(false);
     if run_migrations {
-        let connection =
-            establish_connection().expect("Could not connect to database");
+        let connection = db_pool.get().expect("Could not connect to database");
 
         setup_database(&connection).expect("Could not set up database");
 
-        run_pending_migrations(&connection).expect(
-            "Could not run database migrations",
-        );
+        run_pending_migrations(&connection).expect("Could not run database migrations");
     }
 
     rocket::ignite()
+        .manage(db_pool)
         .catch(catchers())
         .mount(
             "/",

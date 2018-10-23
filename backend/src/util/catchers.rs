@@ -1,13 +1,9 @@
 use rocket::http::Status;
-use rocket::{Request, Catcher};
+use rocket::{Catcher, Request};
 use util::StatusJson;
 
 pub fn catchers() -> Vec<Catcher> {
-    catchers![
-        not_found,
-        unauthorized,
-        bad_request,
-    ]
+    catchers![not_found, unauthorized, bad_request,]
 }
 
 #[catch(404)]

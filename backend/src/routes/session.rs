@@ -1,11 +1,12 @@
-use database::establish_connection;
+use database::DatabasePool;
 use diesel::prelude::*;
-use models::user::{User, Credentials, set_user_session};
-use rocket::http::{Status, Cookies};
-use rocket_contrib::Json;
+use hex;
+use models::user::{set_user_session, Credentials, User};
 use orion::default::{pbkdf2, pbkdf2_verify};
 use orion::utilities::errors::UnknownCryptoError;
-use hex;
+use rocket::http::{Cookies, Status};
+use rocket::State;
+use rocket_contrib::Json;
 use util::StatusJson as SJ;
 
 /// Route `GET /me`
@@ -29,14 +30,17 @@ pub fn user_info(user: User) -> Json {
 pub fn login(
     credentials: Json<Credentials>,
     mut cookies: Cookies,
+    db_pool: State<DatabasePool>,
 ) -> Result<SJ, SJ> {
     use schema::tables::users::dsl::*;
-    let connection = establish_connection()?;
+    let connection = db_pool.inner().get()?;
     let unauthorized_error = SJ {
         status: Status::Unauthorized,
         description: "Invalid Credentials".into(),
     };
-    let user: User = users.find(&credentials.name).first(&connection)
+    let user: User = users
+        .find(&credentials.name)
+        .first(&connection)
         /* Convert database errors into 404:s since we don't wnat to
          * leak information about whether the user exists or not */
         .map_err(|_| unauthorized_error.clone())?;
@@ -50,7 +54,8 @@ pub fn login(
         &hash[..],
         credentials.pass.as_ref(),
         /* If the validation errors the password is wrong */
-    ).map_err(|_| unauthorized_error.clone())?;
+    )
+    .map_err(|_| unauthorized_error.clone())?;
 
     if valid {
         set_user_session(&user, &mut cookies);
@@ -63,9 +68,7 @@ pub fn login(
     }
 }
 
-fn generate_salted_hash<T: AsRef<[u8]>>(
-    password: T,
-) -> Result<String, UnknownCryptoError> {
+fn generate_salted_hash<T: AsRef<[u8]>>(password: T) -> Result<String, UnknownCryptoError> {
     pbkdf2(password.as_ref()).map(|byte_slice| {
         let mut byte_vec = Vec::new();
         byte_vec.extend_from_slice(&byte_slice);
@@ -77,19 +80,16 @@ fn generate_salted_hash<T: AsRef<[u8]>>(
 ///
 /// Create a new user
 #[post("/register", data = "<credentials>")]
-pub fn register(credentials: Json<Credentials>) -> Result<SJ, SJ> {
+pub fn register(credentials: Json<Credentials>, db_pool: State<DatabasePool>) -> Result<SJ, SJ> {
     use schema::tables::users;
-    let connection = establish_connection()?;
+    let connection = db_pool.inner().get()?;
 
     let user = User {
         name: credentials.name.clone(),
         display_name: None,
-        salted_pass: generate_salted_hash(&credentials.pass).map_err(|_| {
-            SJ {
-                status: Status::BadRequest,
-                description: "Password needs to be longer than 13 characters"
-                    .into(),
-            }
+        salted_pass: generate_salted_hash(&credentials.pass).map_err(|_| SJ {
+            status: Status::BadRequest,
+            description: "Password needs to be longer than 13 characters".into(),
         })?,
     };
 
@@ -113,9 +113,8 @@ pub fn register(credentials: Json<Credentials>) -> Result<SJ, SJ> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use database::establish_connection;
     use diesel::RunQueryDsl;
-    use rocket::http::{ContentType, Status, Cookie};
+    use rocket::http::{ContentType, Cookie, Status};
     use rocket::local::Client;
     use schema::tables::users;
     use util::catchers::catchers;
@@ -123,7 +122,7 @@ mod tests {
 
     #[test]
     fn log_in() {
-        let _state = DatabaseState::new();
+        let (_state, db_pool) = DatabaseState::new();
 
         let credentials = Credentials {
             name: "test_user".into(),
@@ -133,32 +132,30 @@ mod tests {
         let user = User {
             name: credentials.name.clone(),
             display_name: Some("Bob Alicesson".into()),
-            salted_pass: generate_salted_hash(&credentials.pass).expect(
-                "Could not create password hash",
-            ),
+            salted_pass: generate_salted_hash(&credentials.pass)
+                .expect("Could not create password hash"),
         };
-        let connection = establish_connection().unwrap();
+        let connection = db_pool.get().expect("Could not get database connection");
         diesel::insert_into(users::table)
             .values(user)
             .execute(&connection)
             .expect("Could not add new user for testing");
 
-        let rocket = rocket::ignite().catch(catchers()).mount("/", routes![login, user_info]);
+        let rocket = rocket::ignite()
+            .manage(db_pool)
+            .catch(catchers())
+            .mount("/", routes![login, user_info]);
         let client = Client::new(rocket).expect("valid rocket instance");
-
 
         let mut response = client
             .post("/login")
             .header(ContentType::JSON)
-            .body(serde_json::to_string(&credentials).expect(
-                "Could not serialize NewEvent",
-            ))
+            .body(serde_json::to_string(&credentials).expect("Could not serialize NewEvent"))
             .dispatch();
 
         let body = response.body_string().expect("Response has no body");
-        let data: serde_json::Value = serde_json::from_str(&body).expect(
-            &format!("Could not deserialize JSON: {}", body),
-        );
+        let data: serde_json::Value =
+            serde_json::from_str(&body).expect(&format!("Could not deserialize JSON: {}", body));
         assert!(data.is_object());
         let json = data.as_object().unwrap();
         assert!(json.contains_key("description"));
