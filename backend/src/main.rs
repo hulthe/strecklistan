@@ -16,9 +16,12 @@ extern crate serde;
 extern crate serde_json;
 #[macro_use]
 extern crate serde_derive;
+#[macro_use]
+extern crate juniper;
 extern crate chrono;
 extern crate dotenv;
 extern crate hex;
+extern crate juniper_rocket;
 extern crate orion;
 
 mod database;
@@ -30,7 +33,7 @@ pub mod util;
 use database::create_pool;
 use diesel_migrations::{run_pending_migrations, setup_database};
 use dotenv::dotenv;
-use routes::{event, session, signup};
+use routes::{event, graphql, session, signup};
 use std::env;
 use util::catchers::catchers;
 
@@ -52,6 +55,7 @@ fn main() {
 
     rocket::ignite()
         .manage(db_pool)
+        .manage(graphql::create_schema())
         .catch(catchers())
         .mount(
             "/",
@@ -59,6 +63,8 @@ fn main() {
                 session::user_info,
                 session::login,
                 session::register,
+                graphql::graphiql,
+                graphql::post_graphql_handler,
                 event::get_events,
                 event::get_event,
                 event::post_event,
