@@ -61,9 +61,11 @@ fn main() {
             "/",
             routes![
                 session::user_info,
+                session::no_user,
                 session::login,
                 session::register,
                 graphql::graphiql,
+                graphql::post_graphql_handler_auth,
                 graphql::post_graphql_handler,
                 event::get_events,
                 event::get_event,

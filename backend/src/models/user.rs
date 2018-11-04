@@ -56,7 +56,7 @@ impl<'a, 'r> FromRequest<'a, 'r> for User {
             .and_then(|user| serde_json::from_str(user.value()).ok());
 
         if session.is_none() {
-            return Outcome::Failure((Status::Unauthorized, ()));
+            return Outcome::Forward(());
         }
 
         let session = session.unwrap();
@@ -77,7 +77,7 @@ impl<'a, 'r> FromRequest<'a, 'r> for User {
                 );
                 return Outcome::Failure((Status::InternalServerError, ()));
             } else if unix_time - session.last_seen > session_lifetime {
-                return Outcome::Failure((Status::Unauthorized, ()));
+                return Outcome::Forward(());
             }
         }
 
@@ -85,7 +85,7 @@ impl<'a, 'r> FromRequest<'a, 'r> for User {
             if let Some(user) = get_user(session.username, &connection) {
                 Outcome::Success(user)
             } else {
-                Outcome::Failure((Status::Unauthorized, ()))
+                Outcome::Forward(())
             }
         } else {
             Outcome::Failure((Status::InternalServerError, ()))

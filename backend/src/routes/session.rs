@@ -23,6 +23,11 @@ pub fn user_info(user: User) -> Json {
     }))
 }
 
+#[get("/me", rank = 2)]
+pub fn no_user() -> SJ {
+    Status::Unauthorized.into()
+}
+
 /// Route `POST /login`
 ///
 /// Authenticate a user

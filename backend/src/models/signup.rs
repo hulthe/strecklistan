@@ -1,6 +1,6 @@
 use schema::tables::event_signups;
 
-/// Metadata about a guest signup to an event
+/// Metadata about a signed up attendee of an event
 #[derive(Queryable, GraphQLObject, Serialize, Deserialize, Debug, PartialEq)]
 pub struct Signup {
     pub id: i32,

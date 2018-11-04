@@ -11,7 +11,8 @@ graphql_object!(RootQuery: Context |&self| {
         env!("CARGO_PKG_VERSION")
     }
 
-    field event(&executor, id: i32) -> FieldResult<EventWS> {
+    field event(&executor, id: i32) -> FieldResult<EventWS>
+        as "Get a specific event by ID" {
         use schema::views::events_with_signups::dsl::*;
         let connection = executor.context().pool.get()?;
         Ok(events_with_signups
@@ -19,8 +20,10 @@ graphql_object!(RootQuery: Context |&self| {
             .first(&connection)?)
     }
 
-    field events(&executor, low: i32, high: i32) -> FieldResult<Vec<EventWS>> {
+    field events(&executor, low: i32, high: i32) -> FieldResult<Vec<EventWS>>
+        as "Get a number of past and/or future events" {
         use schema::views::events_with_signups::dsl::*;
+        let has_auth = executor.context().get_auth("signups").is_ok();
 
         let low: i64 = low.into();
         let high: i64 = high.into();
@@ -38,6 +41,7 @@ graphql_object!(RootQuery: Context |&self| {
         let mut previous: Vec<EventWS> = if low < 0 {
             events_with_signups
                 .filter(end_time.le(now))
+                .filter(published.eq(true).or(has_auth))
                 .order_by(start_time.desc())
                 .limit(-low)
                 .load(&connection)?
@@ -48,6 +52,7 @@ graphql_object!(RootQuery: Context |&self| {
         let mut upcoming: Vec<EventWS> = if high > 0 {
             events_with_signups
                 .filter(end_time.gt(now))
+                .filter(published.eq(true).or(has_auth))
                 .order_by(start_time.asc())
                 .limit(high)
                 .load(&connection)?
