@@ -98,4 +98,14 @@ graphql_object!(RootMutation: Context |&self| {
             .get_result(&connection)?;
         Ok(event.into())
     }
+
+    field create_signup(&executor, new_signup: NewSignup) -> FieldResult<Signup> {
+        use schema::tables::event_signups;
+        // TODO: Some sort of captcha
+        let connection = executor.context().pool.get()?;
+        let signup: Signup = diesel::insert_into(event_signups::table)
+            .values(new_signup)
+            .get_result(&connection)?;
+        Ok(signup.into())
+    }
 });
