@@ -9,7 +9,7 @@ pub struct Signup {
     pub email: String,
 }
 
-#[derive(Insertable, GraphQLObject, Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Insertable, GraphQLInputObject, Serialize, Deserialize, Debug, PartialEq)]
 #[table_name = "event_signups"]
 pub struct NewSignup {
     pub event: i32,

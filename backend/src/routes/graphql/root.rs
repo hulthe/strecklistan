@@ -3,6 +3,7 @@ use chrono::Local;
 use diesel::prelude::*;
 use juniper::{FieldError, FieldResult};
 use models::event::{Event, EventWithSignups as EventWS, NewEvent};
+use models::signup::{Signup, NewSignup};
 
 pub struct RootQuery;
 graphql_object!(RootQuery: Context |&self| {
@@ -14,9 +15,12 @@ graphql_object!(RootQuery: Context |&self| {
     field event(&executor, id: i32) -> FieldResult<EventWS>
         as "Get a specific event by ID" {
         use schema::views::events_with_signups::dsl::*;
+        let has_auth = executor.context().get_auth("signups").is_ok();
+
         let connection = executor.context().pool.get()?;
         Ok(events_with_signups
             .find(id)
+            .filter(published.eq(true).or(has_auth))
             .first(&connection)?)
     }
 
@@ -87,6 +91,7 @@ pub struct RootMutation;
 graphql_object!(RootMutation: Context |&self| {
     field create_event(&executor, new_event: NewEvent) -> FieldResult<EventWS> {
         use schema::tables::events;
+        executor.context().get_auth("create_event")?;
         let connection = executor.context().pool.get()?;
         let event: Event = diesel::insert_into(events::table)
             .values(new_event)
