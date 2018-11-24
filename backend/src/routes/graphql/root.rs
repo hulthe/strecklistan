@@ -14,8 +14,8 @@ graphql_object!(RootQuery: Context |&self| {
 
     field event(&executor, id: i32) -> FieldResult<EventWS>
         as "Get a specific event by ID" {
-        use schema::views::events_with_signups::dsl::*;
-        let has_auth = executor.context().get_auth("signups").is_ok();
+        use schema::views::events_with_signups::dsl::{events_with_signups, published};
+        let has_auth = executor.context().get_auth("event").is_ok();
 
         let connection = executor.context().pool.get()?;
         Ok(events_with_signups
@@ -27,7 +27,7 @@ graphql_object!(RootQuery: Context |&self| {
     field events(&executor, low: i32, high: i32) -> FieldResult<Vec<EventWS>>
         as "Get a number of past and/or future events" {
         use schema::views::events_with_signups::dsl::*;
-        let has_auth = executor.context().get_auth("signups").is_ok();
+        let has_auth = executor.context().get_auth("events").is_ok();
 
         let low: i64 = low.into();
         let high: i64 = high.into();
@@ -84,6 +84,14 @@ graphql_object!(RootQuery: Context |&self| {
 
         upcoming.append(&mut previous);
         Ok(upcoming)
+    }
+
+    field signup(&executor, id: i32) -> FieldResult<Signup> {
+        use schema::tables::event_signups::dsl::{event_signups};
+        executor.context().get_auth("signup")?;
+        let connection = executor.context().pool.get()?;
+        let result: Signup = event_signups.find(id).first(&connection)?;
+        Ok(result)
     }
 });
 

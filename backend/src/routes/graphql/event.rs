@@ -40,7 +40,7 @@ graphql_object!(Event: Context |&self| {
         as "Get information on all signed up attendees. \
             Requires authorization." {
         use schema::tables::event_signups::dsl::*;
-        executor.context().get_auth("signups")?;
+        executor.context().get_auth("event/signups")?;
         let connection = executor.context().pool.get()?;
         Ok(event_signups
             .filter(event.eq(self.id))

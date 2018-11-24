@@ -33,7 +33,7 @@ pub mod util;
 use database::create_pool;
 use diesel_migrations::{run_pending_migrations, setup_database};
 use dotenv::dotenv;
-use routes::{event, graphql, session, signup};
+use routes::{graphql, session};
 use std::env;
 use util::catchers::catchers;
 
@@ -67,12 +67,6 @@ fn main() {
                 graphql::graphiql,
                 graphql::post_graphql_handler_auth,
                 graphql::post_graphql_handler,
-                event::get_events,
-                event::get_event,
-                event::post_event,
-                signup::get_event_signups,
-                signup::get_signup,
-                signup::post_signup,
             ],
         )
         .launch();
