@@ -2,25 +2,28 @@ use database::DatabasePool;
 use diesel::prelude::*;
 use hex;
 use models::user::{set_user_session, Credentials, User};
-use orion::default::{pbkdf2, pbkdf2_verify};
-use orion::utilities::errors::UnknownCryptoError;
+use orion::pwhash::{Password, PasswordHash, hash_password, hash_password_verify};
+//use orion::default::{pbkdf2, pbkdf2_verify};
+use orion::errors::UnknownCryptoError;
 use rocket::http::{Cookies, Status};
 use rocket::State;
-use rocket_contrib::Json;
+use rocket_contrib::json::{Json, JsonValue};
 use util::StatusJson as SJ;
+
+const PWHASH_ITERATIONS: usize = 100000;
 
 /// Route `GET /me`
 ///
 /// Get metadata regarding the currently authenticated user
 #[get("/me")]
-pub fn user_info(user: User) -> Json {
+pub fn user_info(user: User) -> JsonValue {
     // TODO: Return useful information
-    Json(json!({
+    json!({
         "user": {
             "name": user.name,
             "display_name": user.display_name,
         },
-    }))
+    })
 }
 
 #[get("/me", rank = 2)]
@@ -46,18 +49,20 @@ pub fn login(
     let user: User = users
         .find(&credentials.name)
         .first(&connection)
-        /* Convert database errors into 404:s since we don't wnat to
+        /* Convert database errors into 403:s since we don't want to
          * leak information about whether the user exists or not */
         .map_err(|_| unauthorized_error.clone())?;
 
     let hash: Vec<u8> = hex::decode(user.salted_pass.clone()).map_err(|e| {
         eprintln!("Could not decode hex for user [{}] pass: {}", user.name, e);
-        SJ::from(Status::InternalServerError)
+        Status::InternalServerError
     })?;
+    let hash = PasswordHash::from_slice(&hash)?;
 
-    let valid = pbkdf2_verify(
-        &hash[..],
-        credentials.pass.as_ref(),
+    let valid = hash_password_verify(
+        &hash,
+        &Password::from_slice(credentials.pass.as_ref()),
+        user.hash_iterations as usize,
         /* If the validation errors the password is wrong */
     )
     .map_err(|_| unauthorized_error.clone())?;
@@ -74,11 +79,10 @@ pub fn login(
 }
 
 fn generate_salted_hash<T: AsRef<[u8]>>(password: T) -> Result<String, UnknownCryptoError> {
-    pbkdf2(password.as_ref()).map(|byte_slice| {
-        let mut byte_vec = Vec::new();
-        byte_vec.extend_from_slice(&byte_slice);
-        hex::encode(byte_vec)
-    })
+    hash_password(&Password::from_slice(password.as_ref()), PWHASH_ITERATIONS)
+        .map(|pwhash| {
+            hex::encode(&pwhash.unprotected_as_bytes())
+        })
 }
 
 /// Route `POST /register`
@@ -96,6 +100,7 @@ pub fn register(credentials: Json<Credentials>, db_pool: State<DatabasePool>) ->
             status: Status::BadRequest,
             description: "Password needs to be longer than 13 characters".into(),
         })?,
+        hash_iterations: PWHASH_ITERATIONS as i32,
     };
 
     let affected_rows: usize = diesel::insert_into(users::table)
@@ -119,7 +124,7 @@ pub fn register(credentials: Json<Credentials>, db_pool: State<DatabasePool>) ->
 mod tests {
     use super::*;
     use diesel::RunQueryDsl;
-    use rocket::http::{ContentType, Cookie, Status};
+    use rocket::http::{ContentType, Status};
     use rocket::local::Client;
     use schema::tables::users;
     use util::catchers::catchers;
@@ -139,6 +144,7 @@ mod tests {
             display_name: Some("Bob Alicesson".into()),
             salted_pass: generate_salted_hash(&credentials.pass)
                 .expect("Could not create password hash"),
+            hash_iterations: PWHASH_ITERATIONS as i32,
         };
         let connection = db_pool.get().expect("Could not get database connection");
         diesel::insert_into(users::table)
@@ -148,7 +154,7 @@ mod tests {
 
         let rocket = rocket::ignite()
             .manage(db_pool)
-            .catch(catchers())
+            .register(catchers())
             .mount("/", routes![login, user_info]);
         let client = Client::new(rocket).expect("valid rocket instance");
 
@@ -166,31 +172,22 @@ mod tests {
         assert!(json.contains_key("description"));
         assert_eq!(json.get("description").unwrap(), "Logged in");
         assert_eq!(response.status(), Status::Ok);
+        assert!(response.headers().contains("Set-Cookie"));
 
-        /* TODO: Find out why the test below fails */
-        //assert!(response.headers().contains("Set-Cookie"));
-        //let mut cookies: Vec<Cookie> = response
-        //    .headers()
-        //    .get("Set-Cookie")
-        //    .map(|c| c.parse().expect("Could not parse response cookie"))
-        //    .collect();
 
-        //let mut request = client.get("/me");
+        let request = client.get("/me")
+            .cookies(response.cookies());
 
-        //while let Some(cookie) = cookies.pop() {
-        //    request = request.cookie(cookie);
-        //}
+        let mut response = request.dispatch();
 
-        //let mut response = request.dispatch();
-
-        //let body = response.body_string().expect("Response has no body");
-        //let data: serde_json::Value = serde_json::from_str(&body).expect(
-        //    &format!("Could not deserialize JSON: {}", body),
-        //);
-        //assert!(data.is_object());
-        //let json = data.as_object().unwrap();
-        //assert!(json.contains_key("name"));
-        //assert_eq!(json.get("name").unwrap(), &credentials.name);
-        //assert_eq!(response.status(), Status::Ok);
+        let body = response.body_string().expect("Response has no body");
+        let data: serde_json::Value = serde_json::from_str(&body).expect(
+            &format!("Could not deserialize JSON: {}", body),
+        );
+        assert!(data.is_object());
+        let json = data.as_object().unwrap();
+        assert!(json.contains_key("user"));
+        assert_eq!(json.get("user").unwrap().get("name").unwrap(), &credentials.name);
+        assert_eq!(response.status(), Status::Ok);
     }
 }

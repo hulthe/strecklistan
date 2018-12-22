@@ -17,6 +17,7 @@ pub struct User {
     pub name: String,
     pub display_name: Option<String>,
     pub salted_pass: String,
+    pub hash_iterations: i32,
 }
 
 static SESSION_COOKIE_KEY: &str = "session";

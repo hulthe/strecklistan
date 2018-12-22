@@ -1,23 +1,18 @@
-#![feature(custom_derive)]
 #![feature(plugin)]
 #![feature(specialization)]
-#![plugin(rocket_codegen)]
+#![feature(proc_macro_hygiene, decl_macro)]
 // Disable warnings caused by nightly rust phasing out this feature
 #![allow(proc_macro_derive_resolution_fallback)]
 
-extern crate rocket;
-#[macro_use]
-extern crate rocket_contrib;
-#[macro_use]
-extern crate diesel;
+#[macro_use] extern crate rocket;
+#[macro_use] extern crate rocket_contrib;
+#[macro_use] extern crate diesel;
 extern crate diesel_migrations;
 extern crate r2d2;
 extern crate serde;
 extern crate serde_json;
-#[macro_use]
-extern crate serde_derive;
-#[macro_use]
-extern crate juniper;
+#[macro_use] extern crate serde_derive;
+#[macro_use] extern crate juniper;
 extern crate chrono;
 extern crate dotenv;
 extern crate hex;
@@ -56,7 +51,7 @@ fn main() {
     rocket::ignite()
         .manage(db_pool)
         .manage(graphql::create_schema())
-        .catch(catchers())
+        .register(catchers())
         .mount(
             "/",
             routes![

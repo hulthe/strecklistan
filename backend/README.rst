@@ -20,6 +20,10 @@ when writing this).
 
 .. _rustup: https://rustup.rs/
 
+You also require the Postgres C/C++ client library: ``libpq``.
+Install this via your preferred package manager,
+otherwise compiling will fail with linking errors.
+
 Then make sure to setup your local ``.env``-file. ::
 
     cp example.env .env
@@ -28,7 +32,7 @@ Then make sure to setup your local ``.env``-file. ::
 
 For handling migrations you need to use the ``diesel`` CLI. ::
 
-    cargo install diesel_cli
+    cargo install diesel_cli --no-default-features --features "postgres"
 
     diesel setup # Create database
 
