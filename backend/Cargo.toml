@@ -2,6 +2,7 @@
 name = "laggit_backend"
 version = "0.2.0"
 authors = ["Joakim Hulthe <joakim@hulthe.net>"]
+edition = "2015"
 
 [dependencies]
 rocket = "0.4.0"
