@@ -31,8 +31,4 @@ table! {
 
 joinable!(event_signups -> events (event));
 
-allow_tables_to_appear_in_same_query!(
-    events,
-    event_signups,
-    users,
-);
+allow_tables_to_appear_in_same_query!(events, event_signups, users,);

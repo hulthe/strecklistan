@@ -2,7 +2,9 @@ use chrono::{Duration, Local};
 use database::{create_pool, DatabasePool};
 use diesel::RunQueryDsl;
 use dotenv::dotenv;
-use models::{NewEvent, NewSignup};
+use models::user::{generate_salted_hash, make_user_session};
+use models::{NewEvent, NewSignup, User};
+use rocket::http::Cookie;
 use schema::tables::event_signups;
 use schema::tables::events;
 use schema::tables::users;
@@ -78,5 +80,31 @@ impl Drop for DatabaseState {
         diesel::delete(users::table)
             .execute(&connection)
             .expect("Could not truncate testing database table");
+    }
+}
+
+pub struct UserSession<'a> {
+    pub user: User,
+    pub cookie: Cookie<'a>,
+}
+
+impl<'a> UserSession<'a> {
+    pub fn new(db_pool: &DatabasePool) -> UserSession<'a> {
+        let user = User {
+            name: "test_user".into(),
+            display_name: Some("Test User".into()),
+            salted_pass: generate_salted_hash("password").expect("Could not create password hash"),
+            hash_iterations: 10,
+        };
+        let connection = db_pool.get().expect("Could not get database connection");
+        diesel::insert_into(users::table)
+            .values(&user)
+            .execute(&connection)
+            .expect("Could not add new user for testing");
+
+        UserSession {
+            cookie: make_user_session(&user),
+            user,
+        }
     }
 }

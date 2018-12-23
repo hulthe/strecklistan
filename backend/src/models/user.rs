@@ -1,6 +1,8 @@
 use database::{DatabaseConn, DatabasePool};
 use diesel::prelude::*;
-use rocket::http::{Cookie, Cookies, Status};
+use orion::errors::UnknownCryptoError;
+use orion::pwhash::{hash_password, Password};
+use rocket::http::{Cookie, Status};
 use rocket::request::{self, FromRequest, Request};
 use rocket::{Outcome, State};
 use schema::tables::users;
@@ -8,6 +10,7 @@ use serde_json;
 use std::env;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+pub const PWHASH_ITERATIONS: usize = 10000;
 /// This struct defines a user object
 ///
 /// It's used as a request guard: all routes with a User parameter will return
@@ -27,7 +30,7 @@ pub struct Session {
     pub last_seen: u64,
 }
 
-pub fn set_user_session(user: &User, cookies: &mut Cookies) {
+pub fn make_user_session<'a>(user: &User) -> Cookie<'a> {
     let session = Session {
         username: user.name.clone(),
         last_seen: SystemTime::now()
@@ -36,8 +39,7 @@ pub fn set_user_session(user: &User, cookies: &mut Cookies) {
             .as_secs(),
     };
     let serialized = serde_json::to_string(&session).expect("Could not serialize session");
-    cookies.add_private(Cookie::new(SESSION_COOKIE_KEY, serialized));
-    println!("Saved user {} in {}", &user.name, SESSION_COOKIE_KEY);
+    Cookie::new(SESSION_COOKIE_KEY, serialized)
 }
 
 fn get_user(user_name: String, connection: &DatabaseConn) -> Option<User> {
@@ -98,4 +100,9 @@ impl<'a, 'r> FromRequest<'a, 'r> for User {
 pub struct Credentials {
     pub name: String,
     pub pass: String,
+}
+
+pub fn generate_salted_hash<T: AsRef<[u8]>>(password: T) -> Result<String, UnknownCryptoError> {
+    hash_password(&Password::from_slice(password.as_ref()), PWHASH_ITERATIONS)
+        .map(|pwhash| hex::encode(&pwhash.unprotected_as_bytes()))
 }

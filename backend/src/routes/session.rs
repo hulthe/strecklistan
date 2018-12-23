@@ -1,16 +1,12 @@
 use database::DatabasePool;
 use diesel::prelude::*;
 use hex;
-use models::user::{set_user_session, Credentials, User};
-use orion::pwhash::{Password, PasswordHash, hash_password, hash_password_verify};
-//use orion::default::{pbkdf2, pbkdf2_verify};
-use orion::errors::UnknownCryptoError;
+use models::user::{generate_salted_hash, make_user_session, Credentials, User, PWHASH_ITERATIONS};
+use orion::pwhash::{hash_password_verify, Password, PasswordHash};
 use rocket::http::{Cookies, Status};
 use rocket::State;
 use rocket_contrib::json::{Json, JsonValue};
 use util::StatusJson as SJ;
-
-const PWHASH_ITERATIONS: usize = 100000;
 
 /// Route `GET /me`
 ///
@@ -68,7 +64,7 @@ pub fn login(
     .map_err(|_| unauthorized_error.clone())?;
 
     if valid {
-        set_user_session(&user, &mut cookies);
+        cookies.add_private(make_user_session(&user));
         Ok(SJ {
             status: Status::Ok,
             description: "Logged in".into(),
@@ -76,13 +72,6 @@ pub fn login(
     } else {
         Err(unauthorized_error)
     }
-}
-
-fn generate_salted_hash<T: AsRef<[u8]>>(password: T) -> Result<String, UnknownCryptoError> {
-    hash_password(&Password::from_slice(password.as_ref()), PWHASH_ITERATIONS)
-        .map(|pwhash| {
-            hex::encode(&pwhash.unprotected_as_bytes())
-        })
 }
 
 /// Route `POST /register`
@@ -174,20 +163,20 @@ mod tests {
         assert_eq!(response.status(), Status::Ok);
         assert!(response.headers().contains("Set-Cookie"));
 
-
-        let request = client.get("/me")
-            .cookies(response.cookies());
+        let request = client.get("/me").cookies(response.cookies());
 
         let mut response = request.dispatch();
 
         let body = response.body_string().expect("Response has no body");
-        let data: serde_json::Value = serde_json::from_str(&body).expect(
-            &format!("Could not deserialize JSON: {}", body),
-        );
+        let data: serde_json::Value =
+            serde_json::from_str(&body).expect(&format!("Could not deserialize JSON: {}", body));
         assert!(data.is_object());
         let json = data.as_object().unwrap();
         assert!(json.contains_key("user"));
-        assert_eq!(json.get("user").unwrap().get("name").unwrap(), &credentials.name);
+        assert_eq!(
+            json.get("user").unwrap().get("name").unwrap(),
+            &credentials.name
+        );
         assert_eq!(response.status(), Status::Ok);
     }
 }

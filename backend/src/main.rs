@@ -4,15 +4,20 @@
 // Disable warnings caused by nightly rust phasing out this feature
 #![allow(proc_macro_derive_resolution_fallback)]
 
-#[macro_use] extern crate rocket;
-#[macro_use] extern crate rocket_contrib;
-#[macro_use] extern crate diesel;
+#[macro_use]
+extern crate rocket;
+#[macro_use]
+extern crate rocket_contrib;
+#[macro_use]
+extern crate diesel;
 extern crate diesel_migrations;
 extern crate r2d2;
 extern crate serde;
 extern crate serde_json;
-#[macro_use] extern crate serde_derive;
-#[macro_use] extern crate juniper;
+#[macro_use]
+extern crate serde_derive;
+#[macro_use]
+extern crate juniper;
 extern crate chrono;
 extern crate dotenv;
 extern crate hex;

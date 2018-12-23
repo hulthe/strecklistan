@@ -3,7 +3,7 @@ use chrono::Local;
 use diesel::prelude::*;
 use juniper::{FieldError, FieldResult};
 use models::event::{Event, EventWithSignups as EventWS, NewEvent};
-use models::signup::{Signup, NewSignup};
+use models::signup::{NewSignup, Signup};
 
 pub struct RootQuery;
 graphql_object!(RootQuery: Context |&self| {
@@ -117,3 +117,93 @@ graphql_object!(RootMutation: Context |&self| {
         Ok(signup.into())
     }
 });
+
+#[cfg(test)]
+mod tests {
+    use rocket::http::ContentType;
+    use rocket::local::Client;
+    use routes::graphql;
+    use util::catchers::catchers;
+    use util::testing::{DatabaseState, UserSession};
+
+    #[test]
+    fn test_create_event() {
+        let (_state, db_pool) = DatabaseState::new();
+        let user_session = UserSession::new(&db_pool);
+
+        let rocket = rocket::ignite()
+            .manage(db_pool)
+            .manage(graphql::create_schema())
+            .register(catchers())
+            .mount(
+                "/",
+                routes![
+                    graphql::post_graphql_handler_auth,
+                    graphql::post_graphql_handler,
+                ],
+            );
+        let client = Client::new(rocket).unwrap();
+
+        let new_event = json!({
+            "title": "Test Event",
+            "background": "http://test.ru/jpg.png",
+            "location": "Foobar CA",
+            "startTime": 10_000_000_000i64,
+            "endTime": 10_000_001_000i64,
+        });
+        println!("Request Data: {:#?}\n", &new_event);
+
+        let mut response = client
+            .post("/graphql")
+            .header(ContentType::JSON)
+            .body(
+                json!({
+                    "operationName": "CreateEvent",
+                    "query": "mutation CreateEvent($ev:NewEvent!) {\n\
+                            createEvent(newEvent: $ev) {\n\
+                                id        \n\
+                                title     \n\
+                                background\n\
+                                location  \n\
+                                startTime \n\
+                                endTime   \n\
+                                price     \n\
+                                published \n\
+                            }\n\
+                        }",
+                    "variables": {
+                        "ev": new_event,
+                    }
+                })
+                .to_string(),
+            )
+            .private_cookie(user_session.cookie)
+            .dispatch();
+
+        let body = response.body_string().expect("Response has no body");
+        let data: serde_json::Value =
+            serde_json::from_str(&body).expect(&format!("Could not deserialize JSON: {}", body));
+
+        assert!(data.is_object());
+        let json = data.as_object().unwrap();
+        println!("Response Data: {:#?}\n", json);
+        assert!(json.contains_key("data"));
+        let graphql_data = json.get("data").unwrap().as_object().unwrap();
+
+        assert!(graphql_data.contains_key("createEvent"));
+        let graphql_data = graphql_data
+            .get("createEvent")
+            .unwrap()
+            .as_object()
+            .unwrap();
+
+        assert!(graphql_data.contains_key("id"));
+        assert!(graphql_data.contains_key("title"));
+        assert!(graphql_data.contains_key("background"));
+        assert!(graphql_data.contains_key("location"));
+        assert!(graphql_data.contains_key("startTime"));
+        assert!(graphql_data.contains_key("endTime"));
+        assert!(graphql_data.contains_key("price"));
+        assert!(graphql_data.contains_key("published"));
+    }
+}
