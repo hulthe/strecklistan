@@ -1,10 +1,10 @@
-#![feature(custom_derive)]
 #![feature(plugin)]
 #![feature(specialization)]
-#![plugin(rocket_codegen)]
+#![feature(proc_macro_hygiene, decl_macro)]
 // Disable warnings caused by nightly rust phasing out this feature
 #![allow(proc_macro_derive_resolution_fallback)]
 
+#[macro_use]
 extern crate rocket;
 #[macro_use]
 extern crate rocket_contrib;
@@ -16,9 +16,12 @@ extern crate serde;
 extern crate serde_json;
 #[macro_use]
 extern crate serde_derive;
+#[macro_use]
+extern crate juniper;
 extern crate chrono;
 extern crate dotenv;
 extern crate hex;
+extern crate juniper_rocket;
 extern crate orion;
 
 mod database;
@@ -30,7 +33,7 @@ pub mod util;
 use database::create_pool;
 use diesel_migrations::{run_pending_migrations, setup_database};
 use dotenv::dotenv;
-use routes::{event, session, signup};
+use routes::{graphql, session};
 use std::env;
 use util::catchers::catchers;
 
@@ -52,19 +55,18 @@ fn main() {
 
     rocket::ignite()
         .manage(db_pool)
-        .catch(catchers())
+        .manage(graphql::create_schema())
+        .register(catchers())
         .mount(
             "/",
             routes![
                 session::user_info,
+                session::no_user,
                 session::login,
                 session::register,
-                event::get_events,
-                event::get_event,
-                event::post_event,
-                signup::get_event_signups,
-                signup::get_signup,
-                signup::post_signup,
+                graphql::graphiql,
+                graphql::post_graphql_handler_auth,
+                graphql::post_graphql_handler,
             ],
         )
         .launch();

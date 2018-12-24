@@ -3,7 +3,7 @@ use diesel::ConnectionError as DieselConnectionError;
 use rocket::http::Status;
 use rocket::response::{Responder, Response};
 use rocket::Request;
-use rocket_contrib::Json;
+use rocket_contrib::json::Json;
 
 /// An error message which can be serialized as JSON.
 ///

@@ -46,7 +46,7 @@ pub struct Event {
     pub published: bool,
 }
 
-#[derive(Insertable, Serialize, Deserialize, Debug)]
+#[derive(Insertable, GraphQLInputObject, Serialize, Deserialize, Debug)]
 #[table_name = "events"]
 pub struct NewEvent {
     pub title: String,
@@ -55,4 +55,20 @@ pub struct NewEvent {
     pub start_time: NaiveDateTime,
     pub end_time: NaiveDateTime,
     pub price: Option<i32>,
+}
+
+impl From<Event> for EventWithSignups {
+    fn from(event: Event) -> EventWithSignups {
+        EventWithSignups {
+            id: event.id,
+            title: event.title,
+            background: event.background,
+            location: event.location,
+            start_time: event.start_time,
+            end_time: event.end_time,
+            price: event.price,
+            published: event.published,
+            signups: 0,
+        }
+    }
 }
