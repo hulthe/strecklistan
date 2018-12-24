@@ -1,7 +1,7 @@
+use crate::schema::tables::events;
+use crate::util::StatusJson;
 use chrono::NaiveDateTime;
 use rocket::http::Status;
-use schema::tables::events;
-use util::StatusJson;
 
 #[derive(FromForm)]
 pub struct EventRange {

@@ -1,9 +1,9 @@
 use super::context::Context;
+use crate::models::event::{Event, EventWithSignups as EventWS, NewEvent};
+use crate::models::signup::{NewSignup, Signup};
 use chrono::Local;
 use diesel::prelude::*;
 use juniper::{FieldError, FieldResult};
-use models::event::{Event, EventWithSignups as EventWS, NewEvent};
-use models::signup::{NewSignup, Signup};
 
 pub struct RootQuery;
 graphql_object!(RootQuery: Context |&self| {
@@ -14,7 +14,7 @@ graphql_object!(RootQuery: Context |&self| {
 
     field event(&executor, id: i32) -> FieldResult<EventWS>
         as "Get a specific event by ID" {
-        use schema::views::events_with_signups::dsl::{events_with_signups, published};
+        use crate::schema::views::events_with_signups::dsl::{events_with_signups, published};
         let has_auth = executor.context().get_auth("event").is_ok();
 
         let connection = executor.context().pool.get()?;
@@ -26,7 +26,7 @@ graphql_object!(RootQuery: Context |&self| {
 
     field events(&executor, low: i32, high: i32) -> FieldResult<Vec<EventWS>>
         as "Get a number of past and/or future events" {
-        use schema::views::events_with_signups::dsl::*;
+        use crate::schema::views::events_with_signups::dsl::*;
         let has_auth = executor.context().get_auth("events").is_ok();
 
         let low: i64 = low.into();
@@ -87,7 +87,7 @@ graphql_object!(RootQuery: Context |&self| {
     }
 
     field signup(&executor, id: i32) -> FieldResult<Signup> {
-        use schema::tables::event_signups::dsl::{event_signups};
+        use crate::schema::tables::event_signups::dsl::{event_signups};
         executor.context().get_auth("signup")?;
         let connection = executor.context().pool.get()?;
         let result: Signup = event_signups.find(id).first(&connection)?;
@@ -98,7 +98,7 @@ graphql_object!(RootQuery: Context |&self| {
 pub struct RootMutation;
 graphql_object!(RootMutation: Context |&self| {
     field create_event(&executor, new_event: NewEvent) -> FieldResult<EventWS> {
-        use schema::tables::events;
+        use crate::schema::tables::events;
         executor.context().get_auth("create_event")?;
         let connection = executor.context().pool.get()?;
         let event: Event = diesel::insert_into(events::table)
@@ -108,7 +108,7 @@ graphql_object!(RootMutation: Context |&self| {
     }
 
     field create_signup(&executor, new_signup: NewSignup) -> FieldResult<Signup> {
-        use schema::tables::event_signups;
+        use crate::schema::tables::event_signups;
         // TODO: Some sort of captcha
         let connection = executor.context().pool.get()?;
         let signup: Signup = diesel::insert_into(event_signups::table)
@@ -120,15 +120,15 @@ graphql_object!(RootMutation: Context |&self| {
 
 #[cfg(test)]
 mod tests {
+    use crate::models::{Event, NewEvent};
+    use crate::routes::graphql;
+    use crate::schema::tables::events;
+    use crate::util::catchers::catchers;
+    use crate::util::testing::{DatabaseState, UserSession};
     use chrono::naive::NaiveDateTime;
     use diesel::RunQueryDsl;
-    use models::{Event, NewEvent};
     use rocket::http::ContentType;
     use rocket::local::Client;
-    use routes::graphql;
-    use schema::tables::events;
-    use util::catchers::catchers;
-    use util::testing::{DatabaseState, UserSession};
 
     #[test]
     fn test_create_event() {

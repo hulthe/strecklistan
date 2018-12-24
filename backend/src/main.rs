@@ -30,12 +30,12 @@ pub mod routes;
 mod schema;
 pub mod util;
 
-use database::create_pool;
+use crate::database::create_pool;
+use crate::routes::{graphql, session};
+use crate::util::catchers::catchers;
 use diesel_migrations::{run_pending_migrations, setup_database};
 use dotenv::dotenv;
-use routes::{graphql, session};
 use std::env;
-use util::catchers::catchers;
 
 fn main() {
     dotenv().ok();

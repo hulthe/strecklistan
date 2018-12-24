@@ -1,4 +1,4 @@
-use schema::tables::event_signups;
+use crate::schema::tables::event_signups;
 
 /// Metadata about a signed up attendee of an event
 #[derive(Queryable, GraphQLObject, Serialize, Deserialize, Debug, PartialEq)]

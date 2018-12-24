@@ -4,9 +4,9 @@ mod root;
 
 use self::context::Context;
 use self::root::{RootMutation, RootQuery};
-use database::DatabasePool;
+use crate::database::DatabasePool;
+use crate::models::User;
 use juniper::RootNode;
-use models::User;
 use rocket::response::content;
 use rocket::State;
 

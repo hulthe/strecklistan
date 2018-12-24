@@ -1,9 +1,9 @@
 use super::context::Context;
+use crate::models::event::EventWithSignups as Event;
+use crate::models::signup::Signup;
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
 use juniper::FieldResult;
-use models::event::EventWithSignups as Event;
-use models::signup::Signup;
 
 graphql_object!(Event: Context |&self| {
     description: "Metadata about an event"
@@ -28,7 +28,7 @@ graphql_object!(Event: Context |&self| {
 
     field signup_count(&executor) -> FieldResult<i32>
         as "Number of signed up attendees" {
-        use schema::tables::event_signups::dsl::*;
+        use crate::schema::tables::event_signups::dsl::*;
         let connection = executor.context().pool.get()?;
         let signups: Vec<Signup> = event_signups
             .filter(event.eq(self.id))
@@ -39,7 +39,7 @@ graphql_object!(Event: Context |&self| {
     field signups(&executor) -> FieldResult<Vec<Signup>>
         as "Get information on all signed up attendees. \
             Requires authorization." {
-        use schema::tables::event_signups::dsl::*;
+        use crate::schema::tables::event_signups::dsl::*;
         executor.context().get_auth("event/signups")?;
         let connection = executor.context().pool.get()?;
         Ok(event_signups
