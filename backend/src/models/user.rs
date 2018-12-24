@@ -1,11 +1,11 @@
-use database::{DatabaseConn, DatabasePool};
+use crate::database::{DatabaseConn, DatabasePool};
+use crate::schema::tables::users;
 use diesel::prelude::*;
 use orion::errors::UnknownCryptoError;
 use orion::pwhash::{hash_password, Password};
 use rocket::http::{Cookie, Status};
 use rocket::request::{self, FromRequest, Request};
 use rocket::{Outcome, State};
-use schema::tables::users;
 use serde_json;
 use std::env;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -43,7 +43,7 @@ pub fn make_user_session<'a>(user: &User) -> Cookie<'a> {
 }
 
 fn get_user(user_name: String, connection: &DatabaseConn) -> Option<User> {
-    use schema::tables::users::dsl::*;
+    use crate::schema::tables::users::dsl::*;
     users.find(user_name).first(connection).ok()
 }
 

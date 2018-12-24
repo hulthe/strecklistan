@@ -1,8 +1,8 @@
 [package]
 name = "laggit_backend"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["Joakim Hulthe <joakim@hulthe.net>"]
-edition = "2015"
+edition = "2018"
 
 [dependencies]
 rocket = "0.4.0"

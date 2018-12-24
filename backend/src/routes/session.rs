@@ -1,12 +1,14 @@
-use database::DatabasePool;
+use crate::database::DatabasePool;
+use crate::models::user::{
+    generate_salted_hash, make_user_session, Credentials, User, PWHASH_ITERATIONS,
+};
+use crate::util::StatusJson as SJ;
 use diesel::prelude::*;
 use hex;
-use models::user::{generate_salted_hash, make_user_session, Credentials, User, PWHASH_ITERATIONS};
 use orion::pwhash::{hash_password_verify, Password, PasswordHash};
 use rocket::http::{Cookies, Status};
 use rocket::State;
 use rocket_contrib::json::{Json, JsonValue};
-use util::StatusJson as SJ;
 
 /// Route `GET /me`
 ///
@@ -36,7 +38,7 @@ pub fn login(
     mut cookies: Cookies,
     db_pool: State<DatabasePool>,
 ) -> Result<SJ, SJ> {
-    use schema::tables::users::dsl::*;
+    use crate::schema::tables::users::dsl::*;
     let connection = db_pool.inner().get()?;
     let unauthorized_error = SJ {
         status: Status::Unauthorized,
@@ -79,7 +81,7 @@ pub fn login(
 /// Create a new user
 #[post("/register", data = "<credentials>")]
 pub fn register(credentials: Json<Credentials>, db_pool: State<DatabasePool>) -> Result<SJ, SJ> {
-    use schema::tables::users;
+    use crate::schema::tables::users;
     let connection = db_pool.inner().get()?;
 
     let user = User {
@@ -112,12 +114,12 @@ pub fn register(credentials: Json<Credentials>, db_pool: State<DatabasePool>) ->
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::schema::tables::users;
+    use crate::util::catchers::catchers;
+    use crate::util::testing::DatabaseState;
     use diesel::RunQueryDsl;
     use rocket::http::{ContentType, Status};
     use rocket::local::Client;
-    use schema::tables::users;
-    use util::catchers::catchers;
-    use util::testing::DatabaseState;
 
     #[test]
     fn log_in() {

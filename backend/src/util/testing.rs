@@ -1,13 +1,13 @@
+use crate::database::{create_pool, DatabasePool};
+use crate::models::user::{generate_salted_hash, make_user_session};
+use crate::models::{NewEvent, NewSignup, User};
+use crate::schema::tables::event_signups;
+use crate::schema::tables::events;
+use crate::schema::tables::users;
 use chrono::{Duration, Local};
-use database::{create_pool, DatabasePool};
 use diesel::RunQueryDsl;
 use dotenv::dotenv;
-use models::user::{generate_salted_hash, make_user_session};
-use models::{NewEvent, NewSignup, User};
 use rocket::http::Cookie;
-use schema::tables::event_signups;
-use schema::tables::events;
-use schema::tables::users;
 
 pub fn generate_new_events(old: usize, new: usize) -> Vec<NewEvent> {
     let mut events = vec![];

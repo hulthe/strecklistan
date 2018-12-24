@@ -1,5 +1,5 @@
-use database::DatabasePool;
-use models::User;
+use crate::database::DatabasePool;
+use crate::models::User;
 use std::fmt::Display;
 
 pub struct Context {
