@@ -1,4 +1,7 @@
 format_macro_bodies = true
+ignore = [
+    "src/schema/tables.rs"
+]
 
 # DEFAULT CONFIG BELOW
 max_width = 100
@@ -61,6 +64,5 @@ error_on_line_overflow = false
 error_on_unformatted = false
 report_todo = "Never"
 report_fixme = "Never"
-ignore = []
 emit_mode = "Files"
 make_backup = false
