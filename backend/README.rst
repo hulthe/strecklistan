@@ -15,7 +15,7 @@ Local Development
 -----------------
 
 Install Rust using rustup_. This application currently requires Rust version
-1.30, which means that you have to install the nightly branch (as of the time
+1.33, which means that you have to install the nightly branch (as of the time
 when writing this).
 
 .. _rustup: https://rustup.rs/
