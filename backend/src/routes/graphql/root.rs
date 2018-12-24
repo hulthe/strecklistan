@@ -120,9 +120,13 @@ graphql_object!(RootMutation: Context |&self| {
 
 #[cfg(test)]
 mod tests {
+    use chrono::naive::NaiveDateTime;
+    use diesel::RunQueryDsl;
+    use models::{Event, NewEvent};
     use rocket::http::ContentType;
     use rocket::local::Client;
     use routes::graphql;
+    use schema::tables::events;
     use util::catchers::catchers;
     use util::testing::{DatabaseState, UserSession};
 
@@ -205,5 +209,84 @@ mod tests {
         assert!(graphql_data.contains_key("endTime"));
         assert!(graphql_data.contains_key("price"));
         assert!(graphql_data.contains_key("published"));
+    }
+
+    #[test]
+    fn test_get_event() {
+        let (_state, db_pool) = DatabaseState::new();
+        let user_session = UserSession::new(&db_pool);
+
+        let new_event = NewEvent {
+            title: "Test Event 2".into(),
+            background: "http://image.ru/png.jpg".into(),
+            location: "Fizzbuzz TX".into(),
+            start_time: NaiveDateTime::from_timestamp(10_000_000_00i64, 0),
+            end_time: NaiveDateTime::from_timestamp(10_000_001_00i64, 0),
+            price: None,
+        };
+        println!("Request Data: {:#?}\n", &new_event);
+
+        let connection = db_pool.get().expect("Could not get database connection");
+        let event: Event = diesel::insert_into(events::table)
+            .values(&new_event)
+            .get_result(&connection)
+            .expect("Could not add new user for testing");
+
+        let rocket = rocket::ignite()
+            .manage(db_pool)
+            .manage(graphql::create_schema())
+            .register(catchers())
+            .mount(
+                "/",
+                routes![
+                    graphql::post_graphql_handler_auth,
+                    graphql::post_graphql_handler,
+                ],
+            );
+        let client = Client::new(rocket).unwrap();
+
+        let mut response = client
+            .post("/graphql")
+            .header(ContentType::JSON)
+            .body(
+                json!({
+                "operationName": "GetEvent",
+                "query": format!("query GetEvent {{\n\
+                        event(id: {}) {{\n\
+                            id        \n\
+                            title     \n\
+                            background\n\
+                            startTime \n\
+                            endTime   \n\
+                            price     \n\
+                        }}\n\
+                    }}", event.id),
+                })
+                .to_string(),
+            )
+            .private_cookie(user_session.cookie)
+            .dispatch();
+
+        let body = response.body_string().expect("Response has no body");
+        let data: serde_json::Value =
+            serde_json::from_str(&body).expect(&format!("Could not deserialize JSON: {}", body));
+
+        assert!(data.is_object());
+        let json = data.as_object().unwrap();
+        println!("Response Data: {:#?}\n", json);
+        assert!(json.contains_key("data"));
+        let graphql_data = json.get("data").unwrap().as_object().unwrap();
+
+        assert!(graphql_data.contains_key("event"));
+        let graphql_data = graphql_data.get("event").unwrap().as_object().unwrap();
+
+        assert!(graphql_data.contains_key("id"));
+        assert!(graphql_data.contains_key("title"));
+        assert!(graphql_data.contains_key("background"));
+        assert!(!graphql_data.contains_key("location"));
+        assert!(graphql_data.contains_key("startTime"));
+        assert!(graphql_data.contains_key("endTime"));
+        assert!(graphql_data.contains_key("price"));
+        assert!(!graphql_data.contains_key("published"));
     }
 }
