@@ -53,7 +53,7 @@ fn main() {
         run_pending_migrations(&connection).expect("Could not run database migrations");
     }
 
-    rocket::ignite()
+    let mut rocket = rocket::ignite()
         .manage(db_pool)
         .manage(graphql::create_schema())
         .register(catchers())
@@ -63,11 +63,17 @@ fn main() {
                 session::user_info,
                 session::no_user,
                 session::login,
-                session::register,
                 graphql::graphiql,
                 graphql::post_graphql_handler_auth,
                 graphql::post_graphql_handler,
             ],
-        )
-        .launch();
+        );
+    let config = rocket.config();
+
+    // Mount dev-only routes
+    if config.environment.is_dev() {
+        rocket = rocket.mount("/", routes![session::register]);
+    }
+
+    rocket.launch();
 }
