@@ -1,5 +1,5 @@
 use crate::database::{create_pool, DatabasePool};
-use crate::models::user::{generate_salted_hash, make_user_session};
+use crate::models::user::{generate_jwt_session, generate_salted_hash, JWTConfig};
 use crate::models::{NewEvent, NewSignup, User};
 use crate::schema::tables::event_signups;
 use crate::schema::tables::events;
@@ -7,7 +7,6 @@ use crate::schema::tables::users;
 use chrono::{Duration, Local};
 use diesel::RunQueryDsl;
 use dotenv::dotenv;
-use rocket::http::Cookie;
 
 pub fn generate_new_events(old: usize, new: usize) -> Vec<NewEvent> {
     let mut events = vec![];
@@ -83,13 +82,13 @@ impl Drop for DatabaseState {
     }
 }
 
-pub struct UserSession<'a> {
+pub struct UserSession {
     pub user: User,
-    pub cookie: Cookie<'a>,
+    pub bearer: String,
 }
 
-impl<'a> UserSession<'a> {
-    pub fn new(db_pool: &DatabasePool) -> UserSession<'a> {
+impl UserSession {
+    pub fn new(db_pool: &DatabasePool, jwt_config: &JWTConfig) -> UserSession {
         let user = User {
             name: "test_user".into(),
             display_name: Some("Test User".into()),
@@ -103,7 +102,10 @@ impl<'a> UserSession<'a> {
             .expect("Could not add new user for testing");
 
         UserSession {
-            cookie: make_user_session(&user),
+            bearer: format!(
+                "Bearer {}",
+                generate_jwt_session(&user, jwt_config).unwrap()
+            ),
             user,
         }
     }

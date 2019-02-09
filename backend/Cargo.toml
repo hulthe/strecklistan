@@ -19,4 +19,5 @@ serde_derive = "1.0.82"
 chrono = { version = "0.4.6", features = ["serde"] }
 orion = "0.11.0"
 hex = "0.3.2"
+frank_jwt = "3.1.0"
 
