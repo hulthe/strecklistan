@@ -20,8 +20,8 @@ pub struct StatusJson {
     pub description: String,
 }
 
-impl Responder<'static> for StatusJson {
-    fn respond_to(self, req: &Request) -> Result<Response<'static>, Status> {
+impl<'r> Responder<'r> for StatusJson {
+    fn respond_to(self, req: &Request) -> Result<Response<'r>, Status> {
         let mut response = Json(json!({
             "status": self.status.code,
             "description": self.description,

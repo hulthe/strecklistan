@@ -1,5 +1,5 @@
 use crate::database::{create_pool, DatabasePool};
-use crate::models::user::{generate_jwt_session, generate_salted_hash, JWTConfig};
+use crate::models::user::{generate_salted_hash, JWTConfig, JWT};
 use crate::models::{NewEvent, NewSignup, User};
 use crate::schema::tables::event_signups;
 use crate::schema::tables::events;
@@ -101,11 +101,9 @@ impl UserSession {
             .execute(&connection)
             .expect("Could not add new user for testing");
 
+        let jwt = JWT::new(&user, jwt_config);
         UserSession {
-            bearer: format!(
-                "Bearer {}",
-                generate_jwt_session(&user, jwt_config).unwrap()
-            ),
+            bearer: format!("Bearer {}", jwt.encode_jwt(jwt_config).unwrap()),
             user,
         }
     }

@@ -1,7 +1,6 @@
 use crate::database::DatabasePool;
 use crate::models::user::{
-    generate_jwt_session, generate_salted_hash, Credentials, JWTConfig, JWTResponse, User,
-    PWHASH_ITERATIONS,
+    generate_salted_hash, Credentials, JWTConfig, User, JWT, PWHASH_ITERATIONS,
 };
 use crate::util::StatusJson as SJ;
 use diesel::prelude::*;
@@ -38,7 +37,7 @@ pub fn login(
     credentials: Json<Credentials>,
     db_pool: State<DatabasePool>,
     jwt_config: State<JWTConfig>,
-) -> Result<Json<JWTResponse>, SJ> {
+) -> Result<JWT<SJ>, SJ> {
     use crate::schema::tables::users::dsl::*;
     let connection = db_pool.inner().get()?;
     let unauthorized_error = SJ {
@@ -67,9 +66,8 @@ pub fn login(
     .map_err(|_| unauthorized_error.clone())?;
 
     if valid {
-        Ok(Json(JWTResponse {
-            jwt: generate_jwt_session(&user, &jwt_config)?,
-        }))
+        Ok(JWT::new(&user, &jwt_config)
+           .wrap(Status::Ok.into()))
     } else {
         Err(unauthorized_error)
     }
@@ -113,7 +111,7 @@ pub fn register(credentials: Json<Credentials>, db_pool: State<DatabasePool>) ->
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::user::{JWTConfig, JWTResponse};
+    use crate::models::user::JWTConfig;
     use crate::schema::tables::users;
     use crate::util::catchers::catchers;
     use crate::util::testing::DatabaseState;
@@ -127,7 +125,7 @@ mod tests {
         let jwt_config = JWTConfig::testing_config();
 
         let credentials = Credentials {
-            name: "test_user".into(),
+            name: "new_test_user".into(),
             pass: "My Extremely Secure Password".into(),
         };
 
@@ -151,20 +149,23 @@ mod tests {
             .mount("/", routes![login, user_info]);
         let client = Client::new(rocket).expect("valid rocket instance");
 
-        let mut response = client
+        let response = client
             .post("/login")
             .header(ContentType::JSON)
             .body(serde_json::to_string(&credentials).expect("Could not serialize NewEvent"))
             .dispatch();
 
-        let body = response.body_string().expect("Response has no body");
-        let JWTResponse { jwt } =
-            serde_json::from_str(&body).expect(&format!("Could not deserialize JSON: {}", body));
+        let jwt_header = response
+            .headers()
+            .get_one("Authorization")
+            .unwrap()
+            .to_owned();
+        assert_eq!(response.status(), Status::Ok);
 
-        let request = client
+        let mut response = client
             .get("/me")
-            .header(Header::new("Authorization", format!("Bearer {}", jwt)));
-        let mut response = request.dispatch();
+            .header(Header::new("Authorization", jwt_header))
+            .dispatch();
 
         let body = response.body_string().expect("Response has no body");
         let data: serde_json::Value =

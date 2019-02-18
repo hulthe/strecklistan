@@ -8,6 +8,7 @@ use orion::errors::UnknownCryptoError;
 use orion::pwhash::{hash_password, Password};
 use rocket::http::Status;
 use rocket::request::{self, FromRequest, Request};
+use rocket::response::{self, Responder};
 use rocket::{Outcome, State};
 use serde_json::{self, Value as JsonValue};
 
@@ -31,14 +32,80 @@ pub struct Session {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct JWTResponse {
-    pub jwt: String,
+pub struct JWT<T> {
+    pub header: JWTHeader,
+    pub payload: JWTPayload,
+
+    wrapped_response: T,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct JWTHeader {}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct JWTPayload {
-    pub user: String,
-    pub expire: i64,
+    /// [Subject](https://tools.ietf.org/html/rfc7519#section-4.1.2) Claim.
+    /// Equal to the unique name of the issuing user.
+    pub sub: String,
+
+    /// [Expiration Time](https://tools.ietf.org/html/rfc7519#section-4.1.4) Claim.
+    /// The time where the JWT ceases to be valid.
+    /// Stored as POSIX time.
+    pub exp: i64,
+}
+
+impl JWT<()> {
+    pub fn new(user: &User, config: &JWTConfig) -> JWT<()> {
+        JWT {
+            header: JWTHeader {},
+            payload: JWTPayload {
+                sub: user.name.clone(),
+                exp: (Utc::now() + config.token_lifetime).timestamp(),
+            },
+            wrapped_response: (),
+        }
+    }
+}
+
+impl<T> JWT<T> {
+    /// The implementation of Responder for JWT wraps the Responder of this value with an
+    /// `Authorization`-header containing a bearer token.
+    pub fn wrap<N>(self, response: N) -> JWT<N>
+        where N: for<'r> Responder<'r> {
+            JWT {
+                header: self.header,
+                payload: self.payload,
+                wrapped_response: response,
+            }
+        }
+
+    pub fn encode_jwt(&self, config: &JWTConfig) -> Result<String, JWTError> {
+        let payload = serde_json::to_value(&self.payload).expect("Failed to serialize JWT payload");
+
+        let header = serde_json::to_value(&self.header).expect("Failed to serialize JWT header");
+
+        encode(header, &config.secret, &payload, config.algorithm)
+    }
+}
+
+impl<'a, T> Responder<'a> for JWT<T>
+where T: for<'r> Responder<'r> {
+    fn respond_to(self, request: &Request) -> response::Result<'a> {
+        let jwt_config = request.guard::<State<JWTConfig>>().success_or_else(|| {
+            eprintln!("");
+            Status::InternalServerError
+        })?;
+
+        let jwt = self.encode_jwt(&jwt_config).map_err(|e| {
+            eprintln!("Failed to encode JWT: {}", e);
+            Status::InternalServerError
+        })?;
+
+        let mut response = self.wrapped_response.respond_to(request)?;
+        response.set_raw_header("Authorization", format!("Bearer {}", jwt));
+
+        Ok(response)
+    }
 }
 
 pub struct JWTConfig {
@@ -56,17 +123,6 @@ impl JWTConfig {
             token_lifetime: Duration::days(2),
         }
     }
-}
-
-pub fn generate_jwt_session(user: &User, config: &JWTConfig) -> Result<String, JWTError> {
-    let payload = serde_json::json!({
-        "user": user.name.clone(),
-        "expire": (Utc::now() + config.token_lifetime).timestamp(),
-    });
-
-    let header = serde_json::json!({});
-
-    encode(header, &config.secret, &payload, config.algorithm)
 }
 
 fn get_user(user_name: String, connection: &DatabaseConn) -> Option<User> {
@@ -92,6 +148,7 @@ impl<'a, 'r> FromRequest<'a, 'r> for User {
                 decode(&header.to_owned(), &jwt_config.secret, jwt_config.algorithm).map_err(|e| {
                     eprintln!("{}", e);
                     match e {
+                        // TODO
                         _ => Outcome::Failure((Status::InternalServerError, ())),
                     }
                 });
@@ -104,16 +161,20 @@ impl<'a, 'r> FromRequest<'a, 'r> for User {
             };
 
             let payload: JWTPayload = serde_json::from_value(payload)
-                //.map_err(|e| Outcome::Forward(()))
-                .unwrap(); // TODO
+                .map_err(|e| {
+                    eprintln!(
+                        "Failed to deserialize JsonValue into struct: {}\n\
+                        This is a programmer error.", e);
+                    Err((Status::InternalServerError, ()))
+                })?;
 
             let now: i64 = Utc::now().timestamp();
-            if payload.expire <= now {
+            if payload.exp <= now {
                 return Outcome::Forward(());
             }
 
             if let Ok(connection) = db_pool.inner().get() {
-                if let Some(user) = get_user(payload.user, &connection) {
+                if let Some(user) = get_user(payload.sub, &connection) {
                     Outcome::Success(user)
                 } else {
                     Outcome::Forward(())
