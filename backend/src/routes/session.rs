@@ -66,8 +66,7 @@ pub fn login(
     .map_err(|_| unauthorized_error.clone())?;
 
     if valid {
-        Ok(JWT::new(&user, &jwt_config)
-           .wrap(Status::Ok.into()))
+        Ok(JWT::new(&user, &jwt_config).wrap(SJ::new(Status::Ok, "Login successful")))
     } else {
         Err(unauthorized_error)
     }

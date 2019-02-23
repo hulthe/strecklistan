@@ -71,13 +71,15 @@ impl<T> JWT<T> {
     /// The implementation of Responder for JWT wraps the Responder of this value with an
     /// `Authorization`-header containing a bearer token.
     pub fn wrap<N>(self, response: N) -> JWT<N>
-        where N: for<'r> Responder<'r> {
-            JWT {
-                header: self.header,
-                payload: self.payload,
-                wrapped_response: response,
-            }
+    where
+        N: for<'r> Responder<'r>,
+    {
+        JWT {
+            header: self.header,
+            payload: self.payload,
+            wrapped_response: response,
         }
+    }
 
     pub fn encode_jwt(&self, config: &JWTConfig) -> Result<String, JWTError> {
         let payload = serde_json::to_value(&self.payload).expect("Failed to serialize JWT payload");
@@ -89,10 +91,12 @@ impl<T> JWT<T> {
 }
 
 impl<'a, T> Responder<'a> for JWT<T>
-where T: for<'r> Responder<'r> {
+where
+    T: for<'r> Responder<'r>,
+{
     fn respond_to(self, request: &Request) -> response::Result<'a> {
         let jwt_config = request.guard::<State<JWTConfig>>().success_or_else(|| {
-            eprintln!("");
+            eprintln!("Failed to acquire JWT configuration");
             Status::InternalServerError
         })?;
 
@@ -160,13 +164,14 @@ impl<'a, 'r> FromRequest<'a, 'r> for User {
                 }
             };
 
-            let payload: JWTPayload = serde_json::from_value(payload)
-                .map_err(|e| {
-                    eprintln!(
-                        "Failed to deserialize JsonValue into struct: {}\n\
-                        This is a programmer error.", e);
-                    Err((Status::InternalServerError, ()))
-                })?;
+            let payload: JWTPayload = serde_json::from_value(payload).map_err(|e| {
+                eprintln!(
+                    "Failed to deserialize JsonValue into struct: {}\n\
+                     This is a programmer error.",
+                    e
+                );
+                Err((Status::InternalServerError, ()))
+            })?;
 
             let now: i64 = Utc::now().timestamp();
             if payload.exp <= now {
