@@ -120,24 +120,26 @@ graphql_object!(RootMutation: Context |&self| {
 
 #[cfg(test)]
 mod tests {
-    use crate::models::{Event, NewEvent};
+    use crate::models::{user::JWTConfig, Event, NewEvent};
     use crate::routes::graphql;
     use crate::schema::tables::events;
     use crate::util::catchers::catchers;
     use crate::util::testing::{DatabaseState, UserSession};
     use chrono::naive::NaiveDateTime;
     use diesel::RunQueryDsl;
-    use rocket::http::ContentType;
+    use rocket::http::{ContentType, Header};
     use rocket::local::Client;
 
     #[test]
     fn test_create_event() {
         let (_state, db_pool) = DatabaseState::new();
-        let user_session = UserSession::new(&db_pool);
+        let jwt_config = JWTConfig::testing_config();
+        let user_session = UserSession::new(&db_pool, &jwt_config);
 
         let rocket = rocket::ignite()
             .manage(db_pool)
             .manage(graphql::create_schema())
+            .manage(jwt_config)
             .register(catchers())
             .mount(
                 "/",
@@ -160,6 +162,7 @@ mod tests {
         let mut response = client
             .post("/graphql")
             .header(ContentType::JSON)
+            .header(Header::new("Authorization", user_session.bearer))
             .body(
                 json!({
                     "operationName": "CreateEvent",
@@ -181,7 +184,6 @@ mod tests {
                 })
                 .to_string(),
             )
-            .private_cookie(user_session.cookie)
             .dispatch();
 
         let body = response.body_string().expect("Response has no body");
@@ -214,7 +216,8 @@ mod tests {
     #[test]
     fn test_get_event() {
         let (_state, db_pool) = DatabaseState::new();
-        let user_session = UserSession::new(&db_pool);
+        let jwt_config = JWTConfig::testing_config();
+        let user_session = UserSession::new(&db_pool, &jwt_config);
 
         let new_event = NewEvent {
             title: "Test Event 2".into(),
@@ -235,6 +238,7 @@ mod tests {
         let rocket = rocket::ignite()
             .manage(db_pool)
             .manage(graphql::create_schema())
+            .manage(jwt_config)
             .register(catchers())
             .mount(
                 "/",
@@ -248,6 +252,7 @@ mod tests {
         let mut response = client
             .post("/graphql")
             .header(ContentType::JSON)
+            .header(Header::new("Authorization", user_session.bearer))
             .body(
                 json!({
                 "operationName": "GetEvent",
@@ -264,7 +269,6 @@ mod tests {
                 })
                 .to_string(),
             )
-            .private_cookie(user_session.cookie)
             .dispatch();
 
         let body = response.body_string().expect("Response has no body");

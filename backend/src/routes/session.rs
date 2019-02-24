@@ -1,12 +1,12 @@
 use crate::database::DatabasePool;
 use crate::models::user::{
-    generate_salted_hash, make_user_session, Credentials, User, PWHASH_ITERATIONS,
+    generate_salted_hash, Credentials, JWTConfig, User, JWT, PWHASH_ITERATIONS,
 };
 use crate::util::StatusJson as SJ;
 use diesel::prelude::*;
 use hex;
 use orion::pwhash::{hash_password_verify, Password, PasswordHash};
-use rocket::http::{Cookies, Status};
+use rocket::http::Status;
 use rocket::State;
 use rocket_contrib::json::{Json, JsonValue};
 
@@ -35,9 +35,9 @@ pub fn no_user() -> SJ {
 #[post("/login", data = "<credentials>")]
 pub fn login(
     credentials: Json<Credentials>,
-    mut cookies: Cookies,
     db_pool: State<DatabasePool>,
-) -> Result<SJ, SJ> {
+    jwt_config: State<JWTConfig>,
+) -> Result<JWT<SJ>, SJ> {
     use crate::schema::tables::users::dsl::*;
     let connection = db_pool.inner().get()?;
     let unauthorized_error = SJ {
@@ -66,11 +66,7 @@ pub fn login(
     .map_err(|_| unauthorized_error.clone())?;
 
     if valid {
-        cookies.add_private(make_user_session(&user));
-        Ok(SJ {
-            status: Status::Ok,
-            description: "Logged in".into(),
-        })
+        Ok(JWT::new(&user, &jwt_config).wrap(SJ::new(Status::Ok, "Login successful")))
     } else {
         Err(unauthorized_error)
     }
@@ -114,19 +110,21 @@ pub fn register(credentials: Json<Credentials>, db_pool: State<DatabasePool>) ->
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::models::user::JWTConfig;
     use crate::schema::tables::users;
     use crate::util::catchers::catchers;
     use crate::util::testing::DatabaseState;
     use diesel::RunQueryDsl;
-    use rocket::http::{ContentType, Status};
+    use rocket::http::{ContentType, Header, Status};
     use rocket::local::Client;
 
     #[test]
     fn log_in() {
         let (_state, db_pool) = DatabaseState::new();
+        let jwt_config = JWTConfig::testing_config();
 
         let credentials = Credentials {
-            name: "test_user".into(),
+            name: "new_test_user".into(),
             pass: "My Extremely Secure Password".into(),
         };
 
@@ -145,29 +143,28 @@ mod tests {
 
         let rocket = rocket::ignite()
             .manage(db_pool)
+            .manage(jwt_config)
             .register(catchers())
             .mount("/", routes![login, user_info]);
         let client = Client::new(rocket).expect("valid rocket instance");
 
-        let mut response = client
+        let response = client
             .post("/login")
             .header(ContentType::JSON)
             .body(serde_json::to_string(&credentials).expect("Could not serialize NewEvent"))
             .dispatch();
 
-        let body = response.body_string().expect("Response has no body");
-        let data: serde_json::Value =
-            serde_json::from_str(&body).expect(&format!("Could not deserialize JSON: {}", body));
-        assert!(data.is_object());
-        let json = data.as_object().unwrap();
-        assert!(json.contains_key("description"));
-        assert_eq!(json.get("description").unwrap(), "Logged in");
+        let jwt_header = response
+            .headers()
+            .get_one("Authorization")
+            .unwrap()
+            .to_owned();
         assert_eq!(response.status(), Status::Ok);
-        assert!(response.headers().contains("Set-Cookie"));
 
-        let request = client.get("/me").cookies(response.cookies());
-
-        let mut response = request.dispatch();
+        let mut response = client
+            .get("/me")
+            .header(Header::new("Authorization", jwt_header))
+            .dispatch();
 
         let body = response.body_string().expect("Response has no body");
         let data: serde_json::Value =
