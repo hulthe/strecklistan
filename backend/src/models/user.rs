@@ -201,6 +201,6 @@ pub struct Credentials {
 }
 
 pub fn generate_salted_hash<T: AsRef<[u8]>>(password: T) -> Result<String, UnknownCryptoError> {
-    hash_password(&Password::from_slice(password.as_ref()), PWHASH_ITERATIONS)
+    hash_password(&Password::from_slice(password.as_ref())?, PWHASH_ITERATIONS)
         .map(|pwhash| hex::encode(&pwhash.unprotected_as_bytes()))
 }
