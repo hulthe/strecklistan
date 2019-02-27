@@ -8,7 +8,7 @@ use crate::database::DatabasePool;
 use crate::models::User;
 use juniper::RootNode;
 use rocket::response::content;
-use rocket::State;
+use rocket::{get, post, State};
 
 pub type Schema = RootNode<'static, RootQuery, RootMutation>;
 

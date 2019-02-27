@@ -1,28 +1,6 @@
-#![feature(plugin)]
 #![feature(specialization)]
 #![feature(proc_macro_hygiene, decl_macro)]
-// Disable warnings caused by nightly rust phasing out this feature
-#![allow(proc_macro_derive_resolution_fallback)]
-
-#[macro_use]
-extern crate rocket;
-#[macro_use]
-extern crate rocket_contrib;
-#[macro_use]
-extern crate diesel;
-extern crate diesel_migrations;
-extern crate r2d2;
-extern crate serde;
-extern crate serde_json;
-#[macro_use]
-extern crate serde_derive;
-#[macro_use]
-extern crate juniper;
-extern crate chrono;
-extern crate dotenv;
-extern crate hex;
-extern crate juniper_rocket;
-extern crate orion;
+#[macro_use] extern crate diesel;
 
 mod database;
 pub mod models;
@@ -38,6 +16,7 @@ use chrono::Duration;
 use diesel_migrations::{run_pending_migrations, setup_database};
 use dotenv::dotenv;
 use frank_jwt::Algorithm;
+use rocket::routes;
 use std::env;
 
 fn main() {
