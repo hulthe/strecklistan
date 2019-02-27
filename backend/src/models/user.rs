@@ -10,6 +10,7 @@ use rocket::http::Status;
 use rocket::request::{self, FromRequest, Request};
 use rocket::response::{self, Responder};
 use rocket::{Outcome, State};
+use serde_derive::{Deserialize, Serialize};
 use serde_json::{self, Value as JsonValue};
 
 pub const PWHASH_ITERATIONS: usize = 10000;

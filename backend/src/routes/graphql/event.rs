@@ -3,7 +3,7 @@ use crate::models::event::EventWithSignups as Event;
 use crate::models::signup::Signup;
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
-use juniper::FieldResult;
+use juniper::{graphql_object, FieldResult};
 
 graphql_object!(Event: Context |&self| {
     description: "Metadata about an event"

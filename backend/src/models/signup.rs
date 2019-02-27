@@ -1,4 +1,6 @@
 use crate::schema::tables::event_signups;
+use juniper_codegen::{GraphQLInputObject, GraphQLObject};
+use serde_derive::{Deserialize, Serialize};
 
 /// Metadata about a signed up attendee of an event
 #[derive(Queryable, GraphQLObject, Serialize, Deserialize, Debug, PartialEq)]

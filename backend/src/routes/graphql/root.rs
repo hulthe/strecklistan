@@ -3,7 +3,7 @@ use crate::models::event::{Event, EventWithSignups as EventWS, NewEvent};
 use crate::models::signup::{NewSignup, Signup};
 use chrono::Local;
 use diesel::prelude::*;
-use juniper::{FieldError, FieldResult};
+use juniper::{graphql_object, graphql_value, FieldError, FieldResult};
 
 pub struct RootQuery;
 graphql_object!(RootQuery: Context |&self| {
@@ -129,6 +129,8 @@ mod tests {
     use diesel::RunQueryDsl;
     use rocket::http::{ContentType, Header};
     use rocket::local::Client;
+    use rocket::routes;
+    use rocket_contrib::json;
 
     #[test]
     fn test_create_event() {

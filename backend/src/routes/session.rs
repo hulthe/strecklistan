@@ -8,7 +8,9 @@ use hex;
 use orion::pwhash::{hash_password_verify, Password, PasswordHash};
 use rocket::http::Status;
 use rocket::State;
-use rocket_contrib::json::{Json, JsonValue};
+use rocket::{get, post};
+use rocket_contrib::json;
+use rocket_contrib::json::{Json, JsonValue}; // macro
 
 /// Route `GET /me`
 ///
@@ -117,6 +119,7 @@ mod tests {
     use diesel::RunQueryDsl;
     use rocket::http::{ContentType, Header, Status};
     use rocket::local::Client;
+    use rocket::routes;
 
     #[test]
     fn log_in() {

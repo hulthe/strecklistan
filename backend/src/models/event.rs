@@ -1,7 +1,10 @@
 use crate::schema::tables::events;
 use crate::util::StatusJson;
 use chrono::NaiveDateTime;
+use juniper_codegen::GraphQLInputObject;
 use rocket::http::Status;
+use rocket::FromForm;
+use serde_derive::{Deserialize, Serialize};
 
 #[derive(FromForm)]
 pub struct EventRange {
