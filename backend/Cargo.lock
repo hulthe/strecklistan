@@ -447,7 +447,7 @@ dependencies = [
 
 [[package]]
 name = "laggit_backend"
-version = "0.2.2"
+version = "0.3.0"
 dependencies = [
  "chrono 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "diesel 1.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
