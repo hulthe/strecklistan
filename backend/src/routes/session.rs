@@ -61,11 +61,13 @@ pub fn login(
 
     let valid = hash_password_verify(
         &hash,
-        &Password::from_slice(credentials.pass.as_ref())
-            .map_err(|e| {
-                eprintln!("Could not parse user [{}] password from db: {}", user.name, e);
-                Status::InternalServerError
-            })?,
+        &Password::from_slice(credentials.pass.as_ref()).map_err(|e| {
+            eprintln!(
+                "Could not parse user [{}] password from db: {}",
+                user.name, e
+            );
+            Status::InternalServerError
+        })?,
         user.hash_iterations as usize,
         /* If the validation errors the password is wrong */
     )
