@@ -8,6 +8,7 @@ pub mod models;
 pub mod routes;
 mod schema;
 pub mod util;
+pub mod auth;
 
 use crate::database::create_pool;
 use crate::database::DatabasePool;

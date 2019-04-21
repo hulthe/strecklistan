@@ -14,3 +14,10 @@ table! {
         signups -> Int8,
     }
 }
+
+table! {
+    inventory_stock (name) {
+        name -> Text,
+        stock -> Int4,
+    }
+}

@@ -1,6 +1,7 @@
 pub mod event;
 pub mod signup;
 pub mod user;
+pub mod inventory;
 
 pub use self::event::{Event, EventRange, EventWithSignups, NewEvent};
 

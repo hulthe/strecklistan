@@ -17,7 +17,7 @@ pub const PWHASH_ITERATIONS: usize = 10000;
 /// This struct defines a user object
 ///
 /// It's used as a request guard: all routes with a User parameter will return
-/// 401 UNAUTHORIZED if the client has not previously authenticated.
+/// 401 UNAUTHORIZED if the client cannot provide proof of authentication.
 #[derive(Queryable, Insertable, Serialize, Deserialize, Debug)]
 pub struct User {
     pub name: String,
