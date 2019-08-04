@@ -13,7 +13,7 @@ pub mod auth;
 use crate::database::create_pool;
 use crate::database::DatabasePool;
 use crate::models::user::JWTConfig;
-use crate::routes::{graphql, session};
+use crate::routes::{graphql, rest, session};
 use crate::util::catchers::catchers;
 use chrono::Duration;
 use diesel_migrations::{
@@ -22,6 +22,7 @@ use diesel_migrations::{
 use dotenv::dotenv;
 use frank_jwt::Algorithm;
 use rocket::routes;
+use rocket_contrib::serve::StaticFiles;
 use std::env;
 
 fn handle_migrations(db_pool: &DatabasePool) {
@@ -87,17 +88,21 @@ fn main() {
         .manage(graphql::create_schema())
         .manage(jwt_config)
         .register(catchers())
+        .mount("/", StaticFiles::from("static"))
         .mount(
             "/",
             routes![
-                session::user_info,
                 session::no_user,
                 session::login,
-                graphql::graphiql,
+                session::user_info,
+                rest::event::get_event,
+                rest::event::get_event_range,
+                rest::inventory::get_inventory,
                 graphql::post_graphql_handler_auth,
                 graphql::post_graphql_handler,
-            ],
-        );
+            ]
+        )
+        .mount("/graphiql/", routes![graphql::graphiql]);
     let config = rocket.config();
 
     // Mount dev-only routes

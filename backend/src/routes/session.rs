@@ -19,10 +19,8 @@ use rocket_contrib::json::{Json, JsonValue}; // macro
 pub fn user_info(user: User) -> JsonValue {
     // TODO: Return useful information
     json!({
-        "user": {
-            "name": user.name,
-            "display_name": user.display_name,
-        },
+        "name": user.name,
+        "display_name": user.display_name,
     })
 }
 

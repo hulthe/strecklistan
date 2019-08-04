@@ -16,6 +16,13 @@ pub struct InventoryItem {
 }
 
 #[derive(Queryable, GraphQLObject, Serialize, Deserialize, Debug, PartialEq)]
+pub struct InventoryItemStock {
+    pub name: String,
+    pub stock: i32,
+    pub price: Option<i32>,
+}
+
+#[derive(Queryable, GraphQLObject, Serialize, Deserialize, Debug, PartialEq)]
 pub struct Transaction {
     pub id: i32,
     pub amount: i32,
@@ -30,10 +37,4 @@ pub struct TransactionItem {
     pub item_name: String,
     pub item_price: Option<i32>,
     pub change: InventoryItemChange,
-}
-
-#[derive(Queryable, GraphQLObject, Serialize, Deserialize, Debug, PartialEq)]
-pub struct InventoryItemStock {
-    pub name: String,
-    pub stock: i32,
 }

@@ -19,5 +19,6 @@ table! {
     inventory_stock (name) {
         name -> Text,
         stock -> Int4,
+        price -> Nullable<Int4>,
     }
 }

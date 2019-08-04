@@ -1,8 +1,8 @@
 use super::context::Context;
+use crate::database::event::{get_event_ws, get_event_ws_range};
 use crate::models::event::{Event, EventWithSignups as EventWS, NewEvent};
 use crate::models::signup::{NewSignup, Signup};
 use crate::models::inventory::{InventoryItemStock};
-use chrono::Local;
 use diesel::prelude::*;
 use juniper::{graphql_object, graphql_value, FieldError, FieldResult};
 
@@ -13,33 +13,20 @@ graphql_object!(RootQuery: Context |&self| {
         env!("CARGO_PKG_VERSION")
     }
 
-    field inventory_stock(&executor) -> FieldResult<Vec<InventoryItemStock>>
-        as "Get the current inventory stock" {
-        use crate::schema::views::inventory_stock::dsl::{inventory_stock};
-
-        let connection = executor.context().pool.get()?;
-        Ok(inventory_stock.load(&connection)?)
-    }
-
     field event(&executor, id: i32) -> FieldResult<EventWS>
         as "Get a specific event by ID" {
-        use crate::schema::views::events_with_signups::dsl::{events_with_signups, published};
         let has_auth = gql_auth!(executor, Events(List(Read))).is_ok();
 
-        let connection = executor.context().pool.get()?;
-        Ok(events_with_signups
-            .find(id)
-            .filter(published.eq(true).or(has_auth))
-            .first(&connection)?)
+        Ok(get_event_ws(
+            executor.context().pool.get()?,
+            id,
+            !has_auth,
+        )?)
     }
 
     field events(&executor, low: i32, high: i32) -> FieldResult<Vec<EventWS>>
         as "Get a number of past and/or future events" {
-        use crate::schema::views::events_with_signups::dsl::*;
         let has_auth = gql_auth!(executor, Events(List(Read))).is_ok();
-
-        let low: i64 = low.into();
-        let high: i64 = high.into();
 
         if low >= high {
             return Err(FieldError::new(
@@ -48,51 +35,12 @@ graphql_object!(RootQuery: Context |&self| {
             ));
         }
 
-        let now = Local::now().naive_local();
-        let connection = executor.context().pool.get()?;
-
-        let mut previous: Vec<EventWS> = if low < 0 {
-            events_with_signups
-                .filter(end_time.le(now))
-                .filter(published.eq(true).or(has_auth))
-                .order_by(start_time.desc())
-                .limit(-low)
-                .load(&connection)?
-        } else {
-            Vec::new()
-        };
-
-        let mut upcoming: Vec<EventWS> = if high > 0 {
-            events_with_signups
-                .filter(end_time.gt(now))
-                .filter(published.eq(true).or(has_auth))
-                .order_by(start_time.asc())
-                .limit(high)
-                .load(&connection)?
-        } else {
-            Vec::new()
-        };
-
-        if high < 0 {
-            if (-high) as usize >= previous.len() {
-                previous = Vec::new();
-            } else {
-                previous.drain(..(-high as usize));
-            }
-        }
-
-        if low > 0 {
-            if low as usize >= upcoming.len() {
-                upcoming = Vec::new();
-            } else {
-                upcoming.drain(..(low as usize));
-            }
-        }
-
-        upcoming.reverse();
-
-        upcoming.append(&mut previous);
-        Ok(upcoming)
+        Ok(get_event_ws_range(
+            executor.context().pool.get()?,
+            low.into(),
+            high.into(),
+            !has_auth,
+        )?)
     }
 
     field signup(&executor, id: i32) -> FieldResult<Signup> {

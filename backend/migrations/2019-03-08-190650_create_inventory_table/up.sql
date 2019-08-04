@@ -37,8 +37,8 @@ $$ language sql;
 -- Show the number of inventory items in stock by counting added
 -- transaction_items and subtracting removed transaction_items.
 CREATE MATERIALIZED VIEW inventory_stock AS
-SELECT added.name, (added.count - removed.count)::INTEGER AS stock FROM (
-    SELECT COUNT(id), name
+SELECT added.name, added.price, (added.count - removed.count)::INTEGER AS stock FROM (
+    SELECT COUNT(id), name, price
     FROM inventory as i
     LEFT JOIN transaction_items as ts ON ts.item_name = i.name AND ts.change = 'added'
     GROUP BY name
