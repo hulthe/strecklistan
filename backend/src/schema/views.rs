@@ -17,8 +17,8 @@ table! {
 
 table! {
     inventory_stock (name) {
+        id -> Int4,
         name -> Text,
         stock -> Int4,
-        price -> Nullable<Int4>,
     }
 }

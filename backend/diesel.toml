@@ -4,4 +4,4 @@
 [print_schema]
 file = "src/schema/tables.rs"
 
-patch_file = "src/schema/tables.patch"
+#patch_file = "src/schema/tables.patch"

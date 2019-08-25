@@ -21,21 +21,27 @@ table! {
 }
 
 table! {
-    inventory (name) {
-        name -> Varchar,
+    inventory (id) {
+        id -> Int4,
+        name -> Nullable<Varchar>,
         price -> Nullable<Int4>,
     }
 }
 
 table! {
-    use diesel::sql_types::*;
-    use crate::models::inventory::InventoryItemChange;
-    transaction_items (id) {
+    transaction_bundles (id) {
         id -> Int4,
         transaction_id -> Int4,
-        item_name -> Varchar,
-        item_price -> Nullable<Int4>,
-        change -> InventoryItemChange,
+        bundle_price -> Nullable<Int4>,
+        change -> Int4,
+    }
+}
+
+table! {
+    transaction_items (id) {
+        id -> Int4,
+        bundle_id -> Int4,
+        item_id -> Int4,
     }
 }
 
@@ -58,13 +64,15 @@ table! {
 }
 
 joinable!(event_signups -> events (event));
-joinable!(transaction_items -> inventory (item_name));
-joinable!(transaction_items -> transactions (transaction_id));
+joinable!(transaction_bundles -> transactions (transaction_id));
+joinable!(transaction_items -> inventory (item_id));
+joinable!(transaction_items -> transaction_bundles (bundle_id));
 
 allow_tables_to_appear_in_same_query!(
     events,
     event_signups,
     inventory,
+    transaction_bundles,
     transaction_items,
     transactions,
     users,
