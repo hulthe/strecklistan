@@ -3,6 +3,7 @@ DROP TRIGGER refresh_inventory_stock ON transaction_items;
 DROP TRIGGER refresh_inventory_stock ON inventory;
 DROP FUNCTION refresh_inventory_stock;
 DROP MATERIALIZED VIEW inventory_stock;
+DROP VIEW transactions_joined;
 DROP TABLE transaction_items;
 DROP TABLE transaction_bundles;
 DROP TABLE transactions;

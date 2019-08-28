@@ -2,7 +2,6 @@ use super::context::Context;
 use crate::database::event::{get_event_ws, get_event_ws_range};
 use crate::models::event::{Event, EventWithSignups as EventWS, NewEvent};
 use crate::models::signup::{NewSignup, Signup};
-use crate::models::inventory::{InventoryItemStock};
 use diesel::prelude::*;
 use juniper::{graphql_object, graphql_value, FieldError, FieldResult};
 

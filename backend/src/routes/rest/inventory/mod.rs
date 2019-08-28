@@ -4,7 +4,7 @@ use crate::database::DatabasePool;
 use crate::models::inventory::InventoryItemStock;
 use crate::util::status_json::StatusJson as SJ;
 use diesel::prelude::*;
-use rocket::{get, post, State};
+use rocket::{get, State};
 use rocket_contrib::json::Json;
 
 #[get("/inventory")]

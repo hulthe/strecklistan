@@ -3,12 +3,12 @@
 #[macro_use]
 extern crate diesel;
 
+pub mod auth;
 mod database;
 pub mod models;
 pub mod routes;
 mod schema;
 pub mod util;
-pub mod auth;
 
 use crate::database::create_pool;
 use crate::database::DatabasePool;
@@ -98,9 +98,10 @@ fn main() {
                 rest::event::get_event,
                 rest::event::get_event_range,
                 rest::inventory::get_inventory,
+                rest::inventory::transaction::get_transactions,
                 graphql::post_graphql_handler_auth,
                 graphql::post_graphql_handler,
-            ]
+            ],
         )
         .mount("/graphiql/", routes![graphql::graphiql]);
     let config = rocket.config();

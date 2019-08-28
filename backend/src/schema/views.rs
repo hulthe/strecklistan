@@ -22,3 +22,18 @@ table! {
         stock -> Int4,
     }
 }
+
+table! {
+    transactions_joined (id) {
+        id -> Int4,
+        amount -> Int4,
+        description -> Nullable<Text>,
+        time -> Timestamp,
+
+        bundle_id -> Int4,
+        bundle_price -> Nullable<Int4>,
+        change -> Int4,
+
+        item_id -> Int4,
+    }
+}

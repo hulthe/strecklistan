@@ -45,12 +45,17 @@ CREATE FUNCTION transaction_balance() RETURNS INTEGER AS $$
     SELECT COALESCE(SUM(amount)::INTEGER, 0) FROM transactions;
 $$ language sql;
 
+CREATE VIEW transactions_joined AS
+SELECT tr.*, b.id as bundle_id, b.bundle_price, b.change, i.item_id FROM transactions AS tr
+    LEFT JOIN transaction_bundles AS b ON tr.id = b.transaction_id
+    LEFT JOIN transaction_items as i ON b.id = i.bundle_id;
+
 -- Show the number of inventory items in stock by counting added
 -- transaction_items and subtracting removed transaction_items.
 CREATE MATERIALIZED VIEW inventory_stock AS
 SELECT i.id, i.name, COALESCE(SUM(change), 0)::INTEGER AS stock FROM inventory as i
-	LEFT JOIN transaction_items AS item ON item.item_id = i.id
-	LEFT JOIN transaction_bundles as bundle ON bundle.id = item.bundle_id
+    LEFT JOIN transaction_items AS item ON item.item_id = i.id
+    LEFT JOIN transaction_bundles as bundle ON bundle.id = item.bundle_id
 GROUP BY i.id, i.name;
 
 CREATE FUNCTION refresh_inventory_stock()
