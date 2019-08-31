@@ -4,3 +4,8 @@
 .idea
 .vscode
 
+# Cargo
+/target
+**/*.rs.bk
+
+

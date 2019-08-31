@@ -1,5 +1,6 @@
 use diesel::result::Error as DieselError;
 use diesel::ConnectionError as DieselConnectionError;
+use log::{info, warn};
 use rocket::http::Status;
 use rocket::response::{Responder, Response};
 use rocket::Request;
@@ -37,12 +38,24 @@ impl StatusJson {
 
 impl<'r> Responder<'r> for StatusJson {
     fn respond_to(self, req: &Request) -> Result<Response<'r>, Status> {
+        if self.status.code >= 400 {
+            warn!(
+                "Responding with status {}.\n\
+                 Description: {}",
+                self.status, self.description,
+            );
+        } else {
+            info!("Responding with status {}", self.status);
+        }
+
         let mut response = Json(json!({
             "status": self.status.code,
             "description": self.description,
         }))
         .respond_to(req)?;
+
         response.set_status(self.status);
+
         Ok(response)
     }
 }

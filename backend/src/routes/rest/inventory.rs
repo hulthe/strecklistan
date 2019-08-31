@@ -1,9 +1,7 @@
-pub mod transaction;
-
 use crate::database::DatabasePool;
-use crate::models::inventory::InventoryItemStock;
 use crate::util::status_json::StatusJson as SJ;
 use diesel::prelude::*;
+use laggit_api::inventory::InventoryItemStock;
 use rocket::{get, State};
 use rocket_contrib::json::Json;
 

@@ -66,8 +66,8 @@ COPY public.inventory (id, price, name) FROM stdin;
 21	6	Nappar, Kola
 22	6	Nappar, Lakrits
 23	6	Nappar, Zour
-24	6	Pingvinstång, Jordgubb
-25	6	Pingvinstång, Mint
+24	3	Pingvinstång, Jordgubb
+25	3	Pingvinstång, Mint
 26	6	Tutti Frutti
 27	6	Wasa Sandwich
 28	12	Tyrkisk Peber

@@ -1,3 +1,4 @@
+#!/bin/sh
 export DOCKER_NAME="$1"
 
 if [ -z "$DOCKER_NAME" ]; then

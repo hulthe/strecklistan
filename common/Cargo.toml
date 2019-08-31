@@ -1,0 +1,24 @@
+[package]
+name = "laggit_api"
+version = "0.1.0"
+authors = ["Joakim Hulthe <joakim@hulthe.net>"]
+edition = "2018"
+workspace = ".."
+
+[dependencies]
+chrono = "0.4"
+diesel = { version = "1.4", optional = true }
+diesel_derives = { version = "1.4", optional = true }
+serde = { version = "1", optional = true }
+serde_derive = { version = "1", optional = true }
+getset = "0.0.7"
+
+[features]
+default = ["serde_impl", "debug", "hash"]
+
+diesel_impl = ["diesel", "diesel_derives"]
+serde_impl = ["serde", "serde_derive", "chrono/serde"]
+
+debug = []
+eq = []
+hash = []

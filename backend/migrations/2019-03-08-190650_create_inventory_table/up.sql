@@ -53,7 +53,7 @@ SELECT tr.*, b.id as bundle_id, b.bundle_price, b.change, i.item_id FROM transac
 -- Show the number of inventory items in stock by counting added
 -- transaction_items and subtracting removed transaction_items.
 CREATE MATERIALIZED VIEW inventory_stock AS
-SELECT i.id, i.name, COALESCE(SUM(change), 0)::INTEGER AS stock FROM inventory as i
+SELECT i.id, i.name, i.price, COALESCE(SUM(change), 0)::INTEGER AS stock FROM inventory as i
     LEFT JOIN transaction_items AS item ON item.item_id = i.id
     LEFT JOIN transaction_bundles as bundle ON bundle.id = item.bundle_id
 GROUP BY i.id, i.name;

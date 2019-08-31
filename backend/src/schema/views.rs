@@ -19,6 +19,7 @@ table! {
     inventory_stock (name) {
         id -> Int4,
         name -> Text,
+        price -> Nullable<Int4>,
         stock -> Int4,
     }
 }
@@ -30,10 +31,10 @@ table! {
         description -> Nullable<Text>,
         time -> Timestamp,
 
-        bundle_id -> Int4,
+        bundle_id -> Nullable<Int4>,
         bundle_price -> Nullable<Int4>,
-        change -> Int4,
+        change -> Nullable<Int4>,
 
-        item_id -> Int4,
+        item_id -> Nullable<Int4>,
     }
 }
