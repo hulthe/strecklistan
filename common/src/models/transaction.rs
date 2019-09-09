@@ -46,13 +46,8 @@ impl Eq for Transaction {}
 #[cfg_attr(feature = "debug", derive(Debug))]
 #[derive(Clone, PartialEq, Eq)]
 pub struct TransactionBundle {
-    pub bundle_price: Option<i32>,
+    pub description: Option<String>,
+    pub price: Option<i32>,
     pub change: i32,
     pub item_ids: HashMap<i32, u32>,
-}
-
-impl TransactionBundle {
-    pub fn items_eq(&self, other: &Self) -> bool {
-        self.item_ids == other.item_ids
-    }
 }

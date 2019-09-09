@@ -1,16 +1,16 @@
-use juniper_codegen::GraphQLObject;
+//use crate::schema::tables::{transaction_bundles, transaction_items, transactions};
 use serde_derive::{Deserialize, Serialize};
 
-//#[derive(Queryable, GraphQLObject, Serialize, Deserialize, Debug, PartialEq)]
-//pub struct InventoryItem {
-//    pub id: i32,
-//    pub name: String,
-//    pub price: Option<i32>,
-//}
-//
-//#[derive(Queryable, GraphQLObject, Serialize, Deserialize, Debug, PartialEq)]
-//pub struct InventoryItemStock {
-//    pub id: i32,
-//    pub name: String,
-//    pub stock: i32,
-//}
+#[derive(Queryable, Serialize, Deserialize, Debug, PartialEq)]
+pub struct InventoryBundle {
+    pub id: i32,
+    pub name: String,
+    pub price: i32,
+}
+
+#[derive(Queryable, Serialize, Deserialize, Debug, PartialEq)]
+pub struct InventoryBundleItem {
+    pub id: i32,
+    pub bundle_id: i32,
+    pub item_id: i32,
+}

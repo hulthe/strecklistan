@@ -10,10 +10,9 @@ use std::hash::{Hash, Hasher};
 #[cfg_attr(feature = "serde_impl", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "debug", derive(Debug))]
 #[cfg_attr(feature = "diesel_impl", derive(Queryable))]
-#[derive(Getters, Clone)]
+#[derive(Clone)]
 pub struct InventoryItem {
-    #[get = "pub"]
-    id: i32,
+    pub id: i32,
     pub name: String,
     pub price: Option<i32>,
 }
@@ -36,10 +35,9 @@ impl Hash for InventoryItem {
 #[cfg_attr(feature = "serde_impl", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "debug", derive(Debug))]
 #[cfg_attr(feature = "diesel_impl", derive(Queryable))]
-#[derive(Getters, Clone)]
+#[derive(Clone)]
 pub struct InventoryItemStock {
-    #[get = "pub"]
-    id: i32,
+    pub id: i32,
     pub name: String,
     pub price: Option<i32>,
     pub stock: i32,
@@ -59,3 +57,30 @@ impl Hash for InventoryItemStock {
         self.id.hash(state);
     }
 }
+
+#[cfg_attr(feature = "serde_impl", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "debug", derive(Debug))]
+#[cfg_attr(feature = "diesel_impl", derive(Queryable))]
+#[derive(Clone)]
+pub struct InventoryItemTag {
+    pub tag: String,
+    pub item_id: i32,
+}
+
+#[cfg_attr(feature = "serde_impl", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "debug", derive(Debug))]
+#[derive(Clone)]
+pub struct InventoryBundle {
+    pub id: i32,
+    pub name: String,
+    pub price: i32,
+    pub item_ids: Vec<i32>,
+}
+
+impl PartialEq for InventoryBundle {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
+
+impl Eq for InventoryBundle {}

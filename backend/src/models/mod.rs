@@ -1,4 +1,5 @@
 pub mod event;
+pub mod inventory;
 pub mod signup;
 pub mod transaction;
 pub mod user;

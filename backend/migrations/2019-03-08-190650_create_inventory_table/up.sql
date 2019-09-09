@@ -2,12 +2,18 @@ CREATE TYPE INVENTORY_ITEM_CHANGE AS ENUM ('added', 'removed');
 
 CREATE TABLE inventory (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(128) UNIQUE,
+    name TEXT UNIQUE,
     price INTEGER
 );
 
 COMMENT ON COLUMN inventory.name IS 'The unique name of the inventory item';
 COMMENT ON COLUMN inventory.price IS 'The default sales price of the item';
+
+CREATE TABLE inventory_tags (
+    tag TEXT,
+    item_id INTEGER NOT NULL REFERENCES inventory(id) ON DELETE CASCADE,
+    PRIMARY KEY (tag, item_id)
+);
 
 CREATE TABLE transactions (
     id SERIAL PRIMARY KEY,
@@ -21,32 +27,52 @@ COMMENT ON COLUMN transactions.amount IS
 
 CREATE TABLE transaction_bundles (
     id SERIAL PRIMARY KEY,
-    transaction_id INTEGER NOT NULL REFERENCES transactions(id),
-    bundle_price INTEGER CHECK (bundle_price >= 0),
+    transaction_id INTEGER NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
+    description TEXT,
+    price INTEGER CHECK (price >= 0),
     change INTEGER NOT NULL
 );
 
 COMMENT ON TABLE transaction_bundles IS
     'A bundle of items in a transaction. For single items or groups of items that are sold as a package.';
-COMMENT ON COLUMN transaction_bundles.bundle_price IS
+COMMENT ON COLUMN transaction_bundles.price IS
     'The actual price of the item bundle in this transaction. For human reference only.';
 
 CREATE TABLE transaction_items (
     id SERIAL PRIMARY KEY,
-    bundle_id INTEGER NOT NULL REFERENCES transaction_bundles(id),
+    bundle_id INTEGER NOT NULL REFERENCES transaction_bundles(id) ON DELETE CASCADE,
     item_id INTEGER NOT NULL REFERENCES inventory(id)
 );
 
 COMMENT ON TABLE transaction_items IS
     'Individual items in a tansaction bundle.';
 
+CREATE TABLE inventory_bundles (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    price INTEGER NOT NULL CHECK (price >= 0)
+);
+
+COMMENT ON TABLE inventory_bundles IS
+'Premade bundles of inventory items.
+Things you can buy which does not map to a single inventory item.
+e.g. Food servings or 3 for 2 deals.';
+
+CREATE TABLE inventory_bundle_items (
+    id SERIAL PRIMARY KEY,
+    bundle_id INTEGER NOT NULL REFERENCES inventory_bundles(id) ON DELETE CASCADE,
+    item_id INTEGER NOT NULL REFERENCES inventory(id)
+);
+
+COMMENT ON TABLE transaction_items IS
+    'Individual items in an inventory bundle.';
 
 CREATE FUNCTION transaction_balance() RETURNS INTEGER AS $$
     SELECT COALESCE(SUM(amount)::INTEGER, 0) FROM transactions;
 $$ language sql;
 
 CREATE VIEW transactions_joined AS
-SELECT tr.*, b.id as bundle_id, b.bundle_price, b.change, i.item_id FROM transactions AS tr
+SELECT tr.*, b.id as bundle_id, b.description as bundle_description, b.price as bundle_price, b.change, i.item_id FROM transactions AS tr
     LEFT JOIN transaction_bundles AS b ON tr.id = b.transaction_id
     LEFT JOIN transaction_items as i ON b.id = i.bundle_id;
 

@@ -27,7 +27,8 @@ pub mod relational {
     #[table_name = "transaction_bundles"]
     pub struct NewTransactionBundle {
         pub transaction_id: i32,
-        pub bundle_price: Option<i32>,
+        pub description: Option<String>,
+        pub price: Option<i32>,
         pub change: i32,
     }
 
@@ -35,7 +36,8 @@ pub mod relational {
     pub struct TransactionBundle {
         pub id: i32,
         pub transaction_id: i32,
-        pub bundle_price: Option<i32>,
+        pub description: Option<String>,
+        pub price: Option<i32>,
         pub change: i32,
     }
 
@@ -51,19 +53,5 @@ pub mod relational {
         pub id: i32,
         pub bundle_id: i32,
         pub item_id: i32,
-    }
-
-    #[derive(Queryable, Serialize, Deserialize, Debug, PartialEq)]
-    pub struct TransactionJoined {
-        pub id: i32,
-        pub amount: i32,
-        pub description: Option<String>,
-        pub time: NaiveDateTime,
-
-        pub bundle_id: Option<i32>,
-        pub bundle_price: Option<i32>,
-        pub change: Option<i32>,
-
-        pub item_id: Option<i32>,
     }
 }

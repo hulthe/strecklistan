@@ -5,6 +5,7 @@
 -- Data for Name: event_signups; Type: TABLE DATA; Schema: public; Owner: postgres
 COPY public.event_signups (id, event, name, email) FROM stdin;
 \.
+SELECT setval('events_id_seq', 1, true);
 
 -- Data for Name: events; Type: TABLE DATA; Schema: public; Owner: postgres
 COPY public.events (id, title, background, location, start_time, end_time, price, published) FROM stdin;
@@ -34,6 +35,7 @@ COPY public.events (id, title, background, location, start_time, end_time, price
 24	My Event 24	http://imgur.ru	Hubben 2.1	2019-12-16 17:01:00	2019-12-16 23:59:59	0	f
 \.
 -- ##################
+SELECT setval('inventory_id_seq', 25, true);
 
 -- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: postgres
 COPY public.users (name, display_name, salted_pass, hash_iterations) FROM stdin;
@@ -92,7 +94,46 @@ COPY public.inventory (id, price, name) FROM stdin;
 47	6	Zingo
 48	6	Zingo, Tropical
 49	6	Vimto
+50	25	Mat
 \.
+SELECT setval('inventory_id_seq', 50, true);
+
+COPY public.inventory_tags (tag, item_id) FROM stdin;
+burkläsk	30
+burkläsk	31
+burkläsk	32
+burkläsk	33
+burkläsk	34
+burkläsk	35
+burkläsk	36
+burkläsk	37
+burkläsk	38
+burkläsk	39
+burkläsk	40
+burkläsk	41
+burkläsk	42
+burkläsk	43
+burkläsk	44
+burkläsk	45
+burkläsk	46
+burkläsk	47
+burkläsk	48
+burkläsk	49
+\.
+-- ##################
+
+-- Add inventory bundles
+COPY public.inventory_bundles (id, name, price) FROM stdin;
+1	Mat	25
+2	Banana Skids	2
+\.
+SELECT setval('inventory_bundles_id_seq', 3, true);
+
+COPY public.inventory_bundle_items (id, bundle_id, item_id) FROM stdin;
+1	2	2
+2	2	2
+\.
+SELECT setval('inventory_bundle_items_id_seq', 3, true);
 -- ##################
 
 -- Add some transactions
@@ -101,6 +142,7 @@ COPY public.transactions (id, amount, description) FROM stdin;
 2	18	Försäljning
 3	24	Försäljning
 \.
+SELECT setval('transactions_id_seq', 4, true);
 
 COPY public.transaction_bundles (transaction_id, id, change) FROM stdin;
 1	1	24
@@ -113,6 +155,7 @@ COPY public.transaction_bundles (transaction_id, id, change) FROM stdin;
 2	8	-1
 3	9	-5
 \.
+SELECT setval('transaction_bundles_id_seq', 10, true);
 
 COPY public.transaction_items (bundle_id, item_id) FROM stdin;
 1	30
@@ -126,6 +169,7 @@ COPY public.transaction_items (bundle_id, item_id) FROM stdin;
 8	34
 9	49
 \.
+SELECT setval('transaction_items_id_seq', 10, true);
 
 REFRESH MATERIALIZED VIEW public.inventory_stock;
 -- ##################

@@ -23,8 +23,31 @@ table! {
 table! {
     inventory (id) {
         id -> Int4,
-        name -> Nullable<Varchar>,
+        name -> Nullable<Text>,
         price -> Nullable<Int4>,
+    }
+}
+
+table! {
+    inventory_bundle_items (id) {
+        id -> Int4,
+        bundle_id -> Int4,
+        item_id -> Int4,
+    }
+}
+
+table! {
+    inventory_bundles (id) {
+        id -> Int4,
+        name -> Text,
+        price -> Int4,
+    }
+}
+
+table! {
+    inventory_tags (tag, item_id) {
+        tag -> Text,
+        item_id -> Int4,
     }
 }
 
@@ -32,7 +55,8 @@ table! {
     transaction_bundles (id) {
         id -> Int4,
         transaction_id -> Int4,
-        bundle_price -> Nullable<Int4>,
+        description -> Nullable<Text>,
+        price -> Nullable<Int4>,
         change -> Int4,
     }
 }
@@ -64,6 +88,9 @@ table! {
 }
 
 joinable!(event_signups -> events (event));
+joinable!(inventory_bundle_items -> inventory (item_id));
+joinable!(inventory_bundle_items -> inventory_bundles (bundle_id));
+joinable!(inventory_tags -> inventory (item_id));
 joinable!(transaction_bundles -> transactions (transaction_id));
 joinable!(transaction_items -> inventory (item_id));
 joinable!(transaction_items -> transaction_bundles (bundle_id));
@@ -72,6 +99,9 @@ allow_tables_to_appear_in_same_query!(
     events,
     event_signups,
     inventory,
+    inventory_bundle_items,
+    inventory_bundles,
+    inventory_tags,
     transaction_bundles,
     transaction_items,
     transactions,

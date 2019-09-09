@@ -1,0 +1,13 @@
+- [x] Söka bland inventarier
+- [x] Se lagerstatus på inventarier
+- [x] Skapa transaktion
+- [x] Lägg till vara i pågående transaktion
+- [x] Ta bort vara från pågående transaktion
+- [x] Se transaktioner
+- [x] Radera transaktioner
+- [x] Paketvaror i databasen
+- [x] Paketvaror i gränssnittet
+- [ ] Automatiska rabatter för specificerade kombinationer av varor/paket
+- [ ] Tillgodolista
+- [ ] Mobilanpassning
+- [ ] Manuellt ändra pris på vara/paket i pågående transaktion

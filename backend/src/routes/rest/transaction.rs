@@ -4,9 +4,7 @@ use crate::database::DatabasePool;
 use crate::util::status_json::StatusJson as SJ;
 use diesel::prelude::*;
 use itertools::Itertools;
-use log::error;
-use rocket::http::Status;
-use rocket::{get, post, State};
+use rocket::{delete, get, post, State};
 use rocket_contrib::json::Json;
 use std::collections::HashMap;
 
@@ -30,7 +28,6 @@ pub fn post_transaction(
     };
 
     connection.transaction::<_, SJ, _>(|| {
-        println!("{:?}", transaction);
         let transaction_id = {
             use crate::schema::tables::transactions::dsl::*;
             diesel::insert_into(transactions)
@@ -42,10 +39,10 @@ pub fn post_transaction(
         for bundle in bundles.into_iter() {
             let new_bundle = relational::NewTransactionBundle {
                 transaction_id,
-                bundle_price: bundle.bundle_price,
+                description: bundle.description,
+                price: bundle.price,
                 change: bundle.change,
             };
-            println!("{:?}", new_bundle);
 
             let bundle_id = {
                 use crate::schema::tables::transaction_bundles::dsl::*;
@@ -64,7 +61,6 @@ pub fn post_transaction(
                     item_id,
                 })
                 .collect();
-            println!("{:?}", item_ids);
 
             {
                 use crate::schema::tables::transaction_items::dsl::*;
@@ -78,70 +74,75 @@ pub fn post_transaction(
     })
 }
 
+#[delete("/transaction/<transaction_id>")]
+pub fn delete_transaction(
+    db_pool: State<DatabasePool>,
+    transaction_id: i32,
+) -> Result<Json<i32>, SJ> {
+    let connection = db_pool.inner().get()?;
+
+    use crate::schema::tables::transactions::dsl::*;
+    let deleted_id = diesel::delete(transactions)
+        .filter(id.eq(transaction_id))
+        .returning(id)
+        .get_result(&connection)?;
+
+    Ok(Json(deleted_id))
+}
+
 #[get("/transactions")]
 pub fn get_transactions(
     db_pool: State<DatabasePool>,
 ) -> Result<Json<Vec<object::Transaction>>, SJ> {
     let connection = db_pool.inner().get()?;
 
-    let joined: Vec<relational::TransactionJoined> = {
-        use crate::schema::views::transactions_joined::dsl::*;
-        transactions_joined
+    let joined: Vec<(
+        relational::Transaction,
+        Option<relational::TransactionBundle>,
+        Option<relational::TransactionItem>,
+    )> = {
+        use crate::schema::tables::transaction_bundles::dsl::{
+            id as bundle_id, transaction_bundles, transaction_id as bundle_transaction_id,
+        };
+        use crate::schema::tables::transaction_items::dsl::{
+            bundle_id as item_bundle_id, transaction_items,
+        };
+        use crate::schema::tables::transactions::dsl::{id as transaction_id, time, transactions};
+        transactions
+            .left_join(transaction_bundles.on(transaction_id.eq(bundle_transaction_id)))
+            .left_join(transaction_items.on(bundle_id.eq(item_bundle_id)))
             .order_by(time.desc())
+            .order_by(transaction_id.desc())
             .load(&connection)?
     };
 
-    let joined: Vec<(relational::Transaction, Option<object::TransactionBundle>)> = joined
+    let transactions: Vec<object::Transaction> = joined
         .into_iter()
-        .group_by(|x| x.bundle_id)
+        .group_by(|(_, _, i)| i.as_ref().map(|i| i.bundle_id))
         .into_iter()
         .map(|(_, mut xs)| {
-            let first = xs.next().unwrap();
+            let (t0, b0, i0) = xs.next().unwrap();
 
-            let transaction = relational::Transaction {
-                id: first.id,
-                amount: first.amount,
-                description: first.description,
-                time: first.time,
-            };
-
-            let bundle = match (first.bundle_id, first.change) {
-                (Some(_bundle_id), Some(change)) => {
+            let bundle = match b0 {
+                Some(bundle) => {
                     let mut item_ids = HashMap::new();
-                    std::iter::once(first.item_id)
-                        .chain(xs.map(|x| x.item_id))
+                    std::iter::once(i0)
+                        .chain(xs.map(|(_, _, i)| i))
                         .flatten()
-                        .for_each(|item_id| *item_ids.entry(item_id).or_default() += 1);
+                        .for_each(|i| *item_ids.entry(i.item_id).or_default() += 1);
 
                     Some(object::TransactionBundle {
-                        bundle_price: first.bundle_price,
-                        change: change,
+                        description: bundle.description,
+                        price: bundle.price,
+                        change: bundle.change,
                         item_ids,
                     })
                 }
-                (None, None) => None,
-                (bundle_id, change) => {
-                    error!(
-                        "Invalid output from transactions_joined view.\n\
-                         `bundle_id` or `change` was null, but not both.\n\
-                         `bundle_id`: {:?}, `change`: {:?}\n\
-                         `transaction_id`: {}",
-                        bundle_id, change, transaction.id,
-                    );
-
-                    return Err(SJ::new(
-                        Status::InternalServerError,
-                        "Invalid output from transactions_joined view. See logs.",
-                    ));
-                }
+                None => None,
             };
 
-            Ok((transaction, bundle))
+            (t0, bundle)
         })
-        .collect::<Result<_, SJ>>()?;
-
-    let transactions: Vec<object::Transaction> = joined
-        .into_iter()
         .group_by(|(t, _)| t.id)
         .into_iter()
         .map(|(_, mut xs)| {

@@ -23,18 +23,3 @@ table! {
         stock -> Int4,
     }
 }
-
-table! {
-    transactions_joined (id) {
-        id -> Int4,
-        amount -> Int4,
-        description -> Nullable<Text>,
-        time -> Timestamp,
-
-        bundle_id -> Nullable<Int4>,
-        bundle_price -> Nullable<Int4>,
-        change -> Nullable<Int4>,
-
-        item_id -> Nullable<Int4>,
-    }
-}
