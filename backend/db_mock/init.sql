@@ -43,6 +43,24 @@ laggit	LaggIT	8790b5087a6186e4bd9c8a664be012105881bbe124d5499700aad7bb2947b7563b
 \.
 -- ##################
 
+COPY public.members (id, nickname, first_name, last_name) FROM stdin;
+1	tux	Jokke	Boi
+2	Fläkt	Steffe	Pojk
+3	Santa	T-rex	Glassssmak
+\.
+SELECT setval('members_id_seq', 4, true);
+
+COPY public.book_accounts (id, name, account_type, creditor) FROM stdin;
+1	Bankkonto	assets	\N
+2	Kontantkassa	assets	\N
+3	Försäljning	revenue	\N
+4	Inköp	expenses	\N
+5	Tillgodo/tux	liabilities	1
+6	Tillgodo/Fläkt	liabilities	2
+7	Tillgodo/Santa	liabilities	3
+\.
+SELECT setval('book_accounts_id_seq', 8, true);
+
 -- Add inventory index
 COPY public.inventory (id, price, name) FROM stdin;
 01	\N	Algrens Bilar, Orginal
@@ -94,7 +112,6 @@ COPY public.inventory (id, price, name) FROM stdin;
 47	6	Zingo
 48	6	Zingo, Tropical
 49	6	Vimto
-50	25	Mat
 \.
 SELECT setval('inventory_id_seq', 50, true);
 
@@ -137,12 +154,13 @@ SELECT setval('inventory_bundle_items_id_seq', 3, true);
 -- ##################
 
 -- Add some transactions
-COPY public.transactions (id, amount, description) FROM stdin;
-1	-500	AxFood-inköp
-2	18	Försäljning
-3	24	Försäljning
+COPY public.transactions (id, description, debited_account, credited_account, amount) FROM stdin;
+1	AxFood-inköp	4	1	500
+2	Försäljning	5	3	8
+3	Försäljning	1	3	4
+4	Insättning	1	5	99
 \.
-SELECT setval('transactions_id_seq', 4, true);
+SELECT setval('transactions_id_seq', 5, true);
 
 COPY public.transaction_bundles (transaction_id, id, change) FROM stdin;
 1	1	24

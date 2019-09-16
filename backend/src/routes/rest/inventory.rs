@@ -5,7 +5,6 @@ use diesel::prelude::*;
 use itertools::Itertools;
 use laggit_api::inventory::InventoryBundle as InventoryBundleObj;
 use laggit_api::inventory::{InventoryItemStock, InventoryItemTag};
-use log::info;
 use rocket::{get, State};
 use rocket_contrib::json::Json;
 
@@ -56,8 +55,6 @@ pub fn get_inventory_bundles(
             }
         })
         .collect();
-
-    info!("{:#?}", bundles);
 
     Ok(Json(bundles))
 }

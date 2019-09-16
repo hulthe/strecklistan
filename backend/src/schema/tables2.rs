@@ -1,10 +1,10 @@
 table! {
     use diesel::sql_types::*;
-    use laggit_api::book_account::BookAccountTypeMapping;
+    use crate::models::book_account::BookAccountType;
     book_accounts (id) {
         id -> Int4,
         name -> Text,
-        account_type -> BookAccountTypeMapping,
+        account_type -> BookAccountType,
         creditor -> Nullable<Int4>,
     }
 }

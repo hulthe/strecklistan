@@ -1,5 +1,5 @@
-#[macro_use]
-extern crate getset;
+//#[macro_use]
+//extern crate getset;
 
 pub mod models;
 

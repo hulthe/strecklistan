@@ -16,15 +16,19 @@ pub fn post_transaction(
     let connection = db_pool.inner().get()?;
 
     let object::NewTransaction {
-        amount,
         description,
         bundles,
+        debited_account,
+        credited_account,
+        amount,
     } = transaction.into_inner();
 
     let transaction = relational::NewTransaction {
-        amount: amount,
         description: description,
         time: None,
+        debited_account,
+        credited_account,
+        amount: amount,
     };
 
     connection.transaction::<_, SJ, _>(|| {
@@ -150,13 +154,15 @@ pub fn get_transactions(
 
             object::Transaction {
                 id: tf.id,
-                amount: tf.amount,
                 description: tf.description,
                 time: tf.time,
                 bundles: std::iter::once(bf)
                     .chain(xs.map(|(_, bf)| bf))
                     .flatten()
                     .collect(),
+                debited_account: tf.debited_account,
+                credited_account: tf.credited_account,
+                amount: tf.amount,
             }
         })
         .collect();

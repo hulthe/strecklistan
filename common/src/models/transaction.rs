@@ -8,19 +8,11 @@ use serde_derive::{Deserialize, Serialize};
 #[cfg_attr(feature = "debug", derive(Debug))]
 #[derive(Clone, PartialEq, Eq)]
 pub struct NewTransaction {
-    pub amount: i32,
     pub description: Option<String>,
     pub bundles: Vec<TransactionBundle>,
-}
-
-impl Default for NewTransaction {
-    fn default() -> Self {
-        NewTransaction {
-            amount: 0,
-            description: None,
-            bundles: vec![],
-        }
-    }
+    pub debited_account: i32,
+    pub credited_account: i32,
+    pub amount: i32,
 }
 
 #[cfg_attr(feature = "serde_impl", derive(Serialize, Deserialize))]
@@ -28,10 +20,12 @@ impl Default for NewTransaction {
 #[derive(Clone)]
 pub struct Transaction {
     pub id: i32,
-    pub amount: i32,
     pub description: Option<String>,
     pub time: NaiveDateTime,
     pub bundles: Vec<TransactionBundle>,
+    pub debited_account: i32,
+    pub credited_account: i32,
+    pub amount: i32,
 }
 
 impl PartialEq for Transaction {

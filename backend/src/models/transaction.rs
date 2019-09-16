@@ -10,17 +10,21 @@ pub mod relational {
     #[derive(Insertable, Serialize, Deserialize, Debug, PartialEq)]
     #[table_name = "transactions"]
     pub struct NewTransaction {
-        pub amount: i32,
         pub description: Option<String>,
         pub time: Option<NaiveDateTime>,
+        pub debited_account: i32,
+        pub credited_account: i32,
+        pub amount: i32,
     }
 
     #[derive(Queryable, Serialize, Deserialize, Debug, PartialEq)]
     pub struct Transaction {
         pub id: i32,
-        pub amount: i32,
         pub description: Option<String>,
         pub time: NaiveDateTime,
+        pub debited_account: i32,
+        pub credited_account: i32,
+        pub amount: i32,
     }
 
     #[derive(Insertable, Serialize, Deserialize, Debug, PartialEq)]

@@ -1,4 +1,37 @@
-CREATE TYPE INVENTORY_ITEM_CHANGE AS ENUM ('added', 'removed');
+CREATE TABLE members (
+    id SERIAL PRIMARY KEY,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    nickname TEXT
+);
+
+COMMENT ON TABLE members IS
+'This is used for keepin track of the tillgodolista.
+See `book_accounts`.';
+
+CREATE TYPE BOOK_ACCOUNT_TYPE AS ENUM ('expenses', 'assets', 'liabilities', 'revenue');
+
+CREATE TABLE book_accounts (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    account_type BOOK_ACCOUNT_TYPE NOT NULL,
+    creditor INTEGER UNIQUE REFERENCES members(id)
+        CHECK(creditor IS NULL OR account_type = 'liabilities'::BOOK_ACCOUNT_TYPE)
+);
+
+COMMENT ON TABLE book_accounts IS
+'Accounts to be credited/debited by transactions.
+Used for book keeping and for keeping tillgodolistor.';
+
+COMMENT ON COLUMN book_accounts.account_type IS
+'Used for book keeping and for determining the effect of debiting/crediting the account.
+
+When looking at all accounts, the following will always hold true:
+  expenses + assets = liabilities + revenue
+
+Crediting an expenses/assets account will increase it,
+debiting a liabilities/revenue account will decrease it,
+and vice-versa.';
 
 CREATE TABLE inventory (
     id SERIAL PRIMARY KEY,
@@ -17,13 +50,17 @@ CREATE TABLE inventory_tags (
 
 CREATE TABLE transactions (
     id SERIAL PRIMARY KEY,
-    amount INTEGER NOT NULL,
     description TEXT,
-    time TIMESTAMP NOT NULL DEFAULT now()
+    time TIMESTAMP NOT NULL DEFAULT now(),
+    debited_account INTEGER NOT NULL REFERENCES book_accounts(id),
+    credited_account INTEGER NOT NULL REFERENCES book_accounts(id)
+        CHECK (debited_account != credited_account),
+    amount INTEGER NOT NULL CHECK (amount >= 0)
 );
 
 COMMENT ON COLUMN transactions.amount IS
-    'The amount of money that was transferred in the transaction';
+'The amount of money that was transferred in the transaction.
+This is stored as the smallest possible fraction for the desired currency. e.g. Öre.';
 
 CREATE TABLE transaction_bundles (
     id SERIAL PRIMARY KEY,
@@ -34,9 +71,9 @@ CREATE TABLE transaction_bundles (
 );
 
 COMMENT ON TABLE transaction_bundles IS
-    'A bundle of items in a transaction. For single items or groups of items that are sold as a package.';
+'A bundle of items in a transaction. For single items or groups of items that are sold as a package.';
 COMMENT ON COLUMN transaction_bundles.price IS
-    'The actual price of the item bundle in this transaction. For human reference only.';
+'The actual price of the item bundle in this transaction. For human reference only.';
 
 CREATE TABLE transaction_items (
     id SERIAL PRIMARY KEY,
@@ -44,8 +81,7 @@ CREATE TABLE transaction_items (
     item_id INTEGER NOT NULL REFERENCES inventory(id)
 );
 
-COMMENT ON TABLE transaction_items IS
-    'Individual items in a tansaction bundle.';
+COMMENT ON TABLE transaction_items IS 'Individual items in a tansaction bundle.';
 
 CREATE TABLE inventory_bundles (
     id SERIAL PRIMARY KEY,
@@ -64,17 +100,7 @@ CREATE TABLE inventory_bundle_items (
     item_id INTEGER NOT NULL REFERENCES inventory(id)
 );
 
-COMMENT ON TABLE transaction_items IS
-    'Individual items in an inventory bundle.';
-
-CREATE FUNCTION transaction_balance() RETURNS INTEGER AS $$
-    SELECT COALESCE(SUM(amount)::INTEGER, 0) FROM transactions;
-$$ language sql;
-
-CREATE VIEW transactions_joined AS
-SELECT tr.*, b.id as bundle_id, b.description as bundle_description, b.price as bundle_price, b.change, i.item_id FROM transactions AS tr
-    LEFT JOIN transaction_bundles AS b ON tr.id = b.transaction_id
-    LEFT JOIN transaction_items as i ON b.id = i.bundle_id;
+COMMENT ON TABLE transaction_items IS 'Individual items in an inventory bundle.';
 
 -- Show the number of inventory items in stock by counting added
 -- transaction_items and subtracting removed transaction_items.
@@ -95,17 +121,14 @@ $$;
 CREATE TRIGGER refresh_inventory_stock
 AFTER INSERT OR UPDATE OR DELETE OR TRUNCATE
 ON inventory
-FOR EACH STATEMENT
 EXECUTE PROCEDURE refresh_inventory_stock();
 
 CREATE TRIGGER refresh_inventory_stock
 AFTER INSERT OR UPDATE OR DELETE OR TRUNCATE
 ON transaction_bundles
-FOR EACH STATEMENT
 EXECUTE PROCEDURE refresh_inventory_stock();
 
 CREATE TRIGGER refresh_inventory_stock
 AFTER INSERT OR UPDATE OR DELETE OR TRUNCATE
 ON transaction_items
-FOR EACH STATEMENT
 EXECUTE PROCEDURE refresh_inventory_stock();
