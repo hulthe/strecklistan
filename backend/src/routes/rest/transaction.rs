@@ -122,47 +122,39 @@ pub fn get_transactions(
 
     let transactions: Vec<object::Transaction> = joined
         .into_iter()
-        .group_by(|(_, _, i)| i.as_ref().map(|i| i.bundle_id))
+        .group_by(|(tr, _, _)| tr.id)
         .into_iter()
         .map(|(_, mut xs)| {
             let (t0, b0, i0) = xs.next().unwrap();
 
-            let bundle = match b0 {
-                Some(bundle) => {
-                    let mut item_ids = HashMap::new();
-                    std::iter::once(i0)
-                        .chain(xs.map(|(_, _, i)| i))
-                        .flatten()
-                        .for_each(|i| *item_ids.entry(i.item_id).or_default() += 1);
-
-                    Some(object::TransactionBundle {
-                        description: bundle.description,
-                        price: bundle.price,
-                        change: bundle.change,
-                        item_ids,
-                    })
-                }
-                None => None,
-            };
-
-            (t0, bundle)
-        })
-        .group_by(|(t, _)| t.id)
-        .into_iter()
-        .map(|(_, mut xs)| {
-            let (tf, bf) = xs.next().unwrap();
-
             object::Transaction {
-                id: tf.id,
-                description: tf.description,
-                time: tf.time,
-                bundles: std::iter::once(bf)
-                    .chain(xs.map(|(_, bf)| bf))
+                id: t0.id,
+                description: t0.description,
+                time: t0.time,
+                debited_account: t0.debited_account,
+                credited_account: t0.credited_account,
+                amount: t0.amount,
+                bundles: std::iter::once(b0.map(|b0| (b0, i0)))
+                    .chain(xs.map(|(_, bx, ix)| bx.map(|bx| (bx, ix))))
                     .flatten()
+                    .group_by(|(bx, _)| bx.id)
+                    .into_iter()
+                    .map(|(_, mut xs)| {
+                        let (bundle, i0) = xs.next().unwrap();
+                        let mut item_ids = HashMap::new();
+                        std::iter::once(i0)
+                            .chain(xs.map(|(_, ix)| ix))
+                            .flatten()
+                            .for_each(|i| *item_ids.entry(i.item_id).or_default() += 1);
+
+                        object::TransactionBundle {
+                            description: bundle.description,
+                            price: bundle.price,
+                            change: bundle.change,
+                            item_ids,
+                        }
+                    })
                     .collect(),
-                debited_account: tf.debited_account,
-                credited_account: tf.credited_account,
-                amount: tf.amount,
             }
         })
         .collect();
