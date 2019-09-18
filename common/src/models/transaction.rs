@@ -1,3 +1,4 @@
+use crate::currency::Currency;
 use chrono::NaiveDateTime;
 use std::collections::HashMap;
 
@@ -12,7 +13,7 @@ pub struct NewTransaction {
     pub bundles: Vec<TransactionBundle>,
     pub debited_account: i32,
     pub credited_account: i32,
-    pub amount: i32,
+    pub amount: Currency,
 }
 
 #[cfg_attr(feature = "serde_impl", derive(Serialize, Deserialize))]
@@ -25,7 +26,7 @@ pub struct Transaction {
     pub bundles: Vec<TransactionBundle>,
     pub debited_account: i32,
     pub credited_account: i32,
-    pub amount: i32,
+    pub amount: Currency,
 }
 
 impl PartialEq for Transaction {
@@ -41,7 +42,7 @@ impl Eq for Transaction {}
 #[derive(Clone, PartialEq, Eq)]
 pub struct TransactionBundle {
     pub description: Option<String>,
-    pub price: Option<i32>,
+    pub price: Option<Currency>,
     pub change: i32,
     pub item_ids: HashMap<i32, u32>,
 }

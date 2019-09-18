@@ -46,7 +46,7 @@ pub fn get_inventory_bundles(
             InventoryBundleObj {
                 id: bundle.id,
                 name: bundle.name,
-                price: bundle.price,
+                price: bundle.price.into(),
                 item_ids: std::iter::once(item)
                     .chain(elements.map(|(_, item)| item))
                     .flatten() // Remove None:s

@@ -28,7 +28,7 @@ pub fn post_transaction(
         time: None,
         debited_account,
         credited_account,
-        amount: amount,
+        amount: amount.into(),
     };
 
     connection.transaction::<_, SJ, _>(|| {
@@ -44,7 +44,7 @@ pub fn post_transaction(
             let new_bundle = relational::NewTransactionBundle {
                 transaction_id,
                 description: bundle.description,
-                price: bundle.price,
+                price: bundle.price.map(|p| p.into()),
                 change: bundle.change,
             };
 
@@ -133,7 +133,7 @@ pub fn get_transactions(
                 time: t0.time,
                 debited_account: t0.debited_account,
                 credited_account: t0.credited_account,
-                amount: t0.amount,
+                amount: t0.amount.into(),
                 bundles: std::iter::once(b0.map(|b0| (b0, i0)))
                     .chain(xs.map(|(_, bx, ix)| bx.map(|bx| (bx, ix))))
                     .flatten()
@@ -149,7 +149,7 @@ pub fn get_transactions(
 
                         object::TransactionBundle {
                             description: bundle.description,
-                            price: bundle.price,
+                            price: bundle.price.map(|p| p.into()),
                             change: bundle.change,
                             item_ids,
                         }

@@ -13,6 +13,8 @@ diesel-derive-enum = { version = "0.4", features = ["postgres"], optional = true
 serde = { version = "1", optional = true }
 serde_derive = { version = "1", optional = true }
 getset = "0.0.7"
+regex = "1"
+lazy_static = "1"
 
 [features]
 default = ["serde_impl", "debug", "hash"]

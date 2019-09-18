@@ -7,9 +7,10 @@
 - [x] Radera transaktioner
 - [x] Paketvaror i databasen
 - [x] Paketvaror i gränssnittet
-- [ ] Tillgodolista
-- [ ] Mobilanpassning
-- [ ] Deploy på digITs servrar
+- [x] Tillgodolista
+- [x] Mobilanpassning
+- [x] Ören
+- [x] Deploy på digITs servrar
 - [ ] Sätt upp backups (streaming replication hade varit nice)
 - [ ] Automatiska rabatter för specificerade kombinationer av varor/paket
 - [ ] Manuellt ändra pris på vara/paket i pågående transaktion

@@ -1,3 +1,5 @@
+use crate::currency::Currency;
+
 #[cfg(feature = "diesel_impl")]
 use diesel_derives::Queryable;
 
@@ -73,7 +75,7 @@ pub struct InventoryItemTag {
 pub struct InventoryBundle {
     pub id: i32,
     pub name: String,
-    pub price: i32,
+    pub price: Currency,
     pub item_ids: Vec<i32>,
 }
 
