@@ -31,6 +31,15 @@ pub struct BookAccount {
 
 #[cfg_attr(feature = "serde_impl", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "debug", derive(Debug))]
+#[derive(PartialEq, Clone)]
+pub struct NewBookAccount {
+    pub name: String,
+    pub account_type: BookAccountType,
+    pub creditor: Option<i32>,
+}
+
+#[cfg_attr(feature = "serde_impl", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "debug", derive(Debug))]
 #[derive(Clone)]
 pub struct MasterAccounts {
     pub bank_account_id: i32,

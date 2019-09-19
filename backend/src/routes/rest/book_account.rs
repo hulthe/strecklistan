@@ -3,8 +3,8 @@ use crate::models::book_account as relational;
 use crate::models::transaction::relational::Transaction;
 use crate::util::status_json::StatusJson as SJ;
 use diesel::prelude::*;
-use laggit_api::book_account::{BookAccount, BookAccountType, MasterAccounts};
-use rocket::{get, State};
+use laggit_api::book_account::{BookAccount, BookAccountType, MasterAccounts, NewBookAccount};
+use rocket::{get, post, State};
 use rocket_contrib::json::Json;
 use std::collections::HashMap;
 
@@ -37,6 +37,22 @@ pub fn get_accounts(db_pool: State<DatabasePool>) -> Result<Json<Vec<BookAccount
     }
 
     Ok(Json(accounts.into_iter().map(|(_, acc)| acc).collect()))
+}
+
+#[post("/book_account", data = "<account>")]
+pub fn add_account(
+    db_pool: State<DatabasePool>,
+    account: Json<NewBookAccount>) -> Result<Json<i32>, SJ> {
+    let connection = db_pool.inner().get()?;
+
+    use crate::schema::tables::book_accounts::dsl::*;
+
+    Ok(Json(diesel::insert_into(book_accounts)
+        .values((name.eq(&account.name),
+                 account_type.eq(&account.account_type),
+                 creditor.eq(&account.creditor)))
+        .returning(id)
+        .get_result(&connection)?))
 }
 
 #[get("/book_accounts/masters")]

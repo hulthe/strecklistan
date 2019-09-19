@@ -105,6 +105,7 @@ fn main() {
                 rest::transaction::delete_transaction,
                 rest::book_account::get_accounts,
                 rest::book_account::get_master_accounts,
+                rest::book_account::add_account,
                 rest::member::get_members,
                 graphql::post_graphql_handler_auth,
                 graphql::post_graphql_handler,
