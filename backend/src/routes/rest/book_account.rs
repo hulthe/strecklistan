@@ -30,10 +30,10 @@ pub fn get_accounts(db_pool: State<DatabasePool>) -> Result<Json<Vec<BookAccount
     for tr in transactions.iter() {
         accounts
             .get_mut(&tr.credited_account)
-            .map(|acc| acc.credit(tr.amount));
+            .map(|acc| acc.credit(tr.amount.into()));
         accounts
             .get_mut(&tr.debited_account)
-            .map(|acc| acc.debit(tr.amount));
+            .map(|acc| acc.debit(tr.amount.into()));
     }
 
     Ok(Json(accounts.into_iter().map(|(_, acc)| acc).collect()))

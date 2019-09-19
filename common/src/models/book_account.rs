@@ -1,3 +1,5 @@
+use crate::currency::Currency;
+
 #[cfg(feature = "diesel_impl")]
 use {diesel_derive_enum::DbEnum, diesel_derives::Queryable};
 
@@ -24,7 +26,7 @@ pub struct BookAccount {
     pub name: String,
     pub account_type: BookAccountType,
     pub creditor: Option<i32>,
-    pub balance: i32,
+    pub balance: Currency,
 }
 
 #[cfg_attr(feature = "serde_impl", derive(Serialize, Deserialize))]
@@ -38,11 +40,12 @@ pub struct MasterAccounts {
 }
 
 impl BookAccount {
-    pub fn credit(&mut self, amount: i32) {
+    pub fn credit(&mut self, amount: Currency) {
+        // TODO: Impl neg
         self.debit(-amount);
     }
 
-    pub fn debit(&mut self, amount: i32) {
+    pub fn debit(&mut self, amount: Currency) {
         let amount = match self.account_type {
             BookAccountType::Expenses | BookAccountType::Assets => amount,
             BookAccountType::Liabilities | BookAccountType::Revenue => -amount,

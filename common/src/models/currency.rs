@@ -1,6 +1,6 @@
 use regex::Regex;
 use std::fmt::{self, Display};
-use std::ops::{Add, AddAssign, Sub, SubAssign};
+use std::ops::{Add, AddAssign, Neg, Sub, SubAssign};
 use std::str::FromStr;
 
 #[cfg(feature = "serde_impl")]
@@ -48,6 +48,13 @@ impl Sub for Currency {
 impl SubAssign for Currency {
     fn sub_assign(&mut self, other: Self) {
         self.0 -= other.0;
+    }
+}
+
+impl Neg for Currency {
+    type Output = Self;
+    fn neg(self) -> Self {
+        Currency(-self.0)
     }
 }
 

@@ -16,7 +16,7 @@ impl Into<BookAccountCommon> for BookAccount {
             name: self.name,
             account_type: self.account_type,
             creditor: self.creditor,
-            balance: 0,
+            balance: 0.into(),
         }
     }
 }
