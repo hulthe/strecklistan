@@ -47,6 +47,7 @@ COPY public.members (id, nickname, first_name, last_name) FROM stdin;
 1	tux	Jokke	Boi
 2	Fläkt	Steffe	Pojk
 3	Santa	T-rex	Glassssmak
+4	NaN	Karl	Wikström
 \.
 SELECT setval('members_id_seq', 4, true);
 
@@ -58,8 +59,9 @@ COPY public.book_accounts (id, name, account_type, creditor) FROM stdin;
 5	Tillgodo/tux	liabilities	1
 6	Tillgodo/Fläkt	liabilities	2
 7	Tillgodo/Santa	liabilities	3
+8	Tillgodo/NaN	liabilities	4
 \.
-SELECT setval('book_accounts_id_seq', 8, true);
+SELECT setval('book_accounts_id_seq', 9, true);
 
 -- Add inventory index
 COPY public.inventory (id, price, name) FROM stdin;
@@ -159,6 +161,7 @@ COPY public.transactions (id, description, debited_account, credited_account, am
 2	Försäljning	5	3	8
 3	Försäljning	1	3	4
 4	Insättning	1	5	99
+5	Insättning	1	8	99
 \.
 SELECT setval('transactions_id_seq', 5, true);
 
