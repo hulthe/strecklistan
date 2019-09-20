@@ -395,7 +395,7 @@
 }
 
 .debug_banner {
-    background-image: repeating-linear-gradient(30deg, yellow, yellow 30px, #666 30px, #666 60px);
+    background-image: repeating-linear-gradient(30deg, yellow, yellow 13px, #666 15px, #666 43px, yellow 45px, yellow 60px);
     font-weight: bold;
     color: red;
 }

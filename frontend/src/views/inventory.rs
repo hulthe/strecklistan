@@ -11,11 +11,13 @@ use staticvec::*;
 pub fn view_inventory_item(
     item: &InventoryItemStock,
     highlight_chars: impl IntoIterator<Item = usize>,
+    add_item_ev: impl FnOnce(i32, i32) -> Msg,
 ) -> Node<Msg> {
     let mut highlights = highlight_chars.into_iter().peekable();
     div![
         class![C.inventory_item],
-        simple_ev(Ev::Click, Msg::AddItemToNewTransaction(item.id, 1)),
+        simple_ev(Ev::Click, add_item_ev(item.id, 1)),
+        //simple_ev(Ev::Click, Msg::AddItemToNewTransaction(item.id, 1)),
         item.name
             .chars()
             .enumerate()
@@ -64,11 +66,12 @@ pub fn view_inventory_item(
 pub fn view_inventory_bundle(
     bundle: &InventoryBundle,
     highlight_chars: impl IntoIterator<Item = usize>,
+    add_bundle_ev: impl FnOnce(i32, i32) -> Msg,
 ) -> Node<Msg> {
     let mut highlights = highlight_chars.into_iter().peekable();
     div![
         class![C.inventory_bundle],
-        simple_ev(Ev::Click, Msg::AddBundleToNewTransaction(bundle.id, 1)),
+        simple_ev(Ev::Click, add_bundle_ev(bundle.id, 1)),
         bundle
             .name
             .chars()

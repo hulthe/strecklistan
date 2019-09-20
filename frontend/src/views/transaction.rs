@@ -76,7 +76,7 @@ pub fn view_transaction(
                     class![C.transaction_entry],
                     span![
                         class![C.transaction_entry_item_name],
-                        format!("{}x {}:", -bundle.change, name),
+                        format!("{}x {}", -bundle.change, name),
                     ],
                     span![
                         class![C.transaction_entry_item_price],
@@ -93,6 +93,9 @@ pub fn view_new_transaction(
     transaction: &NewTransaction,
     override_total: bool,
     inventory: &HashMap<i32, Rc<InventoryItem>>,
+    transaction_set_bundle_change_ev: impl FnOnce(usize, i32) -> Msg + Clone + 'static,
+    transaction_total_input_ev: impl FnOnce(String) -> Msg + Clone + 'static,
+    confirm_purchase_ev: Msg,
 ) -> Node<Msg> {
     div![
         class![C.new_transaction_view],
@@ -130,15 +133,14 @@ pub fn view_new_transaction(
                         class![C.new_transaction_bundle_amount_field],
                         attrs! { At::Value => -bundle.change },
                         attrs! { At::Type => "number" },
-                        input_ev(Ev::Input, move |input| Msg::SetNewTransactionBundleChange {
-                            bundle_index,
-                            change: -input.parse().unwrap_or(0),
-                        }),
+                        {
+                            let ev = transaction_set_bundle_change_ev.clone();
+                            input_ev(Ev::Input, move |input| {
+                                ev(bundle_index, -input.parse().unwrap_or(0))
+                            })
+                        },
                     ],
-                    span![
-                        class![C.transaction_entry_item_name],
-                        format!("x {}:", name),
-                    ],
+                    span![class![C.transaction_entry_item_name], format!("x {}", name),],
                     span![
                         class![C.transaction_entry_item_price],
                         format!("{}:-", price),
@@ -158,12 +160,12 @@ pub fn view_new_transaction(
                 } else {
                     attrs! { At::Style => "color: black;" }
                 },
-                input_ev(Ev::Input, Msg::NewTransactionTotalInput),
+                input_ev(Ev::Input, transaction_total_input_ev),
             ]
         },],
         button![
             class![C.wide_button, C.border_on_focus],
-            simple_ev(Ev::Click, Msg::StoreConfirmPurchase),
+            simple_ev(Ev::Click, confirm_purchase_ev),
             "Confirm Purchase",
         ],
     ]
