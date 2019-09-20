@@ -700,6 +700,8 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
 
 pub fn view(model: &Model) -> Vec<Node<Msg>> {
     vec![div![
+        #[cfg(debug_assertions)]
+        div![class!["debug_banner"],"DEBUG"],
         div![
             class![C.header],
             a!["home", class![C.header_link], attrs! {At::Href => "/"}],
