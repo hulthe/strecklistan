@@ -67,53 +67,53 @@ SELECT setval('book_accounts_id_seq', 9, true);
 COPY public.inventory (id, price, name) FROM stdin;
 01	\N	Algrens Bilar, Orginal
 02	\N	Banana Skids
-03	6	Chokladboll, Daim
-04	6	Chokladboll, Kokos
-05	6	Chokladboll, Pärlsocker
-06	12	Chokladrullar
-07	12	Chokladrullar, Daim
-08	12	Chokladrullar, Mint
-09	6	Djungelvrål
-10	12	Gott & Blandat
-11	6	Hallonlakritsskalle
-12	6	Haribo Nallar
-13	6	Haribo Persikor
-14	6	Jättesalt
-15	6	Kexchoklad
-16	12	Kinasnacks
-17	6	Lakrisal
-18	6	Lollipop Fruit
-19	6	Mars
-20	6	Nappar, Fruit
-21	6	Nappar, Kola
-22	6	Nappar, Lakrits
-23	6	Nappar, Zour
-24	3	Pingvinstång, Jordgubb
-25	3	Pingvinstång, Mint
-26	6	Tutti Frutti
-27	6	Wasa Sandwich
-28	12	Tyrkisk Peber
-29	6	ZOO Apor
-30	6	Coca-Cola
-31	6	Coca-Cola Vanilla
-32	6	Coca-Cola Zero
-33	6	Dr. Pepper
-34	6	Fanta
-35	6	Hallonsoda
-36	6	Loka, Citron
-37	6	Loka, Päron
-38	6	Mountaindew
-39	6	Pärondryck
-40	6	Ramlösa, Granatäpple
-41	6	Ramlösa, Hallon & björnbär
-42	6	Smakis, Päron
-43	6	Smakis, Äpple
-44	6	Sockerdricka
-45	6	Sprite, Citron
-46	6	Trocadero
-47	6	Zingo
-48	6	Zingo, Tropical
-49	6	Vimto
+03	600	Chokladboll, Daim
+04	600	Chokladboll, Kokos
+05	600	Chokladboll, Pärlsocker
+06	1200	Chokladrullar
+07	1200	Chokladrullar, Daim
+08	1200	Chokladrullar, Mint
+09	600	Djungelvrål
+10	1200	Gott & Blandat
+11	600	Hallonlakritsskalle
+12	600	Haribo Nallar
+13	600	Haribo Persikor
+14	600	Jättesalt
+15	600	Kexchoklad
+16	1200	Kinasnacks
+17	600	Lakrisal
+18	600	Lollipop Fruit
+19	600	Mars
+20	600	Nappar, Fruit
+21	600	Nappar, Kola
+22	600	Nappar, Lakrits
+23	600	Nappar, Zour
+24	300	Pingvinstång, Jordgubb
+25	300	Pingvinstång, Mint
+26	600	Tutti Frutti
+27	600	Wasa Sandwich
+28	1200	Tyrkisk Peber
+29	600	ZOO Apor
+30	600	Coca-Cola
+31	600	Coca-Cola Vanilla
+32	600	Coca-Cola Zero
+33	600	Dr. Pepper
+34	600	Fanta
+35	600	Hallonsoda
+36	600	Loka, Citron
+37	600	Loka, Päron
+38	600	Mountaindew
+39	600	Pärondryck
+40	600	Ramlösa, Granatäpple
+41	600	Ramlösa, Hallon & björnbär
+42	600	Smakis, Päron
+43	600	Smakis, Äpple
+44	600	Sockerdricka
+45	600	Sprite, Citron
+46	600	Trocadero
+47	600	Zingo
+48	600	Zingo, Tropical
+49	600	Vimto
 \.
 SELECT setval('inventory_id_seq', 50, true);
 
@@ -143,8 +143,8 @@ burkläsk	49
 
 -- Add inventory bundles
 COPY public.inventory_bundles (id, name, price) FROM stdin;
-1	Mat	25
-2	Banana Skids	2
+1	Mat	2500
+2	2st Banana Skids	200
 \.
 SELECT setval('inventory_bundles_id_seq', 3, true);
 
@@ -157,11 +157,11 @@ SELECT setval('inventory_bundle_items_id_seq', 3, true);
 
 -- Add some transactions
 COPY public.transactions (id, description, debited_account, credited_account, amount) FROM stdin;
-1	AxFood-inköp	4	1	500
-2	Försäljning	5	3	8
-3	Försäljning	1	3	4
-4	Insättning	1	5	99
-5	Insättning	1	8	99
+1	AxFood-inköp	4	1	50000
+2	Försäljning	5	3	800
+3	Försäljning	1	3	400
+4	Insättning	1	5	9900
+5	Insättning	1	8	9900
 \.
 SELECT setval('transactions_id_seq', 5, true);
 
