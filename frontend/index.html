@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <meta name="description" content="">
+
+    <link rel="icon" type="image/png" href="/public/favicon.png">
+    <link rel="icon" type="image/png" href="/public/favicon.png">
+    <link rel="stylesheet" href="/static/styles.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Ubuntu|Ubuntu+Mono&display=swap">
+    <link href="https://unpkg.com/tailwindcss@^1.0/dist/tailwind.min.css" rel="stylesheet">
+
+    <title>DrawIT</title>
+
+    </head>
+
+    <body>
+        <section id="app"></section>
+        <script type="module">
+            // https://rustwasm.github.io/docs/wasm-bindgen/examples/without-a-bundler.html
+            import init from '/pkg/package.js';
+            init('/pkg/package_bg.wasm');
+        </script>
+
+    </body>
+</html>

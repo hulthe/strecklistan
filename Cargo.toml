@@ -1,2 +1,12 @@
 [workspace]
-members = ["backend", "common"]
+members = ["backend", "common", "frontend"]
+
+[profile.dev]
+# Issue with const-generics
+incremental = false
+
+[profile.release]
+lto = true
+opt-level = 's'
+# Issue with const-generics
+incremental = false

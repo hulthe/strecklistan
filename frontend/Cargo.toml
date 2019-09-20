@@ -1,0 +1,53 @@
+[package]
+name = "laggit_web"
+version = "0.1.0"
+repository = ""
+authors = ["Joakim Hulthe <joakim@hulthe.net"]
+description = "The frontend of the LaggIT web page"
+readme = "./README.md"
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+seed = "^0.4.0"
+chrono = { version = "0.4.6", features = ["serde"] }
+cfg-if = "0.1.7"
+wasm-bindgen = "^0.2.45"
+strum = "0.15.0"
+strum_macros = "0.15.0"
+futures = "^0.1.26"
+itertools = "^0.8"
+staticvec = { version = "^0.3", default_features = false }
+serde = { version = "^1.0.90", features = ['derive'] }
+
+# Custom allocator. Smaller & slower than the default.
+wee_alloc = { version = "0.4.3", optional = true }
+
+# The `console_error_panic_hook` crate provides better debugging of panics by
+# logging them with `console.error`. This is great for development, but requires
+# all the `std::fmt` and `std::panicking` infrastructure, so isn't great for
+# code size when deploying.
+console_error_panic_hook = { version ="0.1.6", optional = true }
+
+[dependencies.laggit_api]
+path="../common"
+
+[dependencies.web-sys]
+version = "^0.3.19"
+features = [
+  "Document",
+  "Element",
+  "HtmlElement",
+  "Node",
+  "Window",
+  "CustomEvent"
+]
+
+[features]
+default = ["console_error_panic_hook"]
+
+[dev-dependencies]
+wasm-bindgen-test = "^0.2.45" # NOTE: keep in sync with wasm-bindgen version
+
