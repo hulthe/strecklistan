@@ -10,6 +10,7 @@ RUN rustup update
 # Build project
 WORKDIR /app
 COPY . .
+WORKDIR /app/backend
 RUN cargo build --release
 
 ########################
@@ -36,6 +37,6 @@ RUN apt-get update \
 COPY --from=build_stage /app/target/release/laggit_backend /usr/local/bin/
 
 # Copy database migrations
-COPY migrations /migrations
+COPY backend/migrations /migrations
 
 CMD /usr/local/bin/laggit_backend

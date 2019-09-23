@@ -407,8 +407,11 @@ pub fn view(model: &Model) -> Vec<Node<Msg>> {
     use crate::page::deposit::deposition_page;
     use crate::page::transactions::transactions_page;
     vec![div![
-        #[cfg(debug_assertions)]
-        div![class!["debug_banner"], "DEBUG"],
+        if cfg!(debug_assertions) {
+            div![class!["debug_banner"], "DEBUG"]
+        } else {
+            empty![]
+        },
         div![
             class![C.header],
             //a!["hem", class![C.header_link], attrs! {At::Href => "/"}],
