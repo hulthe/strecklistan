@@ -119,6 +119,11 @@
     transition: all 0.5s ease;
 }
 
+.accounting_page {
+    font-family: 'Ubuntu';
+    font-size: 2rem;
+}
+
 .transactions_page {
     display: flex;
     justify-content: center;

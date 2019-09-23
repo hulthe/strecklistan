@@ -72,6 +72,7 @@ impl AccountingPage {
             ]
         };
         div![
+            class!["accounting_page"],
             div![
                 input![
                     attrs! {At::Type => "date"},
