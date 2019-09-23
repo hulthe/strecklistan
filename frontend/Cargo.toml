@@ -1,6 +1,6 @@
 [package]
 name = "laggit_web"
-version = "0.4.0"
+version = "0.4.1"
 repository = ""
 authors = ["Joakim Hulthe <joakim@hulthe.net"]
 description = "The frontend of the LaggIT web page"
