@@ -6,7 +6,6 @@ mod page;
 mod util;
 mod views;
 
-use page::Page;
 use seed::{self, prelude::*};
 
 #[wasm_bindgen(start)]
@@ -14,8 +13,8 @@ pub fn run() -> Result<(), JsValue> {
     set_panic_hook();
 
     seed::App::build(
-        |_url, orders| {
-            orders.send_msg(app::Msg::ChangePage(Page::Root));
+        |url, orders| {
+            orders.send_msg(app::routes(url));
             app::fetch_data(orders);
             app::Model::default()
         },
