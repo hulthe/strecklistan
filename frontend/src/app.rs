@@ -2,6 +2,7 @@ use crate::fuzzy_search::FuzzySearch;
 use crate::generated::css_classes::C;
 use crate::models::{event::Event, user::Credentials};
 use crate::page::{
+    accounting::{AccountingMsg, AccountingPage},
     store::{StoreMsg, StorePage},
     Page,
 };
@@ -57,6 +58,7 @@ pub struct StateReady {
 pub enum State {
     Loading(StateLoading),
     Ready {
+        accounting_page: AccountingPage,
         store_page: StorePage,
         state: StateReady,
     },
@@ -112,6 +114,7 @@ pub enum Msg {
     Deposit,
     DepositSent(FetchObject<i32>),
 
+    AccountingMsg(AccountingMsg),
     StoreMsg(StoreMsg),
 
     DeleteTransaction(i32),
@@ -125,8 +128,9 @@ pub fn routes(url: Url) -> Msg {
         Msg::ChangePage(Page::Root)
     } else {
         match url.path[0].as_ref() {
-            "store" => Msg::ChangePage(Page::Store),
+            "accounting" => Msg::ChangePage(Page::Accounting),
             "deposit" => Msg::ChangePage(Page::Deposit),
+            "store" => Msg::ChangePage(Page::Store),
             "transactions" => Msg::ChangePage(Page::TransactionHistory),
             _ => Msg::ChangePage(Page::NotFound),
         }
@@ -261,6 +265,7 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                         };
                         State::Ready {
                             store_page: StorePage::new(&data),
+                            accounting_page: AccountingPage::new(&data),
                             state: data,
                         }
                     }
@@ -271,8 +276,22 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             }
         }
 
+        Msg::AccountingMsg(msg) => {
+            if let State::Ready {
+                state,
+                accounting_page,
+                ..
+            } = &mut model.state
+            {
+                accounting_page.update(msg, state, orders);
+            }
+        }
+
         Msg::StoreMsg(msg) => {
-            if let State::Ready { state, store_page } = &mut model.state {
+            if let State::Ready {
+                state, store_page, ..
+            } = &mut model.state
+            {
                 store_page.update(msg, state, orders);
             }
         }
@@ -392,9 +411,9 @@ pub fn view(model: &Model) -> Vec<Node<Msg>> {
         div![class!["debug_banner"], "DEBUG"],
         div![
             class![C.header],
-            a!["home", class![C.header_link], attrs! {At::Href => "/"}],
+            //a!["hem", class![C.header_link], attrs! {At::Href => "/"}],
             a![
-                "store",
+                "försäljning",
                 class![C.header_link],
                 attrs! {At::Href => "/store"}
             ],
@@ -404,13 +423,23 @@ pub fn view(model: &Model) -> Vec<Node<Msg>> {
                 attrs! {At::Href => "/deposit"}
             ],
             a![
-                "transactions",
+                "transaktioner",
                 class![C.header_link],
                 attrs! {At::Href => "/transactions"}
             ],
+            a![
+                "bokföring",
+                class![C.header_link],
+                attrs! {At::Href => "/accounting"}
+            ],
         ],
         match &model.state {
-            State::Ready { store_page, state } => match model.page {
+            State::Ready {
+                accounting_page,
+                store_page,
+                state,
+            } => match model.page {
+                Page::Accounting => accounting_page.view(state),
                 Page::Store => store_page.view(state),
                 Page::Deposit => deposition_page(state),
                 Page::TransactionHistory => transactions_page(state),

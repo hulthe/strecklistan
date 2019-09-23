@@ -1,3 +1,4 @@
+pub mod accounting;
 pub mod deposit;
 pub mod store;
 pub mod transactions;
@@ -6,6 +7,7 @@ pub mod transactions;
 pub enum Page {
     NotFound,
     Root,
+    Accounting,
     Store,
     Deposit,
     TransactionHistory,

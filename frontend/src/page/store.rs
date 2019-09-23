@@ -316,11 +316,11 @@ impl StorePage {
         });
     }
 
-    pub fn view(&self, data: &StateReady) -> Node<Msg> {
+    pub fn view(&self, global: &StateReady) -> Node<Msg> {
         let selected_bank_account =
-            data.master_accounts.bank_account_id == self.transaction.debited_account;
+            global.master_accounts.bank_account_id == self.transaction.debited_account;
         let selected_cash_account =
-            data.master_accounts.cash_account_id == self.transaction.debited_account;
+            global.master_accounts.cash_account_id == self.transaction.debited_account;
 
         div![
             class![C.store_page],
@@ -346,7 +346,8 @@ impl StorePage {
                             let s = if selected_cash_account || selected_bank_account {
                                 "Tillgodolista".into()
                             } else {
-                                data.book_accounts
+                                global
+                                    .book_accounts
                                     .get(&self.transaction.debited_account)
                                     .map(|acc| format!("{}: {}:-", acc.name, acc.balance))
                                     .unwrap_or("[MISSING]".into())
@@ -370,7 +371,7 @@ impl StorePage {
                             simple_ev(
                                 Ev::Click,
                                 Msg::StoreMsg(StoreMsg::DebitSelect(
-                                    data.master_accounts.bank_account_id
+                                    global.master_accounts.bank_account_id
                                 )),
                             ),
                             "Swish",
@@ -400,7 +401,7 @@ impl StorePage {
                             simple_ev(
                                 Ev::Click,
                                 Msg::StoreMsg(StoreMsg::DebitSelect(
-                                    data.master_accounts.cash_account_id
+                                    global.master_accounts.cash_account_id
                                 )),
                             ),
                             "Kontant",
@@ -448,7 +449,7 @@ impl StorePage {
             view_new_transaction(
                 &self.transaction,
                 self.override_transaction_total,
-                &data.inventory,
+                &global.inventory,
                 |bundle_index, change| Msg::StoreMsg(StoreMsg::SetNewTransactionBundleChange {
                     bundle_index,
                     change,
