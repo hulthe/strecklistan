@@ -4,6 +4,7 @@ use crate::models::{event::Event, user::Credentials};
 use crate::page::{
     accounting::{AccountingMsg, AccountingPage},
     store::{StoreMsg, StorePage},
+    transactions::{TransactionsMsg, TransactionsPage},
     Page,
 };
 use chrono::NaiveDateTime;
@@ -59,6 +60,7 @@ pub enum State {
     Loading(StateLoading),
     Ready {
         accounting_page: AccountingPage,
+        transactions_page: TransactionsPage,
         store_page: StorePage,
         state: StateReady,
     },
@@ -115,10 +117,8 @@ pub enum Msg {
     DepositSent(FetchObject<i32>),
 
     AccountingMsg(AccountingMsg),
+    TransactionsMsg(TransactionsMsg),
     StoreMsg(StoreMsg),
-
-    DeleteTransaction(i32),
-    TransactionDeleted(FetchObject<i32>),
 
     ReloadData,
 }
@@ -264,8 +264,9 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                             deposition_amount: 0.into(),
                         };
                         State::Ready {
-                            store_page: StorePage::new(&data),
                             accounting_page: AccountingPage::new(&data),
+                            transactions_page: TransactionsPage::new(&data),
+                            store_page: StorePage::new(&data),
                             state: data,
                         }
                     }
@@ -284,6 +285,17 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             } = &mut model.state
             {
                 accounting_page.update(msg, state, orders);
+            }
+        }
+
+        Msg::TransactionsMsg(msg) => {
+            if let State::Ready {
+                state,
+                transactions_page,
+                ..
+            } = &mut model.state
+            {
+                transactions_page.update(msg, state, orders);
             }
         }
 
@@ -378,23 +390,6 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             }
         }
 
-        Msg::DeleteTransaction(id) => {
-            orders.perform_cmd(
-                Request::new(format!("/api/transaction/{}", id))
-                    .method(Method::Delete)
-                    .fetch_json(Msg::TransactionDeleted),
-            );
-        }
-        Msg::TransactionDeleted(fetch_object) => match fetch_object.response() {
-            Ok(response) => {
-                log!(format!("Transaction {} deleted", response.data));
-                update(Msg::ReloadData, model, orders);
-            }
-            Err(e) => {
-                error!("Failed to delete transaction", e);
-            }
-        },
-
         Msg::ReloadData => {
             model.state = State::Loading(Default::default());
             fetch_data(orders);
@@ -405,7 +400,6 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
 
 pub fn view(model: &Model) -> Vec<Node<Msg>> {
     use crate::page::deposit::deposition_page;
-    use crate::page::transactions::transactions_page;
     vec![div![
         if cfg!(debug_assertions) {
             div![class!["debug_banner"], "DEBUG"]
@@ -439,13 +433,14 @@ pub fn view(model: &Model) -> Vec<Node<Msg>> {
         match &model.state {
             State::Ready {
                 accounting_page,
+                transactions_page,
                 store_page,
                 state,
             } => match model.page {
                 Page::Accounting => accounting_page.view(state),
                 Page::Store => store_page.view(state),
                 Page::Deposit => deposition_page(state),
-                Page::TransactionHistory => transactions_page(state),
+                Page::TransactionHistory => transactions_page.view(state),
                 Page::Root | Page::NotFound => {
                     div![class![C.not_found_message, C.unselectable], "404"]
                 }

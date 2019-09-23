@@ -1,93 +1,12 @@
 use crate::app::Msg;
 use crate::generated::css_classes::C;
-use laggit_api::book_account::BookAccount;
 use laggit_api::inventory::InventoryItemStock as InventoryItem;
-use laggit_api::transaction::{NewTransaction, Transaction};
+use laggit_api::transaction::NewTransaction;
 use seed::prelude::*;
 use seed::*;
 use std::collections::HashMap;
 use std::ops::Deref;
 use std::rc::Rc;
-
-pub fn view_transaction(
-    transaction: &Transaction,
-    inventory: &HashMap<i32, Rc<InventoryItem>>,
-    book_accounts: &HashMap<i32, Rc<BookAccount>>,
-) -> Node<Msg> {
-    div![
-        class![C.transaction_view],
-        p![
-            span![format!("#{} ", transaction.id)],
-            span![transaction
-                .description
-                .as_ref()
-                .map(|s| s.as_str())
-                .unwrap_or("Transaktion")],
-            button![
-                class![C.transaction_view_delete_button],
-                simple_ev(Ev::Click, Msg::DeleteTransaction(transaction.id)),
-                "X"
-            ],
-        ],
-        p![
-            class![C.mt_2],
-            span!["Debet: "],
-            span![
-                class![C.font_bold],
-                book_accounts
-                    .get(&transaction.debited_account)
-                    .map(|acc| acc.name.as_str())
-                    .unwrap_or("[MISSING]")
-            ],
-        ],
-        p![
-            class![C.mt_2, C.mb_2],
-            span!["Kredit: "],
-            span![
-                class![C.font_bold],
-                book_accounts
-                    .get(&transaction.credited_account)
-                    .map(|acc| acc.name.as_str())
-                    .unwrap_or("[MISSING]")
-            ],
-        ],
-        transaction
-            .bundles
-            .iter()
-            .map(|bundle| {
-                let mut items = bundle.item_ids.keys().map(|id| &inventory[id]);
-
-                // TODO: Properly display more complicated bundles
-
-                let (item_name, item_price) = match items.next().map(|rc| rc.deref()) {
-                    None => (None, 0),
-                    Some(InventoryItem { name, price, .. }) => {
-                        (Some(name.as_str()), price.unwrap_or(0))
-                    }
-                };
-
-                let name = bundle
-                    .description
-                    .as_ref()
-                    .map(|s| s.as_str())
-                    .unwrap_or(item_name.unwrap_or("[NAMN SAKNAS]"));
-                let price = bundle.price.unwrap_or(item_price.into());
-                p![
-                    class![C.transaction_entry],
-                    span![
-                        class![C.transaction_entry_item_name],
-                        format!("{}x {}", -bundle.change, name),
-                    ],
-                    span![
-                        class![C.transaction_entry_item_price],
-                        format!("{}:-", price),
-                    ],
-                ]
-            })
-            .collect::<Vec<_>>(),
-        p![format!("Totalt: {}:-", transaction.amount)],
-    ]
-}
 
 pub fn view_new_transaction(
     transaction: &NewTransaction,

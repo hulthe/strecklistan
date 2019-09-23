@@ -332,15 +332,25 @@
     font-family: 'Ubuntu Mono', monospace;
     font-size: 24px;
     align-self: center;
+    border-bottom: solid black;
+}
+
+.transaction_page_show_delete {
+    margin-left: auto;
+    margin-right: auto;
+    background-color: #fdc;
+    padding: 0.2rem;
+    border-radius: 0.2rem;
+    font-size: 1.2rem;
+    font-family: 'Ubuntu';
 }
 
 .transaction_view_delete_button {
     float: right;
     border: black solid thin;
     border-radius: 0.2rem;
-    padding: 0.1rem;
-    padding-left: 0.4rem;
-    padding-right: 0.4rem;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
     background-color: red;
     color: white;
 }
