@@ -1,3 +1,5 @@
+#![deny(unreachable_patterns)]
+
 mod app;
 mod fuzzy_search;
 mod generated;

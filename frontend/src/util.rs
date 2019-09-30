@@ -1,3 +1,8 @@
+use crate::fuzzy_search::FuzzySearch;
+use laggit_api::book_account::BookAccount;
+use laggit_api::member::Member;
+use std::rc::Rc;
+
 /// Compare a base string to a user-input search
 ///
 /// Returns a tuple of the match score, as well as the indices of every char in `search` which maps
@@ -29,4 +34,18 @@ pub fn compare_fuzzy(base: &str, search: &str) -> (i32, Vec<(usize, usize)>) {
     }
 
     (score, matches)
+}
+
+pub fn sort_tillgodolista_search(
+    search: &str,
+    list: &mut Vec<(i32, Vec<(usize, usize)>, Rc<BookAccount>, Rc<Member>)>,
+) {
+    for (score, matches, acc, _) in list.iter_mut() {
+        let (s, m) = acc.compare_fuzzy(search);
+        *score = s;
+        *matches = m;
+    }
+    list.sort_by(|(scr_a, _, acc_a, _), (scr_b, _, acc_b, _)| {
+        scr_b.cmp(scr_a).then(acc_a.id.cmp(&acc_b.id))
+    });
 }

@@ -1,8 +1,8 @@
-use crate::fuzzy_search::FuzzySearch;
 use crate::generated::css_classes::C;
-use crate::models::{event::Event, user::Credentials};
+use crate::models::event::Event;
 use crate::page::{
     accounting::{AccountingMsg, AccountingPage},
+    deposit::{DepositionMsg, DepositionPage},
     store::{StoreMsg, StorePage},
     transactions::{TransactionsMsg, TransactionsPage},
     Page,
@@ -11,15 +11,15 @@ use chrono::NaiveDateTime;
 use futures::Future;
 use laggit_api::{
     book_account::{BookAccount, MasterAccounts},
-    currency::Currency,
     inventory::{InventoryBundle, InventoryItemStock as InventoryItem},
     member::Member,
-    transaction::{NewTransaction, Transaction},
+    transaction::Transaction,
 };
 use seed::prelude::*;
 use seed::{fetch::FetchObject, *};
 use std::collections::BTreeMap;
 use std::collections::HashMap;
+use std::fmt::Debug;
 use std::rc::Rc;
 use web_sys;
 
@@ -47,12 +47,6 @@ pub struct StateReady {
 
     pub inventory: HashMap<i32, Rc<InventoryItem>>,
     pub bundles: HashMap<i32, Rc<InventoryBundle>>,
-
-    pub deposition_credit_account: Option<i32>,
-    pub deposition_use_cash: bool,
-    pub deposition_search_string: String,
-    pub deposition_search: Vec<(i32, Vec<(usize, usize)>, Rc<BookAccount>, Rc<Member>)>,
-    pub deposition_amount: Currency,
 }
 
 #[derive(Clone)]
@@ -60,17 +54,16 @@ pub enum State {
     Loading(StateLoading),
     Ready {
         accounting_page: AccountingPage,
+        deposition_page: DepositionPage,
         transactions_page: TransactionsPage,
         store_page: StorePage,
         state: StateReady,
     },
+    LoadingFailed(String, String),
 }
 
 pub struct Model {
     pub page: Page,
-    pub show_login_box: bool,
-    pub token: Option<String>,
-    pub credentials: Credentials,
     pub state: State,
 }
 
@@ -78,12 +71,6 @@ impl Default for Model {
     fn default() -> Self {
         Self {
             page: Page::Root,
-            show_login_box: false,
-            token: None,
-            credentials: Credentials {
-                name: String::new(),
-                pass: String::new(),
-            },
             state: State::Loading(Default::default()),
         }
     }
@@ -108,15 +95,8 @@ pub enum Msg {
 
     KeyPressed(web_sys::KeyboardEvent),
 
-    DepositSearchDebit(String),
-    DepositCreditKeyDown(web_sys::KeyboardEvent),
-    DepositCreditSelect(i32),
-    DepositUseCash(bool),
-    DepositSetAmount(String),
-    Deposit,
-    DepositSent(FetchObject<i32>),
-
     AccountingMsg(AccountingMsg),
+    DepositionMsg(DepositionMsg),
     TransactionsMsg(TransactionsMsg),
     StoreMsg(StoreMsg),
 
@@ -130,25 +110,11 @@ pub fn routes(url: Url) -> Msg {
         match url.path[0].as_ref() {
             "accounting" => Msg::ChangePage(Page::Accounting),
             "deposit" => Msg::ChangePage(Page::Deposit),
-            "store" => Msg::ChangePage(Page::Store),
+            "" | "store" => Msg::ChangePage(Page::Store),
             "transactions" => Msg::ChangePage(Page::TransactionHistory),
             _ => Msg::ChangePage(Page::NotFound),
         }
     }
-}
-
-fn sort_tillgodolista_search(
-    search: &str,
-    list: &mut Vec<(i32, Vec<(usize, usize)>, Rc<BookAccount>, Rc<Member>)>,
-) {
-    for (score, matches, acc, _) in list.iter_mut() {
-        let (s, m) = acc.compare_fuzzy(search);
-        *score = s;
-        *matches = m;
-    }
-    list.sort_by(|(scr_a, _, acc_a, _), (scr_b, _, acc_b, _)| {
-        scr_b.cmp(scr_a).then(acc_a.id.cmp(&acc_b.id))
-    });
 }
 
 // Vec<Item> -> HashMap<Item::id, Rc<Item>>
@@ -160,6 +126,14 @@ macro_rules! vec_id_to_map {
     };
 }
 
+macro_rules! fwd_child_msg {
+    ($state:expr, $page:ident, $msg:expr, $orders:expr) => {
+        if let State::Ready { state, $page, .. } = &mut $state {
+            $page.update($msg, state, $orders);
+        }
+    };
+}
+
 pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
     match msg {
         Msg::ChangePage(page) => {
@@ -167,239 +141,116 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         }
 
         Msg::Fetched(msg) => {
-            if let State::Loading(data) = &mut model.state {
-                match msg {
-                    FetchMsg::Events(fetch_object) => match fetch_object.response() {
-                        Ok(response) => {
-                            let mut events: BTreeMap<NaiveDateTime, Vec<Event>> = BTreeMap::new();
-                            for event in response.data {
-                                events.entry(event.start_time).or_default().push(event)
+            fn handle_fetch<T: Debug>(
+                model: &mut Model,
+                fetch: FetchObject<T>,
+                errid: &str,
+                handler: impl FnOnce(T, &mut StateLoading),
+            ) {
+                match fetch.response() {
+                    Ok(response) => {
+                        match &mut model.state {
+                            State::Loading(data) => {
+                                handler(response.data, data);
+                                model.state = match data {
+                                    StateLoading {
+                                        book_accounts: Some(book_accounts),
+                                        master_accounts: Some(master_accounts),
+                                        transaction_history: Some(transaction_history),
+                                        inventory: Some(inventory),
+                                        bundles: Some(bundles),
+                                        events: Some(events),
+                                        members: Some(members),
+                                    } => {
+                                        let data = StateReady {
+                                            book_accounts: book_accounts.clone(),
+                                            master_accounts: master_accounts.clone(),
+                                            transaction_history: transaction_history.clone(),
+                                            inventory: inventory.clone(),
+                                            bundles: bundles.clone(),
+                                            events: events.clone(),
+                                            members: members.clone(),
+                                        };
+                                        State::Ready {
+                                            accounting_page: AccountingPage::new(&data),
+                                            deposition_page: DepositionPage::new(&data),
+                                            transactions_page: TransactionsPage::new(&data),
+                                            store_page: StorePage::new(&data),
+                                            state: data,
+                                        }
+                                    }
+                                    // TODO: Remove clone
+                                    still_loading => State::Loading(still_loading.clone()),
+                                };
                             }
-                            data.events = Some(events);
-                        }
-                        Err(e) => {
-                            error!("Failed to fetch events", e);
-                        }
-                    },
-                    FetchMsg::Inventory(fetch_object) => match fetch_object.response() {
-                        Ok(response) => {
-                            data.inventory = Some(vec_id_to_map!(response.data));
-                        }
-                        Err(e) => {
-                            error!("Failed to fetch inventory", e);
-                        }
-                    },
-                    FetchMsg::Bundles(fetch_object) => match fetch_object.response() {
-                        Ok(response) => {
-                            data.bundles = Some(vec_id_to_map!(response.data));
-                        }
-                        Err(e) => {
-                            error!("Failed to fetch transaction history", e);
-                        }
-                    },
-                    FetchMsg::Transactions(fetch_object) => match fetch_object.response() {
-                        Ok(response) => {
-                            data.transaction_history = Some(response.data);
-                        }
-                        Err(e) => {
-                            error!("Failed to fetch transaction history", e);
-                        }
-                    },
-                    FetchMsg::BookAccounts(fetch_object) => match fetch_object.response() {
-                        Ok(response) => {
-                            data.book_accounts = Some(vec_id_to_map!(response.data));
-                        }
-                        Err(e) => {
-                            error!("Failed to fetch book-accounts", e);
-                        }
-                    },
-                    FetchMsg::MasterAccounts(fetch_object) => match fetch_object.response() {
-                        Ok(response) => {
-                            data.master_accounts = Some(response.data);
-                        }
-                        Err(e) => {
-                            error!("Failed to fetch master book-accounts", e);
-                        }
-                    },
-                    FetchMsg::Members(fetch_object) => match fetch_object.response() {
-                        Ok(response) => {
-                            data.members = Some(vec_id_to_map!(response.data));
-                        }
-                        Err(e) => {
-                            error!("Failed to fetch master book-accounts", e);
-                        }
-                    },
-                }
-
-                model.state = match data {
-                    StateLoading {
-                        book_accounts: Some(book_accounts),
-                        master_accounts: Some(master_accounts),
-                        transaction_history: Some(transaction_history),
-                        inventory: Some(inventory),
-                        bundles: Some(bundles),
-                        events: Some(events),
-                        members: Some(members),
-                    } => {
-                        let accounts_search_list: Vec<_> = book_accounts
-                            .values()
-                            .filter_map(|acc| acc.creditor.map(|id| (acc, id)))
-                            .filter_map(|(acc, id)| {
-                                members.get(&id).cloned().map(|creditor| (acc, creditor))
-                            })
-                            .map(|(acc, creditor)| (0, vec![], acc.clone(), creditor))
-                            .collect();
-                        let data = StateReady {
-                            book_accounts: book_accounts.clone(),
-                            master_accounts: master_accounts.clone(),
-                            transaction_history: transaction_history.clone(),
-                            inventory: inventory.clone(),
-                            bundles: bundles.clone(),
-                            events: events.clone(),
-                            members: members.clone(),
-                            deposition_credit_account: None,
-                            deposition_use_cash: false,
-                            deposition_search: accounts_search_list.clone(),
-                            deposition_search_string: String::new(),
-                            deposition_amount: 0.into(),
-                        };
-                        State::Ready {
-                            accounting_page: AccountingPage::new(&data),
-                            transactions_page: TransactionsPage::new(&data),
-                            store_page: StorePage::new(&data),
-                            state: data,
+                            State::LoadingFailed(_, _) => {}
+                            State::Ready { .. } => {
+                                error!("Tried to load an aspect of the page while already loaded");
+                            }
                         }
                     }
-                    still_loading => State::Loading(still_loading.clone()),
-                };
-            } else {
-                error!("Incorrect state for loading data.")
+                    Err(e) => {
+                        error!(format!("Failed to fetch {}", errid), e);
+                        model.state = State::LoadingFailed(
+                            format!("Failed to fetch {}.", errid),
+                            format!("{:#?}", e),
+                        );
+                    }
+                }
+            }
+
+            use FetchMsg::*;
+            match msg {
+                Events(fetch) => handle_fetch(model, fetch, "event", |data, s| {
+                    let mut events: BTreeMap<NaiveDateTime, Vec<Event>> = BTreeMap::new();
+                    for event in data {
+                        events.entry(event.start_time).or_default().push(event)
+                    }
+                    s.events = Some(events);
+                }),
+                Inventory(fetch) => handle_fetch(model, fetch, "inventory", |data, s| {
+                    s.inventory = Some(vec_id_to_map!(data));
+                }),
+                Bundles(fetch) => handle_fetch(model, fetch, "bundles", |data, s| {
+                    s.bundles = Some(vec_id_to_map!(data));
+                }),
+                Transactions(fetch) => handle_fetch(model, fetch, "transactions", |data, s| {
+                    s.transaction_history = Some(data);
+                }),
+                BookAccounts(fetch) => handle_fetch(model, fetch, "book-accounts", |data, s| {
+                    s.book_accounts = Some(vec_id_to_map!(data));
+                }),
+                MasterAccounts(fetch) => {
+                    handle_fetch(model, fetch, "master book-accounts", |data, s| {
+                        s.master_accounts = Some(data);
+                    })
+                }
+                Members(fetch) => handle_fetch(model, fetch, "members", |data, s| {
+                    s.members = Some(vec_id_to_map!(data));
+                }),
             }
         }
 
-        Msg::AccountingMsg(msg) => {
-            if let State::Ready {
-                state,
-                accounting_page,
-                ..
-            } = &mut model.state
-            {
-                accounting_page.update(msg, state, orders);
-            }
-        }
-
-        Msg::TransactionsMsg(msg) => {
-            if let State::Ready {
-                state,
-                transactions_page,
-                ..
-            } = &mut model.state
-            {
-                transactions_page.update(msg, state, orders);
-            }
-        }
-
-        Msg::StoreMsg(msg) => {
-            if let State::Ready {
-                state, store_page, ..
-            } = &mut model.state
-            {
-                store_page.update(msg, state, orders);
-            }
-        }
+        Msg::DepositionMsg(msg) => fwd_child_msg!(model.state, deposition_page, msg, orders),
+        Msg::AccountingMsg(msg) => fwd_child_msg!(model.state, accounting_page, msg, orders),
+        Msg::TransactionsMsg(msg) => fwd_child_msg!(model.state, transactions_page, msg, orders),
+        Msg::StoreMsg(msg) => fwd_child_msg!(model.state, store_page, msg, orders),
 
         Msg::KeyPressed(ev) => {
             match ev.key().as_str() {
-                "Escape" => {
-                    model.show_login_box = false;
-                }
                 //key => log!(key),
                 _key => {}
-            }
-        }
-
-        Msg::DepositSearchDebit(search) => {
-            if let State::Ready { state, .. } = &mut model.state {
-                sort_tillgodolista_search(&search, &mut state.deposition_search);
-                state.deposition_search_string = search;
-            }
-        }
-        Msg::DepositCreditKeyDown(ev) => match ev.key().as_str() {
-            "Enter" => {
-                if let State::Ready { state, .. } = &mut model.state {
-                    if let Some((_, _, acc, _)) = state.deposition_search.first() {
-                        update(Msg::DepositCreditSelect(acc.id), model, orders)
-                    }
-                }
-            }
-            _ => {}
-        },
-        Msg::DepositCreditSelect(acc_id) => {
-            if let State::Ready { state, .. } = &mut model.state {
-                state.deposition_search_string = String::new();
-                state.deposition_credit_account = Some(acc_id);
-            }
-        }
-        Msg::DepositUseCash(use_cash) => {
-            if let State::Ready { state, .. } = &mut model.state {
-                state.deposition_use_cash = use_cash;
-            }
-        }
-        Msg::DepositSetAmount(amount) => {
-            if let State::Ready { state, .. } = &mut model.state {
-                state.deposition_amount = amount.parse().unwrap_or(0.into());
-            }
-        }
-        Msg::Deposit => {
-            if let State::Ready { state, .. } = &mut model.state {
-                if let Some(credit_acc) = state.deposition_credit_account {
-                    let transaction = NewTransaction {
-                        description: Some("Insättning".into()),
-                        amount: state.deposition_amount,
-                        credited_account: credit_acc,
-                        debited_account: if state.deposition_use_cash {
-                            state.master_accounts.cash_account_id
-                        } else {
-                            state.master_accounts.bank_account_id
-                        },
-                        bundles: vec![],
-                    };
-
-                    orders.perform_cmd(
-                        Request::new("/api/transaction")
-                            .method(Method::Post)
-                            .send_json(&transaction)
-                            .fetch_json(Msg::DepositSent),
-                    );
-                }
-            }
-        }
-        Msg::DepositSent(fetch_object) => {
-            if let State::Ready { state, .. } = &mut model.state {
-                match fetch_object.response() {
-                    Ok(response) => {
-                        log!("ID: ", response.data);
-                        state.deposition_amount = 0.into();
-                        state.deposition_credit_account = None;
-                        update(Msg::ReloadData, model, orders);
-                    }
-                    Err(e) => {
-                        error!("Failed to post deposit", e);
-                    }
-                }
             }
         }
 
         Msg::ReloadData => {
             model.state = State::Loading(Default::default());
             fetch_data(orders);
-            //orders.skip();
         }
     }
 }
 
 pub fn view(model: &Model) -> Vec<Node<Msg>> {
-    use crate::page::deposit::deposition_page;
     vec![div![
         if cfg!(debug_assertions) {
             div![class!["debug_banner"], "DEBUG"]
@@ -433,19 +284,31 @@ pub fn view(model: &Model) -> Vec<Node<Msg>> {
         match &model.state {
             State::Ready {
                 accounting_page,
+                deposition_page,
                 transactions_page,
                 store_page,
                 state,
             } => match model.page {
                 Page::Accounting => accounting_page.view(state),
                 Page::Store => store_page.view(state),
-                Page::Deposit => deposition_page(state),
+                Page::Deposit => deposition_page.view(state),
                 Page::TransactionHistory => transactions_page.view(state),
                 Page::Root | Page::NotFound => {
                     div![class![C.not_found_message, C.unselectable], "404"]
                 }
             },
             State::Loading(_) => p!["Loading..."],
+            State::LoadingFailed(msg, error) => div![
+                class![C.flex, C.flex_col],
+                p!["An has error occured."],
+                p![msg],
+                textarea![
+                    class!["code_box"],
+                    attrs! { At::ReadOnly => true, },
+                    attrs! { At::Rows => error.lines().count(), },
+                    error,
+                ],
+            ],
         },
     ]]
 }

@@ -62,6 +62,10 @@
   */
 
 /* Example of custom class */
+body {
+    font-family: Ubuntu;
+}
+
 .bg-custom {
   background: url("../static/images/decoration.png") no-repeat fixed center top;
 }
@@ -77,7 +81,6 @@
 }
 
 .header_link {
-    font-family: Ubuntu;
     font-weight: bold;
     font-size: larger;
     color: #eee;
@@ -99,7 +102,6 @@
 .not_found_message {
     text-align: center;
     font-size: 12rem;
-    font-family: Ubuntu;
 }
 
 .login-box-visible {
@@ -161,7 +163,7 @@
     display: flex;
     flex: 0 0 auto;
     flex-direction: column;
-    /*font-family: 'ubuntu mono', monospace;*/
+    /*font-family: 'Ubuntu Mono', monospace;*/
     font-size: 24px;
     margin-right: auto;
     margin-left: auto;
@@ -173,7 +175,7 @@
     display: flex;
     flex: 0 0 auto;
     flex-direction: column;
-    font-family: 'ubuntu mono', monospace;
+    font-family: 'Ubuntu Mono', monospace;
     font-size: 24px;
     border-left: dotted black;
     padding-left: 1rem;
@@ -315,6 +317,10 @@
     border-radius: 0.5rem;
 }
 
+.inventory_item_selected {
+    border: dashed #8a784f 0.2rem;
+}
+
 .inventory_item {
     background-color: #64d5ca;
 }
@@ -425,4 +431,9 @@ input::-webkit-inner-spin-button {
 
 input[type=number] {
     -moz-appearance:textfield; /* Firefox */
+}
+
+.code_box {
+    font-family: 'Ubuntu Mono', monospace;
+    border: solid grey;
 }

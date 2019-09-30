@@ -1,6 +1,7 @@
 use crate::app::{Msg, StateReady};
 use crate::fuzzy_search::FuzzySearch;
 use crate::generated::css_classes::C;
+use crate::util::sort_tillgodolista_search;
 use crate::views::{
     view_inventory_bundle, view_inventory_item, view_new_transaction, view_tillgodo,
 };
@@ -67,20 +68,6 @@ pub struct StorePage {
     pub tillgodolista_search: Vec<(i32, Vec<(usize, usize)>, Rc<BookAccount>, Rc<Member>)>,
 }
 
-fn sort_tillgodolista_search(
-    search: &str,
-    list: &mut Vec<(i32, Vec<(usize, usize)>, Rc<BookAccount>, Rc<Member>)>,
-) {
-    for (score, matches, acc, _) in list.iter_mut() {
-        let (s, m) = acc.compare_fuzzy(search);
-        *score = s;
-        *matches = m;
-    }
-    list.sort_by(|(scr_a, _, acc_a, _), (scr_b, _, acc_b, _)| {
-        scr_b.cmp(scr_a).then(acc_a.id.cmp(&acc_b.id))
-    });
-}
-
 impl StorePage {
     pub fn new(global: &StateReady) -> Self {
         let mut p = StorePage {
@@ -129,7 +116,6 @@ impl StorePage {
             }
             StoreMsg::DebitKeyDown(ev) => match ev.key().as_str() {
                 "Enter" => {
-                    // TODO: Apply debit account
                     if let Some((_, _, acc, _)) = self.tillgodolista_search.first() {
                         let msg = StoreMsg::DebitSelect(acc.id);
                         self.update(msg, global, orders)
