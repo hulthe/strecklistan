@@ -51,11 +51,13 @@ COPY public.members (id, nickname, first_name, last_name) FROM stdin;
 \.
 SELECT setval('members_id_seq', 4, true);
 
+INSERT INTO public.book_accounts (id, name, account_type) VALUES
+(1, 'Bankkonto', 'assets'),
+(2, 'Kontokassa', 'assets'),
+(3, 'Försäljning', 'revenue'),
+(4, 'Inköp', 'expenses') ON CONFLICT DO NOTHING;
+
 COPY public.book_accounts (id, name, account_type, creditor) FROM stdin;
-1	Bankkonto	assets	\N
-2	Kontantkassa	assets	\N
-3	Försäljning	revenue	\N
-4	Inköp	expenses	\N
 5	Tillgodo/tux	liabilities	1
 6	Tillgodo/Fläkt	liabilities	2
 7	Tillgodo/Santa	liabilities	3
