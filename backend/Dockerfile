@@ -7,5 +7,4 @@ WORKDIR /app/backend
 
 COPY .env .env
 
-VOLUME ./cargocache
 CMD cargo watch -x run
