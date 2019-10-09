@@ -1,0 +1,25 @@
+version: '3'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: ./backend/Dockerfile
+    ports:
+      - '8000:8000'
+    environment:
+      - DATABASE_URL=postgres://postgres@db:5432/drawit
+      - JWT_SECRET="CHANGE ME"
+      - ROCKET_ADDRESS="0.0.0.0"
+      - RUN_MIGRATIONS=true
+    volumes:
+      - ".:/app"
+    depends_on:
+      - db
+
+  db:
+    image: postgres:11
+    environment:
+      - POSTGRES_DB=drawit
+    ports:
+      - '5432:5432'
