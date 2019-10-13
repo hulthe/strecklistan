@@ -7,8 +7,6 @@ services:
       dockerfile: ./frontend/Dockerfile
     volumes:
       - ".:/app"
-    ports:
-      - '3000:3000'
     depends_on:
       - backend
 
@@ -16,8 +14,6 @@ services:
     build:
       context: .
       dockerfile: ./backend/Dockerfile
-    ports:
-      - '8000:8000'
     environment:
       - DATABASE_URL=postgres://postgres@db:5432/drawit
       - JWT_SECRET="CHANGE ME"
@@ -32,8 +28,6 @@ services:
     image: postgres:11
     environment:
       - POSTGRES_DB=drawit
-    ports:
-      - '5432:5432'
 
   router:
     image: nginx
