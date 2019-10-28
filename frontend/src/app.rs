@@ -297,7 +297,7 @@ pub fn view(model: &Model) -> Vec<Node<Msg>> {
                     div![class![C.not_found_message, C.unselectable], "404"]
                 }
             },
-            State::Loading(_) => p!["Loading..."],
+            State::Loading(_) => div![class!["text-center"], div![class!["lds-heart"], div![]]],
             State::LoadingFailed(msg, error) => div![
                 class![C.flex, C.flex_col],
                 p!["An has error occured."],
