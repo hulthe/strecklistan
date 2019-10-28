@@ -7,16 +7,21 @@ use std::rc::Rc;
 ///
 /// Returns a tuple of the match score, as well as the indices of every char in `search` which maps
 /// to an index in `base`
-pub fn compare_fuzzy(base: &str, search: &str) -> (i32, Vec<(usize, usize)>) {
-    let mut base = base.chars().enumerate();
+pub fn compare_fuzzy<B, S>(base: B, search: S) -> (i32, Vec<(usize, usize)>)
+where
+    B: Iterator<Item = char> + Clone,
+    S: IntoIterator<Item = char>,
+{
+    let mut base = base.into_iter().enumerate();
 
     // How alike the search string is to self.name
-    let mut score = -(search.len() as i32);
+    //let mut score = -(search.len() as i32);
+    let mut score = 0;
 
     // Vector of which char index in s maps to which char index in self.name
     let mut matches = vec![];
 
-    for (i, sc) in search.chars().enumerate() {
+    for (i, sc) in search.into_iter().enumerate() {
         let sc = sc.to_ascii_lowercase();
         let mut add = 3;
         let mut base_tmp = base.clone();
@@ -40,8 +45,8 @@ pub fn sort_tillgodolista_search(
     search: &str,
     list: &mut Vec<(i32, Vec<(usize, usize)>, Rc<BookAccount>, Rc<Member>)>,
 ) {
-    for (score, matches, acc, _) in list.iter_mut() {
-        let (s, m) = acc.compare_fuzzy(search);
+    for (score, matches, _acc, member) in list.iter_mut() {
+        let (s, m) = member.compare_fuzzy(search);
         *score = s;
         *matches = m;
     }

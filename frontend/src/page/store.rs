@@ -1,7 +1,7 @@
 use crate::app::{Msg, StateReady};
 use crate::fuzzy_search::FuzzySearch;
 use crate::generated::css_classes::C;
-use crate::util::sort_tillgodolista_search;
+use crate::util::{compare_fuzzy, sort_tillgodolista_search};
 use crate::views::{
     view_inventory_bundle, view_inventory_item, view_new_transaction, view_tillgodo,
 };
@@ -23,8 +23,8 @@ pub enum StoreItem {
     Bundle(Rc<InventoryBundle>),
 }
 
-impl FuzzySearch for StoreItem {
-    fn get_search_string(&self) -> &str {
+impl StoreItem {
+    pub fn get_name(&self) -> &str {
         match self {
             StoreItem::Item(item) => &item.name,
             StoreItem::Bundle(bundle) => &bundle.name,
@@ -32,9 +32,24 @@ impl FuzzySearch for StoreItem {
     }
 }
 
-impl FuzzySearch for BookAccount {
-    fn get_search_string(&self) -> &str {
-        &self.name
+impl FuzzySearch for StoreItem {
+    fn compare_fuzzy(&self, search: &str) -> (i32, Vec<(usize, usize)>) {
+        compare_fuzzy(self.get_name().chars(), search.chars())
+    }
+}
+
+impl FuzzySearch for Member {
+    fn compare_fuzzy(&self, search: &str) -> (i32, Vec<(usize, usize)>) {
+        match &self.nickname {
+            Some(nick) => compare_fuzzy(nick.chars(), search.chars()),
+            None => compare_fuzzy(
+                self.first_name
+                    .chars()
+                    .chain(std::iter::once(' '))
+                    .chain(self.last_name.chars()),
+                search.chars(),
+            ),
+        }
     }
 }
 
@@ -296,10 +311,8 @@ impl StorePage {
             *score = s;
             *matches = m;
         }
-        self.inventory_search.sort_by(|(sa, _, ia), (sb, _, ib)| {
-            sb.cmp(sa)
-                .then(ia.get_search_string().cmp(&ib.get_search_string()))
-        });
+        self.inventory_search
+            .sort_by(|(sa, _, ia), (sb, _, ib)| sb.cmp(sa).then(ia.get_name().cmp(&ib.get_name())));
     }
 
     pub fn view(&self, global: &StateReady) -> Node<Msg> {
