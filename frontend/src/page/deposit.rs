@@ -177,7 +177,7 @@ impl DepositionPage {
                             .collect::<Vec<_>>(),
                     ]
                 } else {
-                    div![]
+                    empty![]
                 },
                 button![
                     if self.use_cash {
@@ -197,7 +197,7 @@ impl DepositionPage {
                     C.my_2,
                     //C.h_12,
                     C.border_on_focus,
-                    C.bg_grey_light
+                    C.bg_gray_300,
                 ],
                 attrs! {At::Value => self.amount.to_string()},
                 input_ev(Ev::Input, DepositionMsg::SetAmount),

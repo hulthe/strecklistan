@@ -11,7 +11,7 @@ impl Event {
                 C.p_6,
                 C.max_w_md,
                 C.text_center,
-                C.bg_teal_light,
+                C.bg_teal_300,
                 C.rounded,
                 C.shadow_md,
                 C.m_8,
