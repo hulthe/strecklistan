@@ -6,11 +6,12 @@ use crate::views::{
     view_inventory_bundle, view_inventory_item, view_new_transaction, view_tillgodo,
 };
 use laggit_api::{
-    book_account::BookAccount,
-    inventory::InventoryBundle,
-    inventory::InventoryItemStock as InventoryItem,
+    book_account::{BookAccount, BookAccountId},
+    inventory::{
+        InventoryBundle, InventoryBundleId, InventoryItemId, InventoryItemStock as InventoryItem,
+    },
     member::Member,
-    transaction::{NewTransaction, TransactionBundle},
+    transaction::{NewTransaction, TransactionBundle, TransactionId},
 };
 use seed::prelude::*;
 use seed::{fetch::FetchObject, *};
@@ -57,16 +58,16 @@ impl FuzzySearch for Member {
 pub enum StoreMsg {
     SearchDebit(String),
     DebitKeyDown(web_sys::KeyboardEvent),
-    DebitSelect(i32),
+    DebitSelect(BookAccountId),
 
     SearchInput(String),
     SearchKeyDown(web_sys::KeyboardEvent),
     ConfirmPurchase,
-    PurchaseSent(FetchObject<i32>),
+    PurchaseSent(FetchObject<TransactionId>),
 
     NewTransactionTotalInput(String),
-    AddItemToNewTransaction(i32, i32),
-    AddBundleToNewTransaction(i32, i32),
+    AddItemToNewTransaction(InventoryItemId, i32),
+    AddBundleToNewTransaction(InventoryBundleId, i32),
     SetNewTransactionBundleChange { bundle_index: usize, change: i32 },
 }
 

@@ -10,9 +10,11 @@ use crate::page::{
 use chrono::NaiveDateTime;
 use futures::Future;
 use laggit_api::{
-    book_account::{BookAccount, MasterAccounts},
-    inventory::{InventoryBundle, InventoryItemStock as InventoryItem},
-    member::Member,
+    book_account::{BookAccount, BookAccountId, MasterAccounts},
+    inventory::{
+        InventoryBundle, InventoryBundleId, InventoryItemId, InventoryItemStock as InventoryItem,
+    },
+    member::{Member, MemberId},
     transaction::Transaction,
 };
 use seed::prelude::*;
@@ -25,28 +27,28 @@ use web_sys;
 
 #[derive(Clone, Default)]
 pub struct StateLoading {
-    pub book_accounts: Option<HashMap<i32, Rc<BookAccount>>>,
+    pub book_accounts: Option<HashMap<BookAccountId, Rc<BookAccount>>>,
     pub master_accounts: Option<MasterAccounts>,
     pub transaction_history: Option<Vec<Transaction>>,
-    pub inventory: Option<HashMap<i32, Rc<InventoryItem>>>,
-    pub bundles: Option<HashMap<i32, Rc<InventoryBundle>>>,
+    pub inventory: Option<HashMap<InventoryItemId, Rc<InventoryItem>>>,
+    pub bundles: Option<HashMap<InventoryBundleId, Rc<InventoryBundle>>>,
     pub events: Option<BTreeMap<NaiveDateTime, Vec<Event>>>,
-    pub members: Option<HashMap<i32, Rc<Member>>>,
+    pub members: Option<HashMap<MemberId, Rc<Member>>>,
 }
 
 #[derive(Clone)]
 pub struct StateReady {
     pub events: BTreeMap<NaiveDateTime, Vec<Event>>,
 
-    pub book_accounts: HashMap<i32, Rc<BookAccount>>,
+    pub book_accounts: HashMap<BookAccountId, Rc<BookAccount>>,
     pub master_accounts: MasterAccounts,
 
-    pub members: HashMap<i32, Rc<Member>>,
+    pub members: HashMap<MemberId, Rc<Member>>,
 
     pub transaction_history: Vec<Transaction>,
 
-    pub inventory: HashMap<i32, Rc<InventoryItem>>,
-    pub bundles: HashMap<i32, Rc<InventoryBundle>>,
+    pub inventory: HashMap<InventoryItemId, Rc<InventoryItem>>,
+    pub bundles: HashMap<InventoryBundleId, Rc<InventoryBundle>>,
 }
 
 #[derive(Clone)]

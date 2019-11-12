@@ -3,7 +3,10 @@ use crate::generated::css_classes::C;
 use crate::util::sort_tillgodolista_search;
 use crate::views::view_tillgodo;
 use laggit_api::{
-    book_account::BookAccount, currency::Currency, member::Member, transaction::NewTransaction,
+    book_account::{BookAccount, BookAccountId},
+    currency::Currency,
+    member::Member,
+    transaction::{NewTransaction, TransactionId},
 };
 use seed::prelude::*;
 use seed::{fetch::FetchObject, *};
@@ -13,17 +16,17 @@ use std::rc::Rc;
 pub enum DepositionMsg {
     SearchDebit(String),
     CreditKeyDown(web_sys::KeyboardEvent),
-    CreditSelect(i32),
+    CreditSelect(BookAccountId),
     SetUseCash(bool),
     SetAmount(String),
     Deposit,
-    DepositSent(FetchObject<i32>),
+    DepositSent(FetchObject<TransactionId>),
 }
 
 #[derive(Clone)]
 pub struct DepositionPage {
     use_cash: bool,
-    credit_account: Option<i32>,
+    credit_account: Option<BookAccountId>,
     search_string: String,
     accs_search: Vec<(i32, Vec<(usize, usize)>, Rc<BookAccount>, Rc<Member>)>,
     amount: Currency,

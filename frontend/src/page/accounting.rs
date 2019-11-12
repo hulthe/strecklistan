@@ -1,7 +1,7 @@
 use crate::app::{Msg, StateReady};
 //use crate::generated::css_classes::C;
 use chrono::{NaiveDate, NaiveTime};
-use laggit_api::currency::Currency;
+use laggit_api::{book_account::BookAccountId, currency::Currency};
 use seed::{prelude::*, *};
 use std::collections::HashMap;
 
@@ -16,7 +16,7 @@ pub enum AccountingMsg {
 pub struct AccountingPage {
     end_date: Option<NaiveDate>,
     end_time: Option<NaiveTime>,
-    accounts_balance: HashMap<i32, Currency>,
+    accounts_balance: HashMap<BookAccountId, Currency>,
 }
 
 const DATE_FMT: &'static str = "%Y-%m-%d";

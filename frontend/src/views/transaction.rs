@@ -1,6 +1,6 @@
 use crate::app::Msg;
 use crate::generated::css_classes::C;
-use laggit_api::inventory::InventoryItemStock as InventoryItem;
+use laggit_api::inventory::{InventoryItemId, InventoryItemStock as InventoryItem};
 use laggit_api::transaction::NewTransaction;
 use seed::prelude::*;
 use seed::*;
@@ -11,7 +11,7 @@ use std::rc::Rc;
 pub fn view_new_transaction(
     transaction: &NewTransaction,
     override_total: bool,
-    inventory: &HashMap<i32, Rc<InventoryItem>>,
+    inventory: &HashMap<InventoryItemId, Rc<InventoryItem>>,
     transaction_set_bundle_change_ev: impl FnOnce(usize, i32) -> Msg + Clone + 'static,
     transaction_total_input_ev: impl FnOnce(String) -> Msg + Clone + 'static,
     confirm_purchase_ev: Msg,
