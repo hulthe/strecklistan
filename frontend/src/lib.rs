@@ -16,17 +16,18 @@ pub fn run() -> Result<(), JsValue> {
 
     seed::App::build(
         |url, orders| {
-            orders.send_msg(app::routes(url));
+            if let Some(msg) = app::routes(url) {
+                orders.send_msg(msg);
+            }
             app::fetch_data(orders);
-            app::Model::default()
+            Init::new(app::Model::default())
         },
         app::update,
         app::view,
     )
     .window_events(app::window_events)
     .routes(app::routes)
-    .finish()
-    .run();
+    .build_and_start();
 
     Ok(())
 }

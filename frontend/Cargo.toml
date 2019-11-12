@@ -13,7 +13,7 @@ workspace = ".."
 crate-type = ["cdylib"]
 
 [dependencies]
-seed = "^0.4.0"
+seed = "0.4.2"
 chrono = { version = "0.4.6", features = ["serde"] }
 cfg-if = "0.1.7"
 wasm-bindgen = "^0.2.45"

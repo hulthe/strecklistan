@@ -103,8 +103,8 @@ pub enum Msg {
     ReloadData,
 }
 
-pub fn routes(url: Url) -> Msg {
-    if url.path.is_empty() {
+pub fn routes(url: Url) -> Option<Msg> {
+    Some(if url.path.is_empty() {
         Msg::ChangePage(Page::Root)
     } else {
         match url.path[0].as_ref() {
@@ -114,7 +114,7 @@ pub fn routes(url: Url) -> Msg {
             "transactions" => Msg::ChangePage(Page::TransactionHistory),
             _ => Msg::ChangePage(Page::NotFound),
         }
-    }
+    })
 }
 
 // Vec<Item> -> HashMap<Item::id, Rc<Item>>
