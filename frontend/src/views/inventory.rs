@@ -40,7 +40,7 @@ pub fn view_inventory_item(
                 let s = std::str::from_utf8(&s[..]).expect("Invalid utf-8 string");
 
                 if highlighted {
-                    span![class![C.text_green_darker, C.underline], s]
+                    span![class![C.text_green_900, C.underline], s]
                 } else {
                     span![s]
                 }
@@ -53,12 +53,7 @@ pub fn view_inventory_item(
         div![
             class![C.flex, C.text_center, C.text_2xl,],
             div![class![C.flex_1]],
-            div![
-                class![
-                    //C.flex_0,
-                ],
-                format!("{} i lager.", item.stock),
-            ],
+            div![format!("{} i lager.", item.stock),],
         ],
     ]
 }
@@ -95,7 +90,7 @@ pub fn view_inventory_bundle(
                 let s = std::str::from_utf8(&s[..]).expect("Invalid utf-8 string");
 
                 if highlighted {
-                    span![class![C.text_green_darker, C.underline], s]
+                    span![class![C.text_green_900, C.underline], s]
                 } else {
                     span![s]
                 }
