@@ -124,92 +124,87 @@ impl DepositionPage {
 
     pub fn view(&self, global: &StateReady) -> Node<Msg> {
         div![
-            class![C.tillgodolista],
-            input![
-                class![
-                    C.tillgodolista_search_field,
-                    C.rounded_lg,
-                    C.mb_2,
-                    C.px_2,
-                    C.h_12,
-                    C.border_on_focus,
-                ],
-                if self.credit_account.is_some() {
-                    class![C.debit_selected]
-                } else {
-                    class![]
-                },
-                attrs! {At::Value => self.search_string},
-                {
-                    let s = if let Some(acc_id) = self.credit_account {
-                        global
-                            .book_accounts
-                            .get(&acc_id)
-                            .map(|acc| acc.name.as_str())
-                            .unwrap_or("[MISSING]")
+            class![C.deposit_page],
+            div![
+                class![C.tillgodo_list, C.m_2],
+                input![
+                    class![
+                        C.tillgodolista_search_field,
+                        C.rounded_lg,
+                        C.mb_2,
+                        C.px_2,
+                        C.h_12,
+                        C.border_on_focus,
+                    ],
+                    if self.credit_account.is_some() {
+                        class![C.debit_selected]
                     } else {
-                        "Välj Tillgodokonto"
-                    };
-                    attrs! {At::Placeholder => s}
-                },
-                input_ev(Ev::Input, DepositionMsg::SearchDebit),
-                keyboard_ev(Ev::KeyDown, DepositionMsg::CreditKeyDown),
+                        class![]
+                    },
+                    attrs! {At::Value => self.search_string},
+                    {
+                        let s = if let Some(acc_id) = self.credit_account {
+                            global
+                                .book_accounts
+                                .get(&acc_id)
+                                .map(|acc| acc.name.as_str())
+                                .unwrap_or("[MISSING]")
+                        } else {
+                            "Välj Tillgodokonto"
+                        };
+                        attrs! {At::Placeholder => s}
+                    },
+                    input_ev(Ev::Input, DepositionMsg::SearchDebit),
+                    keyboard_ev(Ev::KeyDown, DepositionMsg::CreditKeyDown),
+                ],
+                self.accs_search
+                    .iter()
+                    .map(|(_, _, acc, mem)| div![
+                        if self.credit_account == Some(acc.id) {
+                            class![C.border_highlight]
+                        } else {
+                            class![]
+                        },
+                        view_tillgodo(acc, mem, DepositionMsg::CreditSelect(acc.id)),
+                    ])
+                    .collect::<Vec<_>>(),
             ],
             div![
-                class![C.flex, C.flex_row],
+                class![C.pay_method_select_box, C.m_2],
+                div![
+                    class![C.flex, C.flex_row],
+                    button![
+                        if !self.use_cash {
+                            class![C.debit_selected]
+                        } else {
+                            class![]
+                        },
+                        class![C.select_debit_button, C.border_on_focus, C.rounded_l_lg],
+                        simple_ev(Ev::Click, DepositionMsg::SetUseCash(false)),
+                        "Swish",
+                    ],
+                    button![
+                        if self.use_cash {
+                            class![C.debit_selected]
+                        } else {
+                            class![]
+                        },
+                        class![C.select_debit_button, C.border_on_focus, C.rounded_r_lg],
+                        simple_ev(Ev::Click, DepositionMsg::SetUseCash(true),),
+                        "Kontant",
+                    ],
+                ],
+                input![
+                    class![C.rounded, C.px_2, C.my_2, C.border_on_focus, C.bg_gray_300,],
+                    attrs! {At::Value => self.amount.to_string()},
+                    input_ev(Ev::Input, DepositionMsg::SetAmount),
+                ],
                 button![
-                    if !self.use_cash {
-                        class![C.debit_selected]
-                    } else {
-                        class![]
-                    },
-                    class![C.select_debit_button, C.border_on_focus, C.rounded_l_lg],
-                    simple_ev(Ev::Click, DepositionMsg::SetUseCash(false)),
-                    "Swish",
-                ],
-                if !self.search_string.is_empty() {
-                    div![
-                        class![C.tillgodo_drop_down],
-                        self.accs_search
-                            .iter()
-                            .map(|(_, _, acc, mem)| view_tillgodo(
-                                acc,
-                                mem,
-                                DepositionMsg::CreditSelect(acc.id)
-                            ))
-                            .collect::<Vec<_>>(),
-                    ]
-                } else {
-                    empty![]
-                },
-                button![
-                    if self.use_cash {
-                        class![C.debit_selected]
-                    } else {
-                        class![]
-                    },
-                    class![C.select_debit_button, C.border_on_focus, C.rounded_r_lg],
-                    simple_ev(Ev::Click, DepositionMsg::SetUseCash(true),),
-                    "Kontant",
-                ],
+                    class![C.wide_button],
+                    simple_ev(Ev::Click, DepositionMsg::Deposit),
+                    "Sätt in"
+                ]
             ],
-            input![
-                class![
-                    C.rounded,
-                    C.px_2,
-                    C.my_2,
-                    //C.h_12,
-                    C.border_on_focus,
-                    C.bg_gray_300,
-                ],
-                attrs! {At::Value => self.amount.to_string()},
-                input_ev(Ev::Input, DepositionMsg::SetAmount),
-            ],
-            button![
-                class![C.wide_button],
-                simple_ev(Ev::Click, DepositionMsg::Deposit),
-                "Sätt in"
-            ]
         ]
         .map_message(|msg| Msg::DepositionMsg(msg))
     }

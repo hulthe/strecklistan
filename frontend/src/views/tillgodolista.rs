@@ -11,8 +11,12 @@ pub fn view_tillgodo<M: Clone>(account: &BookAccount, member: &Member, msg: M) -
             class![C.tillgodo_nick],
             member.nickname.as_ref().map(|s| s.as_str()).unwrap_or(""),
         ],
-        div![class![C.tillgodo_fn], member.first_name],
-        div![class![C.tillgodo_ln], member.last_name],
+        div![
+            class![C.tillgodo_name],
+            member.first_name,
+            " ",
+            member.last_name,
+        ],
         div![class![C.tillgodo_money], format!("{}:-", account.balance)],
         simple_ev(Ev::Click, msg),
     ]

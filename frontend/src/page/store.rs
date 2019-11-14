@@ -327,7 +327,7 @@ impl StorePage {
             div![
                 class![C.store_top_box],
                 div![
-                    class![C.tillgodolista],
+                    class![C.pay_method_select_box, C.margin_hcenter],
                     input![
                         class![
                             C.tillgodolista_search_field,
@@ -361,6 +361,24 @@ impl StorePage {
                     ],
                     div![
                         class![C.flex, C.flex_row],
+                        if !self.tillgodolista_search_string.is_empty() {
+                            div![
+                                class![C.tillgodo_drop_down],
+                                div![
+                                    class![C.tillgodo_list],
+                                    self.tillgodolista_search
+                                        .iter()
+                                        .map(|(_, _, acc, mem)| view_tillgodo(
+                                            acc,
+                                            mem,
+                                            Msg::StoreMsg(StoreMsg::DebitSelect(acc.id)),
+                                        ))
+                                        .collect::<Vec<_>>(),
+                                ],
+                            ]
+                        } else {
+                            empty![]
+                        },
                         button![
                             if selected_bank_account {
                                 class![C.debit_selected]
@@ -376,21 +394,6 @@ impl StorePage {
                             ),
                             "Swish",
                         ],
-                        if !self.tillgodolista_search_string.is_empty() {
-                            div![
-                                class![C.tillgodo_drop_down],
-                                self.tillgodolista_search
-                                    .iter()
-                                    .map(|(_, _, acc, mem)| view_tillgodo(
-                                        acc,
-                                        mem,
-                                        Msg::StoreMsg(StoreMsg::DebitSelect(acc.id)),
-                                    ))
-                                    .collect::<Vec<_>>(),
-                            ]
-                        } else {
-                            div![]
-                        },
                         button![
                             if selected_cash_account {
                                 class![C.debit_selected]
