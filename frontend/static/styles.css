@@ -110,6 +110,15 @@ body {
     width: 24rem;
 }
 
+.new_member_view {
+    display: flex;
+    flex-direction: column;
+    justify-self: center;
+    max-width: 30em;
+    margin-left: auto;
+    margin-right: auto;
+}
+
 .new_transaction_view {
     grid-area: new_transaction;
     display: flex;
@@ -214,6 +223,8 @@ body {
 
 .tillgodo_list {
     width: 24rem;
+    display: flex;
+    flex-direction: column;
 }
 
 .tillgodo_entry {
@@ -333,8 +344,12 @@ body {
     line-height: 1.15;
 }
 
+.wide_button:disabled {
+    opacity: 0.5;
+}
+
 .wide_button:hover {
-    background-color: #25bd64
+    background-color: #25bd64;
 }
 
 .border_on_focus {

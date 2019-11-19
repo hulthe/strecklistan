@@ -16,3 +16,12 @@ pub struct Member {
     pub last_name: String,
     pub nickname: Option<String>,
 }
+
+#[cfg_attr(feature = "serde_impl", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "debug", derive(Debug))]
+#[derive(Clone, PartialEq, Eq)]
+pub struct NewMember {
+    pub first_name: String,
+    pub last_name: String,
+    pub nickname: Option<String>,
+}
