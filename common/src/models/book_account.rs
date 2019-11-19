@@ -1,4 +1,5 @@
 use crate::currency::Currency;
+use crate::models::member::MemberId;
 
 #[cfg(feature = "diesel_impl")]
 use {diesel_derive_enum::DbEnum, diesel_derives::Queryable};
@@ -20,15 +21,17 @@ pub enum BookAccountType {
     Revenue,
 }
 
+pub type BookAccountId = i32;
+
 #[cfg_attr(feature = "serde_impl", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "debug", derive(Debug))]
 #[cfg_attr(feature = "diesel_impl", derive(Queryable))]
 #[derive(Clone)]
 pub struct BookAccount {
-    pub id: i32,
+    pub id: BookAccountId,
     pub name: String,
     pub account_type: BookAccountType,
-    pub creditor: Option<i32>,
+    pub creditor: Option<MemberId>,
     pub balance: Currency,
 }
 
@@ -53,17 +56,17 @@ impl Hash for BookAccount {
 pub struct NewBookAccount {
     pub name: String,
     pub account_type: BookAccountType,
-    pub creditor: Option<i32>,
+    pub creditor: Option<MemberId>,
 }
 
 #[cfg_attr(feature = "serde_impl", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "debug", derive(Debug))]
 #[derive(Clone)]
 pub struct MasterAccounts {
-    pub bank_account_id: i32,
-    pub cash_account_id: i32,
-    pub sales_account_id: i32,
-    pub purchases_account_id: i32,
+    pub bank_account_id: BookAccountId,
+    pub cash_account_id: BookAccountId,
+    pub sales_account_id: BookAccountId,
+    pub purchases_account_id: BookAccountId,
 }
 
 impl BookAccount {

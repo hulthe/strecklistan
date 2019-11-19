@@ -1,15 +1,15 @@
 use crate::app::{Msg, StateReady};
 use crate::generated::css_classes::C;
 use laggit_api::inventory::InventoryItemStock as InventoryItem;
-use laggit_api::transaction::Transaction;
+use laggit_api::transaction::{Transaction, TransactionId};
 use seed::prelude::*;
 use seed::{fetch::FetchObject, *};
 use std::ops::Deref;
 
 #[derive(Clone)]
 pub enum TransactionsMsg {
-    DeleteTransaction(i32),
-    TransactionDeleted(FetchObject<i32>),
+    DeleteTransaction(TransactionId),
+    TransactionDeleted(FetchObject<TransactionId>),
     SetShowDelete(bool),
 }
 

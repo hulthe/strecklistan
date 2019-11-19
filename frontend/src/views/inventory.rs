@@ -2,8 +2,9 @@ use crate::app::Msg;
 use crate::generated::css_classes::C;
 //use crate::models::inventory::InventoryItem;
 use itertools::Itertools;
-use laggit_api::inventory::InventoryBundle;
-use laggit_api::inventory::InventoryItemStock;
+use laggit_api::inventory::{
+    InventoryBundle, InventoryBundleId, InventoryItemId, InventoryItemStock,
+};
 use seed::prelude::*;
 use seed::*;
 use staticvec::*;
@@ -11,7 +12,7 @@ use staticvec::*;
 pub fn view_inventory_item(
     item: &InventoryItemStock,
     highlight_chars: impl IntoIterator<Item = usize>,
-    add_item_ev: impl FnOnce(i32, i32) -> Msg,
+    add_item_ev: impl FnOnce(InventoryItemId, i32) -> Msg,
 ) -> Node<Msg> {
     let mut highlights = highlight_chars.into_iter().peekable();
     div![
@@ -61,7 +62,7 @@ pub fn view_inventory_item(
 pub fn view_inventory_bundle(
     bundle: &InventoryBundle,
     highlight_chars: impl IntoIterator<Item = usize>,
-    add_bundle_ev: impl FnOnce(i32, i32) -> Msg,
+    add_bundle_ev: impl FnOnce(InventoryBundleId, i32) -> Msg,
 ) -> Node<Msg> {
     let mut highlights = highlight_chars.into_iter().peekable();
     div![

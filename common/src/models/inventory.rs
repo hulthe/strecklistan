@@ -9,12 +9,15 @@ use serde_derive::{Deserialize, Serialize};
 #[cfg(feature = "hash")]
 use std::hash::{Hash, Hasher};
 
+pub type InventoryItemId = i32;
+pub type InventoryBundleId = i32;
+
 #[cfg_attr(feature = "serde_impl", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "debug", derive(Debug))]
 #[cfg_attr(feature = "diesel_impl", derive(Queryable))]
 #[derive(Clone)]
 pub struct InventoryItem {
-    pub id: i32,
+    pub id: InventoryItemId,
     pub name: String,
     pub price: Option<i32>,
 }
@@ -39,7 +42,7 @@ impl Hash for InventoryItem {
 #[cfg_attr(feature = "diesel_impl", derive(Queryable))]
 #[derive(Clone)]
 pub struct InventoryItemStock {
-    pub id: i32,
+    pub id: InventoryItemId,
     pub name: String,
     pub price: Option<i32>,
     pub stock: i32,
@@ -66,17 +69,17 @@ impl Hash for InventoryItemStock {
 #[derive(Clone)]
 pub struct InventoryItemTag {
     pub tag: String,
-    pub item_id: i32,
+    pub item_id: InventoryItemId,
 }
 
 #[cfg_attr(feature = "serde_impl", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "debug", derive(Debug))]
 #[derive(Clone)]
 pub struct InventoryBundle {
-    pub id: i32,
+    pub id: InventoryBundleId,
     pub name: String,
     pub price: Currency,
-    pub item_ids: Vec<i32>,
+    pub item_ids: Vec<InventoryItemId>,
 }
 
 impl PartialEq for InventoryBundle {

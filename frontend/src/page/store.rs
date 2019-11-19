@@ -6,11 +6,12 @@ use crate::views::{
     view_inventory_bundle, view_inventory_item, view_new_transaction, view_tillgodo,
 };
 use laggit_api::{
-    book_account::BookAccount,
-    inventory::InventoryBundle,
-    inventory::InventoryItemStock as InventoryItem,
+    book_account::{BookAccount, BookAccountId},
+    inventory::{
+        InventoryBundle, InventoryBundleId, InventoryItemId, InventoryItemStock as InventoryItem,
+    },
     member::Member,
-    transaction::{NewTransaction, TransactionBundle},
+    transaction::{NewTransaction, TransactionBundle, TransactionId},
 };
 use seed::prelude::*;
 use seed::{fetch::FetchObject, *};
@@ -57,16 +58,16 @@ impl FuzzySearch for Member {
 pub enum StoreMsg {
     SearchDebit(String),
     DebitKeyDown(web_sys::KeyboardEvent),
-    DebitSelect(i32),
+    DebitSelect(BookAccountId),
 
     SearchInput(String),
     SearchKeyDown(web_sys::KeyboardEvent),
     ConfirmPurchase,
-    PurchaseSent(FetchObject<i32>),
+    PurchaseSent(FetchObject<TransactionId>),
 
     NewTransactionTotalInput(String),
-    AddItemToNewTransaction(i32, i32),
-    AddBundleToNewTransaction(i32, i32),
+    AddItemToNewTransaction(InventoryItemId, i32),
+    AddBundleToNewTransaction(InventoryBundleId, i32),
     SetNewTransactionBundleChange { bundle_index: usize, change: i32 },
 }
 
@@ -326,7 +327,7 @@ impl StorePage {
             div![
                 class![C.store_top_box],
                 div![
-                    class![C.tillgodolista],
+                    class![C.pay_method_select_box, C.margin_hcenter],
                     input![
                         class![
                             C.tillgodolista_search_field,
@@ -360,6 +361,24 @@ impl StorePage {
                     ],
                     div![
                         class![C.flex, C.flex_row],
+                        if !self.tillgodolista_search_string.is_empty() {
+                            div![
+                                class![C.tillgodo_drop_down],
+                                div![
+                                    class![C.tillgodo_list],
+                                    self.tillgodolista_search
+                                        .iter()
+                                        .map(|(_, _, acc, mem)| view_tillgodo(
+                                            acc,
+                                            mem,
+                                            Msg::StoreMsg(StoreMsg::DebitSelect(acc.id)),
+                                        ))
+                                        .collect::<Vec<_>>(),
+                                ],
+                            ]
+                        } else {
+                            empty![]
+                        },
                         button![
                             if selected_bank_account {
                                 class![C.debit_selected]
@@ -375,21 +394,6 @@ impl StorePage {
                             ),
                             "Swish",
                         ],
-                        if !self.tillgodolista_search_string.is_empty() {
-                            div![
-                                class![C.tillgodo_drop_down],
-                                self.tillgodolista_search
-                                    .iter()
-                                    .map(|(_, _, acc, mem)| view_tillgodo(
-                                        acc,
-                                        mem,
-                                        Msg::StoreMsg(StoreMsg::DebitSelect(acc.id)),
-                                    ))
-                                    .collect::<Vec<_>>(),
-                            ]
-                        } else {
-                            div![]
-                        },
                         button![
                             if selected_cash_account {
                                 class![C.debit_selected]
