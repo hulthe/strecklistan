@@ -1,6 +1,6 @@
 [package]
 name = "laggit_api"
-version = "0.4.2"
+version = "0.4.3"
 authors = ["Joakim Hulthe <joakim@hulthe.net>"]
 license = "LGPL-3.0"
 description = "Public API types and functions of the LaggIT web page"
