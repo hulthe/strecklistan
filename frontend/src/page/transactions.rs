@@ -6,7 +6,7 @@ use seed::prelude::*;
 use seed::{fetch::FetchObject, *};
 use std::ops::Deref;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum TransactionsMsg {
     DeleteTransaction(TransactionId),
     TransactionDeleted(FetchObject<TransactionId>),

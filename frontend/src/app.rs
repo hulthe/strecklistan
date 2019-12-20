@@ -78,7 +78,7 @@ impl Default for Model {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum FetchMsg {
     Events(FetchObject<Vec<Event>>),
     Inventory(FetchObject<Vec<InventoryItem>>),
@@ -89,7 +89,7 @@ pub enum FetchMsg {
     Members(FetchObject<Vec<Member>>),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Msg {
     ChangePage(Page),
 

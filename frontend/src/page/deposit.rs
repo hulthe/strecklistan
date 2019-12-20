@@ -12,7 +12,7 @@ use seed::prelude::*;
 use seed::{fetch::FetchObject, *};
 use std::rc::Rc;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum DepositionMsg {
     SearchDebit(String),
     CreditKeyDown(web_sys::KeyboardEvent),
@@ -26,7 +26,7 @@ pub enum DepositionMsg {
     NewMemberCreated(FetchObject<(MemberId, BookAccountId)>),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum NewMemberMsg {
     FirstNameInput(String),
     LastNameInput(String),

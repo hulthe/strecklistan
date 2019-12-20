@@ -5,7 +5,7 @@ use laggit_api::{book_account::BookAccountId, currency::Currency};
 use seed::{prelude::*, *};
 use std::collections::HashMap;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum AccountingMsg {
     SetEndDate(String),
     SetEndTime(String),

@@ -18,7 +18,7 @@ use seed::{fetch::FetchObject, *};
 use std::collections::HashMap;
 use std::rc::Rc;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum StoreItem {
     Item(Rc<InventoryItem>),
     Bundle(Rc<InventoryBundle>),
@@ -54,7 +54,7 @@ impl FuzzySearch for Member {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum StoreMsg {
     SearchDebit(String),
     DebitKeyDown(web_sys::KeyboardEvent),

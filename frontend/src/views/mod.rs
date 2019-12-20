@@ -1,3 +1,4 @@
+pub mod filter_menu;
 pub mod inventory;
 pub mod tillgodolista;
 pub mod transaction;
