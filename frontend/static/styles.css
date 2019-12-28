@@ -7,13 +7,16 @@ body {
 }
 
 .header {
+    position: fixed;
+    width: 100%;
+    background-color: #000;
+    z-index: 69;
+}
+
+.header_link_box {
     display: flex;
     flex-direction: row;
-    width: 100%;
     overflow-x: scroll;
-    background-color: #000;
-    padding-top: 0.5rem;
-    padding-bottom: 0.5rem;
 }
 
 .header_link {
@@ -33,6 +36,10 @@ body {
     color: #fff;
     text-shadow: 0 0 2px;
     transition: all 0.2s linear;
+}
+
+.header_margin {
+    height: 4.3rem;
 }
 
 .not_found_message {
@@ -64,8 +71,7 @@ body {
 
 .transactions_page {
     display: flex;
-    justify-content: center;
-    flex-direction: column;
+    flex-direction: row;
 }
 
 .deposit_page {
@@ -108,6 +114,12 @@ body {
     flex-direction: column;
     font-size: 24px;
     width: 24rem;
+}
+
+.transactions_list {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
 }
 
 .new_member_view {
@@ -342,6 +354,7 @@ body {
     font-family: inherit;
     font-size: 100%;
     line-height: 1.15;
+    width: 100%;
 }
 
 .wide_button:disabled {
@@ -397,6 +410,14 @@ body {
     background-image: repeating-linear-gradient(30deg, yellow, yellow 13px, #666 15px, #666 43px, yellow 45px, yellow 60px);
     font-weight: bold;
     color: red;
+}
+
+/* Hide the arrow for option tags */
+select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    text-indent: 1px;
+    text-overflow: '';
 }
 
 /* Hide the spin box for number fields */

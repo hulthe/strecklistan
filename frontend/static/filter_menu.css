@@ -1,0 +1,37 @@
+.filter_menu_item {
+    display: flex;
+    flex-direction: row;
+    margin-top: 0.5em;
+    font-size: 1.2em;
+}
+
+.filter_menu_item_elem {
+    background-color: #55557f;
+    color: #ffffff;
+    padding: 0.3em;
+    border-right: dotted;
+}
+
+.filter_menu_field {
+    min-width: min-content;
+    border-top-left-radius: 0.5em;
+    border-bottom-left-radius: 0.5em;
+}
+
+.filter_menu_operator {
+    min-width: min-content;
+}
+
+.filter_menu_value {
+    flex-grow: 1;
+    min-width: 4em;
+}
+
+.filter_menu_delete {
+    padding-left: 1em;
+    padding-right: 1em;
+    border-top-right-radius: 0.5em;
+    border-bottom-right-radius: 0.5em;
+    background-color: #ff0000;
+    color: #ffffff;
+}

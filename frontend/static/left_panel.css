@@ -1,0 +1,37 @@
+.left_panel {
+    position: fixed;
+    height: 100%; /* FIXME */
+    background-color: white;
+    border-right: solid black;
+    width: 34em;
+    max-width: 100%;
+
+    /* can't use transitions, they trigger on start due to bug with initial margin */
+    /* transition: margin-left 0.3s ease-in; */
+    transition: margin-left 0 ease-in;
+    margin-left: -34em;
+}
+
+.left_panel_showing {
+    transition: margin-left 0 ease-out;
+    margin-left: 0em;
+}
+
+.left_panel_button {
+    position: fixed;
+    font-size: 2.5em;
+}
+
+.left_panel_sub_spacer {
+    display: block;
+
+    transition: width 0 ease-out;
+    width: 34em;
+    height: 1em;
+}
+
+.left_panel_sub_spacer_hidden {
+    transition: width 0 ease-in;
+    width: 0em;
+}
+

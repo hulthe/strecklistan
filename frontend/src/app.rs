@@ -254,35 +254,40 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
 
 pub fn view(model: &Model) -> Vec<Node<Msg>> {
     vec![div![
-        if cfg!(debug_assertions) {
-            div![class!["debug_banner"], "DEBUG"]
-        } else {
-            empty![]
-        },
         div![
             class![C.header],
-            //a!["hem", class![C.header_link], attrs! {At::Href => "/"}],
-            a![
-                "försäljning",
-                class![C.header_link],
-                attrs! {At::Href => "/store"}
-            ],
-            a![
-                "tillgodo",
-                class![C.header_link],
-                attrs! {At::Href => "/deposit"}
-            ],
-            a![
-                "transaktioner",
-                class![C.header_link],
-                attrs! {At::Href => "/transactions"}
-            ],
-            a![
-                "bokföring",
-                class![C.header_link],
-                attrs! {At::Href => "/accounting"}
+            if cfg!(debug_assertions) {
+                div![class![C.debug_banner], "DEBUG"]
+            } else {
+                empty![]
+            },
+            div![
+                // links
+                //a!["hem", class![C.header_link], attrs! {At::Href => "/"}],
+                class![C.header_link_box],
+                a![
+                    "försäljning",
+                    class![C.header_link],
+                    attrs! {At::Href => "/store"}
+                ],
+                a![
+                    "tillgodo",
+                    class![C.header_link],
+                    attrs! {At::Href => "/deposit"}
+                ],
+                a![
+                    "transaktioner",
+                    class![C.header_link],
+                    attrs! {At::Href => "/transactions"}
+                ],
+                a![
+                    "bokföring",
+                    class![C.header_link],
+                    attrs! {At::Href => "/accounting"}
+                ],
             ],
         ],
+        div![class![C.header_margin]],
         match &model.state {
             State::Ready {
                 accounting_page,

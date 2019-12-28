@@ -54,3 +54,97 @@ pub fn sort_tillgodolista_search(
         scr_b.cmp(scr_a).then(acc_a.id.cmp(&acc_b.id))
     });
 }
+
+use std::cmp::Ordering;
+use std::fmt::Display;
+use std::fmt::Write;
+struct WriteComparer<'a> {
+    cmp_to: &'a str,
+    ord: Ordering,
+    s1_ended: bool,
+}
+
+impl<'a> WriteComparer<'a> {
+    pub fn new(cmp_to: &'a str) -> WriteComparer<'a> {
+        WriteComparer {
+            cmp_to,
+            ord: Ordering::Equal,
+            s1_ended: false,
+        }
+    }
+}
+
+impl<'a> Write for WriteComparer<'a> {
+    fn write_str(&mut self, s1: &str) -> Result<(), std::fmt::Error> {
+        if self.s1_ended && s1 != "" {
+            self.s1_ended = false;
+            self.ord = Ordering::Equal;
+        }
+        let mut s1 = s1;
+        loop {
+            //println!("s1: \"{}\"  s2: \"{}\"", s1, self.cmp_to);
+            if self.ord != Ordering::Equal {
+                break;
+            } else if self.cmp_to == "" {
+                if s1 != "" {
+                    self.ord = Ordering::Greater; // TODO
+                }
+                break;
+            } else if s1 == "" {
+                self.ord = Ordering::Less; // TODO
+                self.s1_ended = true;
+                break;
+            }
+
+            let c1 = s1.chars().next().unwrap();
+            let c2 = self.cmp_to.chars().next().unwrap();
+
+            self.ord = c1.cmp(&c2);
+
+            s1 = &s1[c1.len_utf8()..];
+            self.cmp_to = &self.cmp_to[c2.len_utf8()..];
+        }
+        Ok(())
+    }
+}
+
+pub trait CompareToStr {
+    fn cmp_to_str(&self, s: &str) -> Ordering;
+}
+
+impl<T> CompareToStr for T
+where
+    T: Display,
+{
+    fn cmp_to_str(&self, s: &str) -> Ordering {
+        let mut w = WriteComparer::new(s);
+        write!(&mut w, "{}", self).unwrap();
+        w.ord
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::CompareToStr;
+    use std::cmp::Ordering;
+    #[test]
+    fn test_str_cmp() {
+        assert_eq!(1.cmp_to_str("1"), Ordering::Equal);
+        assert_eq!(2.cmp_to_str("2"), Ordering::Equal);
+        assert_eq!(3.cmp_to_str("3"), Ordering::Equal);
+        assert_eq!(4.cmp_to_str("4"), Ordering::Equal);
+        assert_eq!(10.cmp_to_str("10"), Ordering::Equal);
+        assert_eq!(1.cmp_to_str("01"), Ordering::Greater);
+        assert_eq!(111.cmp_to_str("111"), Ordering::Equal);
+        assert_eq!(999.cmp_to_str("999"), Ordering::Equal);
+        assert_eq!(9999.cmp_to_str("999"), Ordering::Greater);
+        assert_eq!((-10).cmp_to_str("-10"), Ordering::Equal);
+        assert_eq!((-10).cmp_to_str("99"), Ordering::Less);
+        assert_eq!(89.cmp_to_str("99"), Ordering::Less);
+
+        for i in -99..=99 {
+            let s = format!("{}", i);
+            assert_eq!(i.cmp_to_str(&s), Ordering::Equal);
+        }
+    }
+}

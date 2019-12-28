@@ -1,5 +1,6 @@
 use crate::app::{Msg, StateReady};
 use crate::generated::css_classes::C;
+use crate::views::filter_menu::{FilterMenu, FilterMenuMsg};
 use laggit_api::inventory::InventoryItemStock as InventoryItem;
 use laggit_api::transaction::{Transaction, TransactionId};
 use seed::prelude::*;
@@ -11,16 +12,24 @@ pub enum TransactionsMsg {
     DeleteTransaction(TransactionId),
     TransactionDeleted(FetchObject<TransactionId>),
     SetShowDelete(bool),
+    SetShowLeftPanel(bool),
+    FilterMenuMsg(FilterMenuMsg),
 }
 
 #[derive(Clone)]
 pub struct TransactionsPage {
     show_delete: bool,
+    show_left_panel: bool,
+    filter_menu: FilterMenu,
 }
 
 impl TransactionsPage {
     pub fn new(_global: &StateReady) -> Self {
-        TransactionsPage { show_delete: false }
+        TransactionsPage {
+            show_delete: false,
+            show_left_panel: false,
+            filter_menu: FilterMenu::new(vec!["datum", "klockslag", "summa", "debet", "kredit"]),
+        }
     }
 
     pub fn update(
@@ -52,6 +61,13 @@ impl TransactionsPage {
             TransactionsMsg::SetShowDelete(show_delete) => {
                 self.show_delete = show_delete;
             }
+            TransactionsMsg::SetShowLeftPanel(show_left_panel) => {
+                self.show_left_panel = show_left_panel;
+            }
+            TransactionsMsg::FilterMenuMsg(msg) => self.filter_menu.update(
+                msg,
+                &mut orders_local.proxy(|msg| TransactionsMsg::FilterMenuMsg(msg)),
+            ),
         }
     }
 
@@ -73,12 +89,13 @@ impl TransactionsPage {
                                 Ev::Click,
                                 TransactionsMsg::DeleteTransaction(transaction.id)
                             ),
-                            "X"
+                            "✖",
                         ]
                     } else {
                         empty![]
                     }
                 ],
+                p![format!("{}", transaction.time.format("%Y-%m-%d %H:%M:%S"))],
                 p![
                     class![C.mt_2],
                     span!["Debet: "],
@@ -149,16 +166,54 @@ impl TransactionsPage {
 
         div![
             class![C.transactions_page],
-            button![
-                class!["transaction_page_show_delete"],
-                "Radera transaktioner?",
-                simple_ev(Ev::Click, TransactionsMsg::SetShowDelete(!self.show_delete)),
+            div![
+                class![C.px_4],
+                div![
+                    class![C.flex, C.flex_row, C.text_3xl, C.font_bold],
+                    h2![class![C.mx_auto, C.my_2], "Filtrera (WIP)"],
+                ],
+                if self.show_left_panel {
+                    class![C.left_panel, C.left_panel_showing]
+                } else {
+                    class![C.left_panel]
+                },
+                self.filter_menu
+                    .view()
+                    .map_message(|msg| TransactionsMsg::FilterMenuMsg(msg)),
             ],
-            global
-                .transaction_history
-                .iter()
-                .map(|t| view_transaction(t))
-                .collect::<Vec<_>>(),
+            button![
+                class![C.left_panel_button,],
+                simple_ev(
+                    Ev::Click,
+                    TransactionsMsg::SetShowLeftPanel(!self.show_left_panel),
+                ),
+                "⚙"
+            ],
+            div![if self.show_left_panel {
+                class![C.left_panel_sub_spacer]
+            } else {
+                class![C.left_panel_sub_spacer, C.left_panel_sub_spacer_hidden]
+            },],
+            div![
+                class![C.transactions_list],
+                button![
+                    class!["transaction_page_show_delete"],
+                    "Radera transaktioner?",
+                    simple_ev(Ev::Click, TransactionsMsg::SetShowDelete(!self.show_delete)),
+                ],
+                global
+                    .transaction_history
+                    .iter()
+                    .filter(|tr| self.filter_menu.filter(&[
+                        &tr.time.format("%Y-%m-%d"),                                   // datum
+                        &tr.time.format("%H:%M:%S"),                                   // klockslag
+                        &tr.amount,                                                    // summa
+                        &global.book_accounts.get(&tr.debited_account).unwrap().name,  // debet
+                        &global.book_accounts.get(&tr.credited_account).unwrap().name, // kredit
+                    ]))
+                    .map(|t| view_transaction(t))
+                    .collect::<Vec<_>>(),
+            ]
         ]
         .map_message(|msg| Msg::TransactionsMsg(msg))
     }
