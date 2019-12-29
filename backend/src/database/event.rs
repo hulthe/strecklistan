@@ -1,9 +1,8 @@
-use chrono::Local;
-use diesel::result::QueryResult as Result;
-use diesel::prelude::*;
-use crate::models::event::EventWithSignups as EventWS;
 use crate::database::DatabaseConn;
-
+use crate::models::event::EventWithSignups as EventWS;
+use chrono::Local;
+use diesel::prelude::*;
+use diesel::result::QueryResult as Result;
 
 pub fn get_event_ws(connection: DatabaseConn, id: i32, published_only: bool) -> Result<EventWS> {
     use crate::schema::views::events_with_signups::dsl::{events_with_signups, published};
@@ -14,12 +13,16 @@ pub fn get_event_ws(connection: DatabaseConn, id: i32, published_only: bool) -> 
         .first(&connection)?)
 }
 
-
-pub fn get_event_ws_range(connection: DatabaseConn, low: i64, high: i64, published_only: bool) -> Result<Vec<EventWS>> {
+pub fn get_event_ws_range(
+    connection: DatabaseConn,
+    low: i64,
+    high: i64,
+    published_only: bool,
+) -> Result<Vec<EventWS>> {
     use crate::schema::views::events_with_signups::dsl::*;
 
     assert!(high > low);
-    
+
     let now = Local::now().naive_local();
 
     let mut previous: Vec<EventWS> = if low < 0 {

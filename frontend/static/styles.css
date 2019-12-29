@@ -283,23 +283,35 @@ body {
     padding-right: 0.5rem;
 }
 
-.inventory_item, .inventory_bundle {
-    width: 16rem;
-    padding: 0.5rem;
-    margin: 2rem;
-    border-radius: 0.5rem;
-}
-
-.inventory_item_selected {
-    border: dashed #8a784f 0.2rem;
-}
-
 .inventory_item {
-    background-color: #64d5ca;
+    width: 16rem;
+    margin: 1rem;
+    border: solid #000000 0.15rem;
+    border-radius: 0.5rem;
+    background-color: #ececec;
 }
 
-.inventory_bundle {
-    background-color: #f6993f;
+.inventory_item_header {
+    padding: 0.25rem;
+    color: #ffffff;
+    background-color: #092656;
+}
+
+.inventory_item_footer {
+    padding: 0.25rem;
+    color: #ffffff;
+    background-color: #55560b;
+    text-align: right;
+}
+
+.inventory_item_footer_green {
+    background-color: #216d05;
+}
+.inventory_item_footer_yellow {
+    background-color: #6d5d05;
+}
+.inventory_item_footer_red {
+    background-color: #6d0505;
 }
 
 .transaction_view {

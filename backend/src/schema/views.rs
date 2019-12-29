@@ -20,6 +20,7 @@ table! {
         id -> Int4,
         name -> Text,
         price -> Nullable<Int4>,
+        image_url -> Nullable<Text>,
         stock -> Int4,
     }
 }

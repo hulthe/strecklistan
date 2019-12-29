@@ -36,6 +36,7 @@ table! {
         id -> Int4,
         name -> Nullable<Text>,
         price -> Nullable<Int4>,
+        image_url -> Nullable<Text>,
     }
 }
 
@@ -52,6 +53,7 @@ table! {
         id -> Int4,
         name -> Text,
         price -> Int4,
+        image_url -> Nullable<Text>,
     }
 }
 

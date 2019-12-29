@@ -42,17 +42,22 @@ pub fn get_accounts(db_pool: State<DatabasePool>) -> Result<Json<Vec<BookAccount
 #[post("/book_account", data = "<account>")]
 pub fn add_account(
     db_pool: State<DatabasePool>,
-    account: Json<NewBookAccount>) -> Result<Json<i32>, SJ> {
+    account: Json<NewBookAccount>,
+) -> Result<Json<i32>, SJ> {
     let connection = db_pool.inner().get()?;
 
     use crate::schema::tables::book_accounts::dsl::*;
 
-    Ok(Json(diesel::insert_into(book_accounts)
-        .values((name.eq(&account.name),
-                 account_type.eq(&account.account_type),
-                 creditor.eq(&account.creditor)))
-        .returning(id)
-        .get_result(&connection)?))
+    Ok(Json(
+        diesel::insert_into(book_accounts)
+            .values((
+                name.eq(&account.name),
+                account_type.eq(&account.account_type),
+                creditor.eq(&account.creditor),
+            ))
+            .returning(id)
+            .get_result(&connection)?,
+    ))
 }
 
 #[get("/book_accounts/masters")]

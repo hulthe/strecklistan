@@ -20,6 +20,7 @@ pub struct InventoryItem {
     pub id: InventoryItemId,
     pub name: String,
     pub price: Option<i32>,
+    pub image_url: Option<String>,
 }
 
 impl PartialEq for InventoryItem {
@@ -45,6 +46,7 @@ pub struct InventoryItemStock {
     pub id: InventoryItemId,
     pub name: String,
     pub price: Option<i32>,
+    pub image_url: Option<String>,
     pub stock: i32,
 }
 
@@ -79,6 +81,7 @@ pub struct InventoryBundle {
     pub id: InventoryBundleId,
     pub name: String,
     pub price: Currency,
+    pub image_url: Option<String>,
     pub item_ids: Vec<InventoryItemId>,
 }
 

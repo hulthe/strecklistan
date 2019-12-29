@@ -47,6 +47,7 @@ pub fn get_inventory_bundles(
                 id: bundle.id,
                 name: bundle.name,
                 price: bundle.price.into(),
+                image_url: bundle.image_url,
                 item_ids: std::iter::once(item)
                     .chain(elements.map(|(_, item)| item))
                     .flatten() // Remove None:s

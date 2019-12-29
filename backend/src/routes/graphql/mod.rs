@@ -1,4 +1,5 @@
-#[macro_use] mod auth_macro;
+#[macro_use]
+mod auth_macro;
 pub mod context;
 mod event;
 mod root;
