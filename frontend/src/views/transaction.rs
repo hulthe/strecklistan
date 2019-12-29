@@ -49,7 +49,7 @@ pub fn view_new_transaction(
                         class![C.transaction_entry]
                     },
                     input![
-                        class![C.new_transaction_bundle_amount_field],
+                        class![C.new_transaction_bundle_amount_field, C.border_on_focus],
                         attrs! { At::Value => -bundle.change },
                         attrs! { At::Type => "number" },
                         {
