@@ -287,7 +287,12 @@ pub fn view(model: &Model) -> Vec<Node<Msg>> {
                 ],
             ],
         ],
-        div![class![C.header_margin]],
+        if cfg!(debug_assertions) {
+            div![raw!["&nbsp;"]]
+        } else {
+            empty![]
+        },
+        div![class![C.header_margin], raw!["&nbsp;"]],
         match &model.state {
             State::Ready {
                 accounting_page,

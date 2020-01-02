@@ -39,7 +39,8 @@ body {
 }
 
 .header_margin {
-    height: 4.3rem;
+    font-size: larger;
+    padding: 0.5rem;
 }
 
 .not_found_message {
@@ -295,6 +296,8 @@ body {
     padding: 0.25rem;
     color: #ffffff;
     background-color: #092656;
+    border-top-left-radius: 0.3rem;
+    border-top-right-radius: 0.3rem;
 }
 
 .inventory_item_footer {
@@ -302,6 +305,8 @@ body {
     color: #ffffff;
     background-color: #55560b;
     text-align: right;
+    border-bottom-left-radius: 0.3rem;
+    border-bottom-right-radius: 0.3rem;
 }
 
 .inventory_item_footer_green {
