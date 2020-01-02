@@ -71,55 +71,55 @@ SELECT setval('book_accounts_id_seq', 12, true);
 
 -- Add inventory index
 COPY public.inventory (id, price, name, image_url) FROM stdin;
-01	\N	Filidutter	https://drawit-shop.chalmers.it/static/filidutter.png
-02	\N	Fizzy Pop	https://drawit-shop.chalmers.it/static/fizzypop.png
-03	600	Mentos Rainbow	https://drawit-shop.chalmers.it/static/mentos_rainbow.png
-04	600	Delicatoboll	https://drawit-shop.chalmers.it/static/delicatoboll.png
-05	600	Pärlboll	https://drawit-shop.chalmers.it/static/pärlboll.png
-06	1200	Chokladrullar	https://drawit-shop.chalmers.it/static/marabou_chokladrulle.png
-07	1200	Chokladrullar, Daim	https://drawit-shop.chalmers.it/static/marabou_chokladrulle_daim.png
-08	1200	Chokladrullar, Mint	https://drawit-shop.chalmers.it/static/marabou_chokladrulle_mint.png
-09	600	Djungelvrål	https://drawit-shop.chalmers.it/static/djungelvrål.png
-10	1200	Gott & Blandat	https://drawit-shop.chalmers.it/static/gott_och_blandat.png
-11	600	Ginger Beer	https://drawit-shop.chalmers.it/static/ginger_beer.png
-12	600	Haribo Nallar	https://drawit-shop.chalmers.it/static/haribo_goldbears.png
-13	600	Kryptoniter	https://drawit-shop.chalmers.it/static/kryptoniter.png
-14	600	Jättesalt	https://drawit-shop.chalmers.it/static/jättesalt.png
-15	600	Kexchoklad	https://drawit-shop.chalmers.it/static/kexchoklad.png
-16	1200	Kinasnacks	https://drawit-shop.chalmers.it/static/kinasnacks.png
-17	600	Lakrisal	https://drawit-shop.chalmers.it/static/lakrisal.png
+01	\N	Filidutter	https://drawit-shop.chalmers.it/images/filidutter.png
+02	\N	Fizzy Pop	https://drawit-shop.chalmers.it/images/fizzypop.png
+03	600	Mentos Rainbow	https://drawit-shop.chalmers.it/images/mentos_rainbow.png
+04	600	Delicatoboll	https://drawit-shop.chalmers.it/images/delicatoboll.png
+05	600	Pärlboll	https://drawit-shop.chalmers.it/images/pärlboll.png
+06	1200	Chokladrullar	https://drawit-shop.chalmers.it/images/marabou_chokladrulle.png
+07	1200	Chokladrullar, Daim	https://drawit-shop.chalmers.it/images/marabou_chokladrulle_daim.png
+08	1200	Chokladrullar, Mint	https://drawit-shop.chalmers.it/images/marabou_chokladrulle_mint.png
+09	600	Djungelvrål	https://drawit-shop.chalmers.it/images/djungelvrål.png
+10	1200	Gott & Blandat	https://drawit-shop.chalmers.it/images/gott_och_blandat.png
+11	600	Ginger Beer	https://drawit-shop.chalmers.it/images/ginger_beer.png
+12	600	Haribo Nallar	https://drawit-shop.chalmers.it/images/haribo_goldbears.png
+13	600	Kryptoniter	https://drawit-shop.chalmers.it/images/kryptoniter.png
+14	600	Jättesalt	https://drawit-shop.chalmers.it/images/jättesalt.png
+15	600	Kexchoklad	https://drawit-shop.chalmers.it/images/kexchoklad.png
+16	1200	Kinasnacks	https://drawit-shop.chalmers.it/images/kinasnacks.png
+17	600	Lakrisal	https://drawit-shop.chalmers.it/images/lakrisal.png
 18	600	Lollipop Fruit	\N
-19	600	Mars	https://drawit-shop.chalmers.it/static/mars.png
-20	600	Nappar, Fruit	https://drawit-shop.chalmers.it/static/haribo_nappar.png
-21	600	Nappar, Kola	https://drawit-shop.chalmers.it/static/haribo_nappar_kola.png
-22	600	Nappar, Lakrits	https://drawit-shop.chalmers.it/static/haribo_nappar_lakrits.png
-23	600	Nappar, Sura	https://drawit-shop.chalmers.it/static/haribo_nappar_sura.png
-24	300	Pingvinstång, Sur Smultron	https://drawit-shop.chalmers.it/static/pingvinstång_sur_smultron.png
-25	300	Pingvinstång, Mint	https://drawit-shop.chalmers.it/static/pingvinstång_mint.png
-26	600	Tutti Frutti Rings	https://drawit-shop.chalmers.it/static/tutti_frutti_rings.png
-27	600	Wasa Sandwich	https://drawit-shop.chalmers.it/static/wasa_sandwich_tomato_basil.png
-28	1200	Tyrkisk Peber	https://drawit-shop.chalmers.it/static/tyrkisk_peber.png
+19	600	Mars	https://drawit-shop.chalmers.it/images/mars.png
+20	600	Nappar, Fruit	https://drawit-shop.chalmers.it/images/haribo_nappar.png
+21	600	Nappar, Kola	https://drawit-shop.chalmers.it/images/haribo_nappar_kola.png
+22	600	Nappar, Lakrits	https://drawit-shop.chalmers.it/images/haribo_nappar_lakrits.png
+23	600	Nappar, Sura	https://drawit-shop.chalmers.it/images/haribo_nappar_sura.png
+24	300	Pingvinstång, Sur Smultron	https://drawit-shop.chalmers.it/images/pingvinstång_sur_smultron.png
+25	300	Pingvinstång, Mint	https://drawit-shop.chalmers.it/images/pingvinstång_mint.png
+26	600	Tutti Frutti Rings	https://drawit-shop.chalmers.it/images/tutti_frutti_rings.png
+27	600	Wasa Sandwich	https://drawit-shop.chalmers.it/images/wasa_sandwich_tomato_basil.png
+28	1200	Tyrkisk Peber	https://drawit-shop.chalmers.it/images/tyrkisk_peber.png
 29	600	ZOO Apor	\N
-30	600	Pepsi	https://drawit-shop.chalmers.it/static/pepsi.png
-31	600	Pepsi Max	https://drawit-shop.chalmers.it/static/pepsi_max.png
-32	600	Pepsi Max Lime	https://drawit-shop.chalmers.it/static/pepsi_max_lime.png
-33	600	Dr. Pepper	https://drawit-shop.chalmers.it/static/dr_pepper.png
+30	600	Pepsi	https://drawit-shop.chalmers.it/images/pepsi.png
+31	600	Pepsi Max	https://drawit-shop.chalmers.it/images/pepsi_max.png
+32	600	Pepsi Max Lime	https://drawit-shop.chalmers.it/images/pepsi_max_lime.png
+33	600	Dr. Pepper	https://drawit-shop.chalmers.it/images/dr_pepper.png
 34	600	Zingo Tropical	\N
-35	600	Hallonsoda	https://drawit-shop.chalmers.it/static/hallonsoda.png
-36	600	Loka, Citron	https://drawit-shop.chalmers.it/static/loka_citron.png
-37	600	Loka, Hallon	https://drawit-shop.chalmers.it/static/loka_hallon.png
-38	600	Mountaindew	https://drawit-shop.chalmers.it/static/mountain_dew.png
-39	600	Päronsoda	https://drawit-shop.chalmers.it/static/päronsoda.png
+35	600	Hallonsoda	https://drawit-shop.chalmers.it/images/hallonsoda.png
+36	600	Loka, Citron	https://drawit-shop.chalmers.it/images/loka_citron.png
+37	600	Loka, Hallon	https://drawit-shop.chalmers.it/images/loka_hallon.png
+38	600	Mountaindew	https://drawit-shop.chalmers.it/images/mountain_dew.png
+39	600	Päronsoda	https://drawit-shop.chalmers.it/images/päronsoda.png
 40	600	Ramlösa, Granatäpple	\N
 41	600	Ramlösa, Hallon & björnbär	\N
-42	600	Smakis, Päron	https://drawit-shop.chalmers.it/static/smakis_päron.png
-43	600	Smakis, Äpple	https://drawit-shop.chalmers.it/static/smakis_päron.png
-44	600	7up	https://drawit-shop.chalmers.it/static/7up.png
-45	600	7up Free	https://drawit-shop.chalmers.it/static/7up_free.png
-46	600	Trocadero	https://drawit-shop.chalmers.it/static/trocadero.png
-47	600	Zingo	https://drawit-shop.chalmers.it/static/zingo_orange.png
-48	600	Zingo Sorbet	https://drawit-shop.chalmers.it/static/zingo_sorbet_light.png
-49	600	Vimto	https://drawit-shop.chalmers.it/static/vimto.png
+42	600	Smakis, Päron	https://drawit-shop.chalmers.it/images/smakis_päron.png
+43	600	Smakis, Äpple	https://drawit-shop.chalmers.it/images/smakis_päron.png
+44	600	7up	https://drawit-shop.chalmers.it/images/7up.png
+45	600	7up Free	https://drawit-shop.chalmers.it/images/7up_free.png
+46	600	Trocadero	https://drawit-shop.chalmers.it/images/trocadero.png
+47	600	Zingo	https://drawit-shop.chalmers.it/images/zingo_orange.png
+48	600	Zingo Sorbet	https://drawit-shop.chalmers.it/images/zingo_sorbet_light.png
+49	600	Vimto	https://drawit-shop.chalmers.it/images/vimto.png
 \.
 SELECT setval('inventory_id_seq', 50, true);
 
@@ -150,8 +150,8 @@ burkläsk	49
 
 -- Add inventory bundles
 COPY public.inventory_bundles (id, name, price, image_url) FROM stdin;
-1	Mat	2500	https://drawit-shop.chalmers.it/static/mat.png
-2	Mintstång: 3 för 2	600	https://drawit-shop.chalmers.it/static/pingvinstång_mint.png
+1	Mat	2500	https://drawit-shop.chalmers.it/images/mat.png
+2	Mintstång: 3 för 2	600	https://drawit-shop.chalmers.it/images/pingvinstång_mint.png
 \.
 SELECT setval('inventory_bundles_id_seq', 3, true);
 
