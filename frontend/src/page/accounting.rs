@@ -112,7 +112,7 @@ impl AccountingPage {
                 ],
             ],
         ]
-        .map_message(|msg| Msg::AccountingMsg(msg))
+        .map_msg(|msg| Msg::AccountingMsg(msg))
     }
 
     fn update_filter(&mut self, global: &StateReady) {

@@ -8,7 +8,6 @@ use crate::page::{
     Page,
 };
 use chrono::NaiveDateTime;
-use futures::Future;
 use laggit_api::{
     book_account::{BookAccount, BookAccountId, MasterAccounts},
     inventory::{
@@ -17,8 +16,9 @@ use laggit_api::{
     member::{Member, MemberId},
     transaction::Transaction,
 };
+use seed::browser::service::fetch::FetchObject;
 use seed::prelude::*;
-use seed::{fetch::FetchObject, *};
+use seed::*;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::fmt::Debug;
@@ -352,11 +352,11 @@ pub fn fetch_data(orders: &mut impl Orders<Msg>) {
     );
 }
 
-fn fetch_events(low: i64, high: i64) -> impl Future<Item = Msg, Error = Msg> {
+async fn fetch_events(low: i64, high: i64) -> Result<Msg, Msg> {
     let url = format!("/api/events?low={}&high={}", low, high);
-    Request::new(url).fetch_json(|data| Msg::Fetched(FetchMsg::Events(data)))
+    Request::new(url).fetch_json(|data| Msg::Fetched(FetchMsg::Events(data))).await
 }
 
-pub fn window_events(_model: &Model) -> Vec<events::Listener<Msg>> {
+pub fn window_events(_model: &Model) -> Vec<Listener<Msg>> {
     vec![keyboard_ev("keydown", |ev| Msg::KeyPressed(ev))]
 }

@@ -14,7 +14,7 @@ use laggit_api::{
     transaction::{NewTransaction, TransactionBundle, TransactionId},
 };
 use seed::prelude::*;
-use seed::{fetch::FetchObject, *};
+use seed::{browser::service::fetch::FetchObject, *};
 use std::collections::HashMap;
 use std::rc::Rc;
 

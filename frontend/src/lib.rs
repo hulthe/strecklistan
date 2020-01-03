@@ -8,28 +8,28 @@ mod page;
 mod util;
 mod views;
 
+use app::{Model, Msg};
 use seed::{self, prelude::*};
 
 #[wasm_bindgen(start)]
 pub fn run() -> Result<(), JsValue> {
     set_panic_hook();
 
-    seed::App::build(
-        |url, orders| {
-            if let Some(msg) = app::routes(url) {
-                orders.send_msg(msg);
-            }
-            app::fetch_data(orders);
-            Init::new(app::Model::default())
-        },
-        app::update,
-        app::view,
-    )
-    .window_events(app::window_events)
-    .routes(app::routes)
-    .build_and_start();
+    seed::App::builder(app::update, app::view)
+        .after_mount(after_mount)
+        .window_events(app::window_events)
+        .routes(app::routes)
+        .build_and_start();
 
     Ok(())
+}
+
+fn after_mount(url: Url, orders: &mut impl Orders<Msg>) -> AfterMount<Model> {
+    if let Some(msg) = app::routes(url) {
+        orders.send_msg(msg);
+    }
+    app::fetch_data(orders);
+    AfterMount::new(app::Model::default())
 }
 
 // see cargo.toml for more info

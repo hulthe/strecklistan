@@ -4,7 +4,7 @@ use crate::views::filter_menu::{FilterMenu, FilterMenuMsg};
 use laggit_api::inventory::InventoryItemStock as InventoryItem;
 use laggit_api::transaction::{Transaction, TransactionId};
 use seed::prelude::*;
-use seed::{fetch::FetchObject, *};
+use seed::{browser::service::fetch::FetchObject, *};
 use std::collections::HashMap;
 use std::ops::Deref;
 
@@ -156,7 +156,7 @@ impl TransactionsPage {
                 },
                 self.filter_menu
                     .view()
-                    .map_message(|msg| TransactionsMsg::FilterMenuMsg(msg)),
+                    .map_msg(|msg| TransactionsMsg::FilterMenuMsg(msg)),
             ],
             button![
                 class![C.left_panel_button,],
@@ -190,7 +190,7 @@ impl TransactionsPage {
                 },
             ],
         ]
-        .map_message(|msg| Msg::TransactionsMsg(msg))
+        .map_msg(|msg| Msg::TransactionsMsg(msg))
     }
 }
 

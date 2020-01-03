@@ -13,7 +13,10 @@ workspace = ".."
 crate-type = ["cdylib"]
 
 [dependencies]
-seed = "0.4.2"
+# Seed 0.5 has a bug where cloning Node:s doesn't clone event listeners
+# TODO: fix this when https://github.com/seed-rs/seed/pull/323 is merged.
+#seed = "=0.5.2"
+seed = { git = "https://github.com/MuhannadAlrusayni/seed.git", branch = "master" }
 chrono = { version = "0.4.6", features = ["serde"] }
 cfg-if = "0.1.7"
 wasm-bindgen = "^0.2.45"

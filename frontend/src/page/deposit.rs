@@ -9,7 +9,7 @@ use laggit_api::{
     transaction::{NewTransaction, TransactionId},
 };
 use seed::prelude::*;
-use seed::{fetch::FetchObject, *};
+use seed::{browser::service::fetch::FetchObject, *};
 use std::rc::Rc;
 
 #[derive(Clone, Debug)]
@@ -240,7 +240,7 @@ impl DepositionPage {
                     "Bekräfta",
                 ],
             ]
-            .map_message(|msg| DepositionMsg::NewMember(msg))
+            .map_msg(|msg| DepositionMsg::NewMember(msg))
         } else {
             div![
                 class![C.deposit_page],
@@ -335,7 +335,7 @@ impl DepositionPage {
                 ],
             ]
         }
-        .map_message(|msg| Msg::DepositionMsg(msg))
+        .map_msg(|msg| Msg::DepositionMsg(msg))
     }
 }
 
