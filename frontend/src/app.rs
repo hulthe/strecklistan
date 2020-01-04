@@ -309,13 +309,13 @@ pub fn view(model: &Model) -> Vec<Node<Msg>> {
                     div![class![C.not_found_message, C.unselectable], "404"]
                 }
             },
-            State::Loading(_) => div![class!["text-center"], div![class!["lds-heart"], div![]]],
+            State::Loading(_) => div![class![C.text_center, C.mt_2], div![class![C.lds_heart], div![]]],
             State::LoadingFailed(msg, error) => div![
                 class![C.flex, C.flex_col],
                 p!["An has error occured."],
                 p![msg],
                 textarea![
-                    class!["code_box"],
+                    class![C.code_box],
                     attrs! { At::ReadOnly => true, },
                     attrs! { At::Rows => error.lines().count(), },
                     error,
