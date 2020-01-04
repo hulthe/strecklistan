@@ -5,7 +5,6 @@ use laggit_api::inventory::InventoryItemStock as InventoryItem;
 use laggit_api::transaction::{Transaction, TransactionId};
 use seed::prelude::*;
 use seed::{browser::service::fetch::FetchObject, *};
-use std::collections::HashMap;
 use std::ops::Deref;
 
 const VIEW_COUNT_CHUNK: usize = 50;
@@ -29,9 +28,6 @@ pub struct TransactionsPage {
 
     // Indexes into global.transaction_history
     filtered_transactions: Vec<usize>,
-
-    // Left is rendered without delete button, right is rendered with
-    rendered_transactions: HashMap<TransactionId, (Node<TransactionsMsg>, Node<TransactionsMsg>)>,
 }
 
 impl TransactionsPage {
@@ -42,38 +38,27 @@ impl TransactionsPage {
             view_limit: VIEW_COUNT_CHUNK,
             filter_menu: FilterMenu::new(vec!["datum", "klockslag", "summa", "debet", "kredit"]),
             filtered_transactions: vec![],
-            rendered_transactions: HashMap::new(),
         };
         page.filter_transactions(global);
         page
     }
 
-    /// Rebuild self.filtered_transactions and make sure all transactions it references are
-    /// pre-rendered in self.rendered_transactions
+    /// Rebuild self.filtered_transactions
     fn filter_transactions(&mut self, global: &StateReady) {
         self.filtered_transactions = global
             .transaction_history
             .iter()
             .enumerate()
-            .filter_map(|(i, tr)| {
-                if self.filter_menu.filter(&[
+            .filter(|(_i, tr)| {
+                self.filter_menu.filter(&[
                     &tr.time.format("%Y-%m-%d"),                                   // datum
                     &tr.time.format("%H:%M:%S"),                                   // klockslag
                     &tr.amount,                                                    // summa
                     &global.book_accounts.get(&tr.debited_account).unwrap().name,  // debet
                     &global.book_accounts.get(&tr.credited_account).unwrap().name, // kredit
-                ]) {
-                    self.rendered_transactions.entry(tr.id).or_insert_with(|| {
-                        (
-                            view_transaction(global, tr, false),
-                            view_transaction(global, tr, true),
-                        )
-                    });
-                    Some(i)
-                } else {
-                    None
-                }
+                ])
             })
+            .map(|(i, _)| i)
             .collect();
     }
 
@@ -130,15 +115,7 @@ impl TransactionsPage {
             .iter()
             .take(self.view_limit)
             .map(|&i| &global.transaction_history[i])
-            .map(|tr| &self.rendered_transactions[&tr.id])
-            .map(|(without_button, with_button)| {
-                if self.show_delete {
-                    with_button
-                } else {
-                    without_button
-                }
-                .clone()
-            })
+            .map(|tr| view_transaction(global, tr, self.show_delete))
             .collect();
 
         div![
