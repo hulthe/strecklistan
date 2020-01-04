@@ -1,6 +1,6 @@
 [package]
 name = "laggit_web"
-version = "0.5.1"
+version = "0.5.2"
 authors = ["Joakim Hulthe <joakim@hulthe.net"]
 license = "LGPL-3.0"
 description = "The frontend of the LaggIT web page"
@@ -13,10 +13,10 @@ workspace = ".."
 crate-type = ["cdylib"]
 
 [dependencies]
-# Seed 0.5 has a bug where cloning Node:s doesn't clone event listeners
-# TODO: fix this when https://github.com/seed-rs/seed/pull/323 is merged.
+# Seed 0.5.1 has a bug where cloning Node:s doesn't clone event listeners
+# TODO: update this when new version is released
 #seed = "=0.5.2"
-seed = { git = "https://github.com/MuhannadAlrusayni/seed.git", branch = "master" }
+seed = { git = "https://github.com/seed-rs/seed.git", branch = "master" }
 chrono = { version = "0.4.6", features = ["serde"] }
 cfg-if = "0.1.7"
 wasm-bindgen = "^0.2.45"
