@@ -1,10 +1,13 @@
 use crate::app::{Msg, StateReady};
 use crate::generated::css_classes::C;
 use crate::views::filter_menu::{FilterMenu, FilterMenuMsg};
+use laggit_api::book_account::{BookAccount, BookAccountId};
+use laggit_api::currency::Currency;
 use laggit_api::inventory::InventoryItemStock as InventoryItem;
 use laggit_api::transaction::{Transaction, TransactionId};
 use seed::prelude::*;
 use seed::{browser::service::fetch::FetchObject, *};
+use std::collections::HashMap;
 use std::ops::Deref;
 
 const VIEW_COUNT_CHUNK: usize = 50;
@@ -28,6 +31,9 @@ pub struct TransactionsPage {
 
     // Indexes into global.transaction_history
     filtered_transactions: Vec<usize>,
+
+    // The balance of all accounts based on the filtered transactions
+    accounts_balance: HashMap<BookAccountId, Currency>,
 }
 
 impl TransactionsPage {
@@ -38,6 +44,7 @@ impl TransactionsPage {
             view_limit: VIEW_COUNT_CHUNK,
             filter_menu: FilterMenu::new(vec!["datum", "klockslag", "summa", "debet", "kredit"]),
             filtered_transactions: vec![],
+            accounts_balance: HashMap::new(),
         };
         page.filter_transactions(global);
         page
@@ -60,6 +67,24 @@ impl TransactionsPage {
             })
             .map(|(i, _)| i)
             .collect();
+
+        self.accounts_balance.clear();
+        for tr in self
+            .filtered_transactions
+            .iter()
+            .map(|&i| &global.transaction_history[i])
+        {
+            if let Some(acc) = global.book_accounts.get(&tr.debited_account) {
+                *self.accounts_balance.entry(tr.debited_account).or_default() +=
+                    acc.debit_diff(tr.amount);
+            }
+            if let Some(acc) = global.book_accounts.get(&tr.credited_account) {
+                *self
+                    .accounts_balance
+                    .entry(tr.credited_account)
+                    .or_default() += acc.credit_diff(tr.amount);
+            }
+        }
     }
 
     pub fn update(
@@ -110,6 +135,29 @@ impl TransactionsPage {
     }
 
     pub fn view(&self, global: &StateReady) -> Node<Msg> {
+        let show_acc_entry = |name: &str, balance: Currency| {
+            div![
+                class![C.balance_entry],
+                span![name],
+                span![": "],
+                span![class![C.flex_grow, C.flex_shrink, C.w_8]],
+                span![format!("{}:-", balance)],
+            ]
+        };
+        let show_acc = |id: &BookAccountId| {
+            show_acc_entry(
+                global
+                    .book_accounts
+                    .get(id)
+                    .map(|acc| acc.name.as_str())
+                    .unwrap_or("[missing]"),
+                self.accounts_balance
+                    .get(id)
+                    .map(|&c| c)
+                    .unwrap_or(0.into()),
+            )
+        };
+
         let transaction_list: Vec<_> = self
             .filtered_transactions
             .iter()
@@ -121,16 +169,40 @@ impl TransactionsPage {
         div![
             class![C.transactions_page],
             div![
-                class![C.px_4],
+                class![C.left_panel, C.px_4],
+                if self.show_left_panel {
+                    class![C.left_panel_showing]
+                } else {
+                    class![]
+                },
+                div![
+                    class![C.flex, C.flex_row, C.text_3xl, C.font_bold],
+                    h2![class![C.mx_auto, C.my_2], "Balansräkning"],
+                ],
+                div![
+                    class![C.balance_sheet, C.margin_hcenter],
+                    show_acc(&global.master_accounts.bank_account_id),
+                    show_acc(&global.master_accounts.cash_account_id),
+                    show_acc(&global.master_accounts.sales_account_id),
+                    show_acc(&global.master_accounts.purchases_account_id),
+                    show_acc_entry(
+                        "Tillgodo Totalt",
+                        self.accounts_balance
+                            .iter()
+                            .filter_map(|(id, balance)| global
+                                .book_accounts
+                                .get(id)
+                                .map(|acc| (acc, balance)))
+                            .filter(|(acc, _)| acc.creditor.is_some())
+                            .map(|(_, balance)| *balance)
+                            .fold(0.into(), |a: Currency, b| a + b)
+                    ),
+                ],
+                hr![class![C.my_2]],
                 div![
                     class![C.flex, C.flex_row, C.text_3xl, C.font_bold],
                     h2![class![C.mx_auto, C.my_2], "Filtrera (WIP)"],
                 ],
-                if self.show_left_panel {
-                    class![C.left_panel, C.left_panel_showing]
-                } else {
-                    class![C.left_panel]
-                },
                 self.filter_menu
                     .view()
                     .map_msg(|msg| TransactionsMsg::FilterMenuMsg(msg)),

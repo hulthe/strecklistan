@@ -85,7 +85,7 @@ pub fn view_new_transaction(
         button![
             class![C.wide_button, C.border_on_focus],
             simple_ev(Ev::Click, confirm_purchase_ev),
-            "Confirm Purchase",
+            "Slutför Köp",
         ],
     ]
 }

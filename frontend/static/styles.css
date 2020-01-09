@@ -123,6 +123,17 @@ body {
     flex-direction: column;
 }
 
+.balance_sheet {
+    display: inline-flex;
+    flex-direction: column;
+}
+
+.balance_entry {
+    font-size: 20px;
+    display: flex;
+    border-bottom: dotted black thin;
+}
+
 .new_member_view {
     display: flex;
     flex-direction: column;
