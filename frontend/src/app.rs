@@ -7,7 +7,6 @@ use crate::page::{
     transactions::{TransactionsMsg, TransactionsPage},
     Page,
 };
-use chrono::NaiveDateTime;
 use laggit_api::{
     book_account::{BookAccount, BookAccountId, MasterAccounts},
     inventory::{
@@ -24,6 +23,7 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::rc::Rc;
 use web_sys;
+use chrono::{DateTime, Utc, Local, FixedOffset};
 
 #[derive(Clone, Default)]
 pub struct StateLoading {
@@ -32,13 +32,13 @@ pub struct StateLoading {
     pub transaction_history: Option<Vec<Transaction>>,
     pub inventory: Option<HashMap<InventoryItemId, Rc<InventoryItem>>>,
     pub bundles: Option<HashMap<InventoryBundleId, Rc<InventoryBundle>>>,
-    pub events: Option<BTreeMap<NaiveDateTime, Vec<Event>>>,
+    pub events: Option<BTreeMap<DateTime<Utc>, Vec<Event>>>,
     pub members: Option<HashMap<MemberId, Rc<Member>>>,
 }
 
 #[derive(Clone)]
 pub struct StateReady {
-    pub events: BTreeMap<NaiveDateTime, Vec<Event>>,
+    pub events: BTreeMap<DateTime<Utc>, Vec<Event>>,
 
     pub book_accounts: HashMap<BookAccountId, Rc<BookAccount>>,
     pub master_accounts: MasterAccounts,
@@ -49,6 +49,8 @@ pub struct StateReady {
 
     pub inventory: HashMap<InventoryItemId, Rc<InventoryItem>>,
     pub bundles: HashMap<InventoryBundleId, Rc<InventoryBundle>>,
+
+    pub timezone: FixedOffset,
 }
 
 #[derive(Clone)]
@@ -172,6 +174,7 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                                             bundles: bundles.clone(),
                                             events: events.clone(),
                                             members: members.clone(),
+                                            timezone: *Local::now().offset(),
                                         };
                                         State::Ready {
                                             accounting_page: AccountingPage::new(&data),
@@ -204,7 +207,7 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             use FetchMsg::*;
             match msg {
                 Events(fetch) => handle_fetch(model, fetch, "event", |data, s| {
-                    let mut events: BTreeMap<NaiveDateTime, Vec<Event>> = BTreeMap::new();
+                    let mut events: BTreeMap<DateTime<Utc>, Vec<Event>> = BTreeMap::new();
                     for event in data {
                         events.entry(event.start_time).or_default().push(event)
                     }

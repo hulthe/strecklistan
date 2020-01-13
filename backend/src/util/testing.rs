@@ -4,7 +4,7 @@ use crate::models::{NewEvent, NewSignup, User};
 use crate::schema::tables::event_signups;
 use crate::schema::tables::events;
 use crate::schema::tables::users;
-use chrono::{Duration, Local};
+use chrono::{Duration, Utc};
 use diesel::RunQueryDsl;
 use dotenv::dotenv;
 
@@ -22,7 +22,7 @@ pub fn generate_new_events(old: usize, new: usize) -> Vec<NewEvent> {
         }
     };
 
-    let now = Local::now().naive_local();
+    let now = Utc::now();
 
     for i in 0..old {
         let time = now - Duration::weeks(2 * (i + 1) as i64);

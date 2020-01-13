@@ -17,7 +17,6 @@ crate-type = ["cdylib"]
 # TODO: update this when new version is released
 #seed = "=0.5.2"
 seed = { git = "https://github.com/seed-rs/seed.git", branch = "master" }
-chrono = { version = "0.4.6", features = ["serde"] }
 cfg-if = "0.1.7"
 wasm-bindgen = "^0.2.45"
 strum = "0.15.0"
@@ -35,6 +34,11 @@ wee_alloc = { version = "0.4.3", optional = true }
 # all the `std::fmt` and `std::panicking` infrastructure, so isn't great for
 # code size when deploying.
 console_error_panic_hook = { version ="0.1.6", optional = true }
+
+[dependencies.chrono]
+version = "0.4.10"
+default-features = false
+features = ["serde", "wasmbind", "js-sys"]
 
 [dependencies.laggit_api]
 path="../common"

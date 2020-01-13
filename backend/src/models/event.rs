@@ -1,6 +1,6 @@
 use crate::schema::tables::events;
 use crate::util::StatusJson;
-use chrono::NaiveDateTime;
+use chrono::{DateTime, Utc};
 use juniper_codegen::GraphQLInputObject;
 use rocket::http::Status;
 use rocket::FromForm;
@@ -30,8 +30,8 @@ pub struct EventWithSignups {
     pub title: String,
     pub background: String,
     pub location: String,
-    pub start_time: NaiveDateTime,
-    pub end_time: NaiveDateTime,
+    pub start_time: DateTime<Utc>,
+    pub end_time: DateTime<Utc>,
     pub price: i32,
     pub published: bool,
     pub signups: i64,
@@ -43,8 +43,8 @@ pub struct Event {
     pub title: String,
     pub background: String,
     pub location: String,
-    pub start_time: NaiveDateTime,
-    pub end_time: NaiveDateTime,
+    pub start_time: DateTime<Utc>,
+    pub end_time: DateTime<Utc>,
     pub price: i32,
     pub published: bool,
 }
@@ -55,8 +55,8 @@ pub struct NewEvent {
     pub title: String,
     pub background: String,
     pub location: String,
-    pub start_time: NaiveDateTime,
-    pub end_time: NaiveDateTime,
+    pub start_time: DateTime<Utc>,
+    pub end_time: DateTime<Utc>,
     pub price: Option<i32>,
 }
 

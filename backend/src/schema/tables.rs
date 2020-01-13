@@ -15,8 +15,8 @@ table! {
         title -> Text,
         background -> Text,
         location -> Text,
-        start_time -> Timestamp,
-        end_time -> Timestamp,
+        start_time -> Timestamptz,
+        end_time -> Timestamptz,
         price -> Int4,
         published -> Bool,
     }
@@ -95,7 +95,7 @@ table! {
     transactions (id) {
         id -> Int4,
         description -> Nullable<Text>,
-        time -> Timestamp,
+        time -> Timestamptz,
         debited_account -> Int4,
         credited_account -> Int4,
         amount -> Int4,

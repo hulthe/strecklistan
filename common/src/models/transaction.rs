@@ -1,7 +1,7 @@
 use crate::currency::Currency;
 use crate::models::book_account::BookAccountId;
 use crate::models::inventory::InventoryItemId;
-use chrono::NaiveDateTime;
+use chrono::{DateTime, Utc};
 use std::collections::HashMap;
 
 #[cfg(feature = "serde_impl")]
@@ -26,7 +26,7 @@ pub struct NewTransaction {
 pub struct Transaction {
     pub id: TransactionId,
     pub description: Option<String>,
-    pub time: NaiveDateTime,
+    pub time: DateTime<Utc>,
     pub bundles: Vec<TransactionBundle>,
     pub debited_account: BookAccountId,
     pub credited_account: BookAccountId,

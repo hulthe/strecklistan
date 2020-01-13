@@ -4,14 +4,14 @@ pub use laggit_api::transaction as object;
 /// Relational data models - as represented by the database.
 pub mod relational {
     use crate::schema::tables::{transaction_bundles, transaction_items, transactions};
-    use chrono::NaiveDateTime;
+    use chrono::{DateTime, Utc};
     use serde_derive::{Deserialize, Serialize};
 
     #[derive(Insertable, Serialize, Deserialize, Debug, PartialEq)]
     #[table_name = "transactions"]
     pub struct NewTransaction {
         pub description: Option<String>,
-        pub time: Option<NaiveDateTime>,
+        pub time: Option<DateTime<Utc>>,
         pub debited_account: i32,
         pub credited_account: i32,
         pub amount: i32,
@@ -21,7 +21,7 @@ pub mod relational {
     pub struct Transaction {
         pub id: i32,
         pub description: Option<String>,
-        pub time: NaiveDateTime,
+        pub time: DateTime<Utc>,
         pub debited_account: i32,
         pub credited_account: i32,
         pub amount: i32,

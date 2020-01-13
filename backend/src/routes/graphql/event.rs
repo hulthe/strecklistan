@@ -1,7 +1,7 @@
 use super::context::Context;
 use crate::models::event::EventWithSignups as Event;
 use crate::models::signup::Signup;
-use chrono::NaiveDateTime;
+use chrono::{DateTime, Utc};
 use diesel::prelude::*;
 use juniper::{graphql_object, FieldResult};
 
@@ -17,9 +17,9 @@ graphql_object!(Event: Context |&self| {
 
     field location() -> &str { self.location.as_str() }
 
-    field start_time() -> NaiveDateTime { self.start_time }
+    field start_time() -> DateTime<Utc> { self.start_time }
 
-    field end_time() -> NaiveDateTime { self.end_time }
+    field end_time() -> DateTime<Utc> { self.end_time }
 
     field price() -> i32 { self.price }
 

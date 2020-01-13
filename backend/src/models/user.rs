@@ -3,7 +3,7 @@ use crate::schema::tables::users;
 use chrono::{Duration, Utc};
 use diesel::prelude::*;
 use frank_jwt::error::Error as JWTError;
-use frank_jwt::{decode, encode, Algorithm};
+use frank_jwt::{decode, encode, Algorithm, ValidationOptions};
 use orion::errors::UnknownCryptoError;
 use orion::pwhash::{hash_password, Password};
 use rocket::http::Status;
@@ -149,14 +149,19 @@ impl<'a, 'r> FromRequest<'a, 'r> for User {
             .map(|header| header.trim_start_matches("Bearer "))
             .next()
         {
-            let jwt =
-                decode(&header.to_owned(), &jwt_config.secret, jwt_config.algorithm).map_err(|e| {
-                    eprintln!("{}", e);
-                    match e {
-                        // TODO
-                        _ => Outcome::Failure((Status::InternalServerError, ())),
-                    }
-                });
+            let jwt = decode(
+                &header.to_owned(),
+                &jwt_config.secret,
+                jwt_config.algorithm,
+                &ValidationOptions::new(),
+            )
+            .map_err(|e| {
+                eprintln!("{}", e);
+                match e {
+                    // TODO
+                    _ => Outcome::Failure((Status::InternalServerError, ())),
+                }
+            });
 
             let (_header, payload): (JsonValue, JsonValue) = match jwt {
                 Ok(jwt) => jwt,

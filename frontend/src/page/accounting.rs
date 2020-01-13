@@ -1,6 +1,6 @@
 use crate::app::{Msg, StateReady};
 //use crate::generated::css_classes::C;
-use chrono::{NaiveDate, NaiveTime};
+use chrono::{DateTime, NaiveDate, NaiveTime, Utc};
 use laggit_api::{book_account::BookAccountId, currency::Currency};
 use seed::{prelude::*, *};
 use std::collections::HashMap;
@@ -125,8 +125,8 @@ impl AccountingPage {
             .transaction_history
             .iter()
             .filter(|tr| match (end_date, end_time) {
-                (Some(ed), Some(et)) => tr.time <= ed.and_time(et),
-                (Some(ed), None) => tr.time <= ed.and_hms(23, 59, 59),
+                (Some(ed), Some(et)) => tr.time <= DateTime::from_utc(ed.and_time(et), Utc),
+                (Some(ed), None) => tr.time <= DateTime::from_utc(ed.and_hms(23, 59, 59), Utc),
                 (None, _) => true,
             })
         {

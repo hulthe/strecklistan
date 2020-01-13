@@ -1,7 +1,7 @@
 use crate::app::{Msg, StateReady};
 use crate::generated::css_classes::C;
 use crate::views::filter_menu::{FilterMenu, FilterMenuMsg};
-use laggit_api::book_account::{BookAccount, BookAccountId};
+use laggit_api::book_account::BookAccountId;
 use laggit_api::currency::Currency;
 use laggit_api::inventory::InventoryItemStock as InventoryItem;
 use laggit_api::transaction::{Transaction, TransactionId};
@@ -56,12 +56,12 @@ impl TransactionsPage {
             .transaction_history
             .iter()
             .enumerate()
-            .filter(|(_i, tr)| {
+            .filter(|(_, tr)| {
                 self.filter_menu.filter(&[
-                    &tr.time.format("%Y-%m-%d"),                                   // datum
-                    &tr.time.format("%H:%M:%S"),                                   // klockslag
-                    &tr.amount,                                                    // summa
-                    &global.book_accounts.get(&tr.debited_account).unwrap().name,  // debet
+                    &tr.time.with_timezone(&global.timezone).format("%Y-%m-%d"), // datum
+                    &tr.time.with_timezone(&global.timezone).format("%H:%M:%S"), // klockslag
+                    &tr.amount,                                                  // summa
+                    &global.book_accounts.get(&tr.debited_account).unwrap().name, // debet
                     &global.book_accounts.get(&tr.credited_account).unwrap().name, // kredit
                 ])
             })
@@ -270,7 +270,13 @@ fn view_transaction(
                 empty![]
             }
         ],
-        p![format!("{}", transaction.time.format("%Y-%m-%d %H:%M:%S"))],
+        p![format!(
+            "{}",
+            transaction
+                .time
+                .with_timezone(&global.timezone)
+                .format("%Y-%m-%d %H:%M:%S %Z"),
+        )],
         p![
             class![C.mt_2],
             span!["Debet: "],

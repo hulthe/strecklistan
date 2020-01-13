@@ -81,7 +81,7 @@ mod tests {
     use crate::schema::tables::events;
     use crate::util::catchers::catchers;
     use crate::util::testing::{DatabaseState, UserSession};
-    use chrono::naive::NaiveDateTime;
+    use chrono::{DateTime, NaiveDateTime, Utc};
     use diesel::RunQueryDsl;
     use rocket::http::{ContentType, Header};
     use rocket::local::Client;
@@ -181,8 +181,8 @@ mod tests {
             title: "Test Event 2".into(),
             background: "http://image.ru/png.jpg".into(),
             location: "Fizzbuzz TX".into(),
-            start_time: NaiveDateTime::from_timestamp(10_000_000_00i64, 0),
-            end_time: NaiveDateTime::from_timestamp(10_000_001_00i64, 0),
+            start_time: DateTime::from_utc(NaiveDateTime::from_timestamp(10_000_000_00i64, 0), Utc),
+            end_time: DateTime::from_utc(NaiveDateTime::from_timestamp(10_000_001_00i64, 0), Utc),
             price: None,
         };
         println!("Request Data: {:#?}\n", &new_event);
