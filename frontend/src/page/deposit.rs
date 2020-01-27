@@ -114,6 +114,7 @@ impl DepositionPage {
                         bundles: vec![],
                     };
 
+                    global.request_in_progress = true;
                     orders_local.perform_cmd(
                         Request::new("/api/transaction")
                             .method(Method::Post)
@@ -125,6 +126,7 @@ impl DepositionPage {
 
             DepositionMsg::DepositSent(fetch_object) => match fetch_object.response() {
                 Ok(response) => {
+                    global.request_in_progress = false;
                     log!("ID: ", response.data);
                     self.amount = 0.into();
                     self.credit_account = None;
@@ -322,16 +324,30 @@ impl DepositionPage {
                         attrs! {At::Value => self.amount.to_string()},
                         input_ev(Ev::Input, DepositionMsg::SetAmount),
                     ],
-                    button![
-                        class![C.wide_button, C.border_on_focus],
-                        if self.credit_account.is_none() || self.amount == 0.into() {
-                            attrs! {At::Disabled => true}
-                        } else {
-                            attrs! {}
-                        },
-                        simple_ev(Ev::Click, DepositionMsg::Deposit),
-                        "Sätt in"
-                    ]
+                    if global.request_in_progress {
+                        button![
+                            class![C.wide_button, C.border_on_focus],
+                            attrs! {At::Disabled => true},
+                            div![
+                                class![C.lds_ripple],
+                                attrs! { At::Style => "position: fixed; margin-top: -20px;" },
+                                div![],
+                                div![],
+                            ],
+                            "Sätt in",
+                        ]
+                    } else {
+                        button![
+                            class![C.wide_button, C.border_on_focus],
+                            if self.credit_account.is_none() || self.amount == 0.into() {
+                                attrs! {At::Disabled => true}
+                            } else {
+                                attrs! {}
+                            },
+                            simple_ev(Ev::Click, DepositionMsg::Deposit),
+                            "Sätt in",
+                        ]
+                    },
                 ],
             ]
         }

@@ -8,6 +8,7 @@ css_typegen!(
     "frontend/static/styles.css",
     "frontend/static/left_panel.css",
     "frontend/static/heart_spinner.css",
+    "frontend/static/ripple_spinner.css",
     "frontend/static/filter_menu.css",
     "frontend/static/tailwind.css",
 );

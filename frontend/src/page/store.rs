@@ -164,16 +164,17 @@ impl StorePage {
             },
             StoreMsg::ConfirmPurchase => {
                 self.transaction.bundles.retain(|bundle| bundle.change != 0);
+                global.request_in_progress = true;
                 orders.perform_cmd(
                     Request::new("/api/transaction")
                         .method(Method::Post)
                         .send_json(&self.transaction)
                         .fetch_json(|fetch| Msg::StoreMsg(StoreMsg::PurchaseSent(fetch))),
                 );
-                orders.skip();
             }
             StoreMsg::PurchaseSent(fetch_object) => match fetch_object.response() {
                 Ok(response) => {
+                    global.request_in_progress = false;
                     log!("ID: ", response.data);
                     self.transaction.amount = 0.into();
                     self.transaction.bundles = vec![];
@@ -452,6 +453,7 @@ impl StorePage {
             view_new_transaction(
                 &self.transaction,
                 self.override_transaction_total,
+                !global.request_in_progress,
                 &global.inventory,
                 |bundle_index, change| Msg::StoreMsg(StoreMsg::SetNewTransactionBundleChange {
                     bundle_index,

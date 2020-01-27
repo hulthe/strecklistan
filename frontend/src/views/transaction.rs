@@ -11,6 +11,7 @@ use std::rc::Rc;
 pub fn view_new_transaction(
     transaction: &NewTransaction,
     override_total: bool,
+    enable_confirm_button: bool,
     inventory: &HashMap<InventoryItemId, Rc<InventoryItem>>,
     transaction_set_bundle_change_ev: impl FnOnce(usize, i32) -> Msg + Clone + 'static,
     transaction_total_input_ev: impl FnOnce(String) -> Msg + Clone + 'static,
@@ -82,10 +83,24 @@ pub fn view_new_transaction(
                 input_ev(Ev::Input, transaction_total_input_ev),
             ]
         },],
-        button![
-            class![C.wide_button, C.border_on_focus],
-            simple_ev(Ev::Click, confirm_purchase_ev),
-            "Slutför Köp",
-        ],
+        if enable_confirm_button {
+            button![
+                class![C.wide_button, C.border_on_focus],
+                simple_ev(Ev::Click, confirm_purchase_ev),
+                "Slutför Köp",
+            ]
+        } else {
+            button![
+                class![C.wide_button, C.border_on_focus],
+                div![
+                    class![C.lds_ripple],
+                    attrs! { At::Style => "position: fixed; margin-top: -20px;" },
+                    div![],
+                    div![],
+                ],
+                attrs! { At::Disabled => true },
+                "Slutför Köp",
+            ]
+        },
     ]
 }

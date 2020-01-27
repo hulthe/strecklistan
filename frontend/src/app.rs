@@ -51,6 +51,8 @@ pub struct StateReady {
     pub bundles: HashMap<InventoryBundleId, Rc<InventoryBundle>>,
 
     pub timezone: FixedOffset,
+
+    pub request_in_progress: bool,
 }
 
 #[derive(Clone)]
@@ -175,6 +177,7 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                                             events: events.clone(),
                                             members: members.clone(),
                                             timezone: *Local::now().offset(),
+                                            request_in_progress: false,
                                         };
                                         State::Ready {
                                             accounting_page: AccountingPage::new(&data),
