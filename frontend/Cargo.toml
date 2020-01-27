@@ -1,6 +1,6 @@
 [package]
 name = "laggit_web"
-version = "0.5.2"
+version = "0.6.0"
 authors = ["Joakim Hulthe <joakim@hulthe.net"]
 license = "LGPL-3.0"
 description = "The frontend of the LaggIT web page"
@@ -34,6 +34,7 @@ wee_alloc = { version = "0.4.3", optional = true }
 # all the `std::fmt` and `std::panicking` infrastructure, so isn't great for
 # code size when deploying.
 console_error_panic_hook = { version ="0.1.6", optional = true }
+semver = "0.9.0"
 
 [dependencies.chrono]
 version = "0.4.10"
