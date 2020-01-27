@@ -24,6 +24,9 @@ use std::fmt::Debug;
 use std::rc::Rc;
 use web_sys;
 use chrono::{DateTime, Utc, Local, FixedOffset};
+use semver::Version;
+
+const PKG_VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
 #[derive(Clone, Default)]
 pub struct StateLoading {
@@ -84,6 +87,7 @@ impl Default for Model {
 
 #[derive(Clone, Debug)]
 pub enum FetchMsg {
+    ApiVersion(FetchObject<String>),
     Events(FetchObject<Vec<Event>>),
     Inventory(FetchObject<Vec<InventoryItem>>),
     Bundles(FetchObject<Vec<InventoryBundle>>),
@@ -209,6 +213,44 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
 
             use FetchMsg::*;
             match msg {
+                ApiVersion(fetch) => match fetch.response() {
+                    Ok(response) => {
+                        if let Ok(api_version) = Version::parse(&response.data) {
+                            let frontend_version = Version::parse(PKG_VERSION).unwrap();
+                            let is_valid = match (&frontend_version, &api_version) {
+                                (
+                                    Version { major: 0, minor: 0, patch: v1, ..},
+                                    Version { major: 0, minor: 0, patch: v2, ..},
+                                ) => v1 == v2,
+                                (
+                                    Version { major: 0, minor: mi1, patch: p1, ..},
+                                    Version { major: 0, minor: mi2, patch: p2, ..},
+                                ) => (mi1 == mi2) && (p2 >= p1),
+                                (
+                                    Version { major: ma1, minor: mi1, ..},
+                                    Version { major: ma2, minor: mi2, ..},
+                                ) => (ma1 == ma2) && (mi2 >= mi1),
+                            };
+
+                            log!("API version:", response.data);
+                            log!("Application version:", PKG_VERSION);
+
+                            if !is_valid {
+                                model.state = State::LoadingFailed(
+                                    "Mismatching api version.".to_string(),
+                                    format!("API version: {}\nApplication version: {}", response.data, PKG_VERSION),
+                                );
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        error!("Failed to fetch api version", e);
+                        model.state = State::LoadingFailed(
+                            format!("Failed to fetch api version."),
+                            format!("{:#?}", e),
+                        );
+                    }
+                },
                 Events(fetch) => handle_fetch(model, fetch, "event", |data, s| {
                     let mut events: BTreeMap<DateTime<Utc>, Vec<Event>> = BTreeMap::new();
                     for event in data {
@@ -332,6 +374,10 @@ pub fn view(model: &Model) -> Vec<Node<Msg>> {
 }
 
 pub fn fetch_data(orders: &mut impl Orders<Msg>) {
+    orders.perform_cmd(
+        Request::new("/api/version")
+            .fetch_string(|data| Msg::Fetched(FetchMsg::ApiVersion(data))),
+    );
     orders.perform_cmd(
         Request::new("/api/book_accounts")
             .fetch_json(|data| Msg::Fetched(FetchMsg::BookAccounts(data))),

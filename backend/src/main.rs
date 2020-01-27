@@ -108,6 +108,7 @@ fn main() {
                 rest::book_account::add_account,
                 rest::member::get_members,
                 rest::member::add_member_with_book_account,
+                rest::get_api_version,
                 graphql::post_graphql_handler_auth,
                 graphql::post_graphql_handler,
             ],
