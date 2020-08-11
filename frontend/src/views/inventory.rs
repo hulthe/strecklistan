@@ -6,7 +6,6 @@ use laggit_api::inventory::{
 };
 use seed::prelude::*;
 use seed::*;
-use staticvec::*;
 
 /// string: the string
 /// highlight_chars: iterator over the indexes of highlighted characters in string
@@ -29,12 +28,17 @@ fn build_search_highlight_spans(
         })
         .into_iter()
         .map(|(highlighted, chars)| {
-            let mut s = StaticVec::<u8, 512>::new();
-            for (_, c) in chars {
+            let mut s = [0u8; 512];
+            let mut len = 0;
+            'outer: for (_, c) in chars {
                 let mut buf = [0u8; 4];
                 c.encode_utf8(&mut buf);
                 for i in 0..c.len_utf8() {
-                    s.push(buf[i]);
+                    if len >= 512 {
+                        break 'outer; // FIXME: remove 512 byte cap
+                    }
+                    s[len] = buf[i];
+                    len += 1;
                 }
             }
             let s = std::str::from_utf8(&s[..]).expect("Invalid utf-8 string");

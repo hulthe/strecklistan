@@ -1,7 +1,54 @@
 use crate::fuzzy_search::FuzzySearch;
 use laggit_api::book_account::BookAccount;
 use laggit_api::member::Member;
+use semver::Version;
 use std::rc::Rc;
+
+/// Check if client version supports version api version
+pub fn compare_semver(client_version: Version, api_version: Version) -> bool {
+    match (&client_version, &api_version) {
+        (
+            Version {
+                major: 0,
+                minor: 0,
+                patch: v1,
+                ..
+            },
+            Version {
+                major: 0,
+                minor: 0,
+                patch: v2,
+                ..
+            },
+        ) => v1 == v2,
+        (
+            Version {
+                major: 0,
+                minor: mi1,
+                patch: p1,
+                ..
+            },
+            Version {
+                major: 0,
+                minor: mi2,
+                patch: p2,
+                ..
+            },
+        ) => (mi1 == mi2) && (p2 >= p1),
+        (
+            Version {
+                major: ma1,
+                minor: mi1,
+                ..
+            },
+            Version {
+                major: ma2,
+                minor: mi2,
+                ..
+            },
+        ) => (ma1 == ma2) && (mi2 >= mi1),
+    }
+}
 
 /// Compare a base string to a user-input search
 ///

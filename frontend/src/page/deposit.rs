@@ -9,7 +9,7 @@ use laggit_api::{
     transaction::{NewTransaction, TransactionId},
 };
 use seed::prelude::*;
-use seed::{browser::service::fetch::FetchObject, *};
+use seed::*;
 use std::rc::Rc;
 
 #[derive(Clone, Debug)]
@@ -20,10 +20,10 @@ pub enum DepositionMsg {
     SetUseCash(bool),
     SetAmount(String),
     Deposit,
-    DepositSent(FetchObject<TransactionId>),
+    DepositSent(TransactionId),
     ShowNewMemberMenu,
     NewMember(NewMemberMsg),
-    NewMemberCreated(FetchObject<(MemberId, BookAccountId)>),
+    NewMemberCreated((MemberId, BookAccountId)),
 }
 
 #[derive(Clone, Debug)]
@@ -115,27 +115,35 @@ impl DepositionPage {
                     };
 
                     global.request_in_progress = true;
-                    orders_local.perform_cmd(
-                        Request::new("/api/transaction")
-                            .method(Method::Post)
-                            .send_json(&transaction)
-                            .fetch_json(DepositionMsg::DepositSent),
-                    );
+                    orders_local.perform_cmd(async move {
+                        let result = async {
+                            Request::new("/api/transaction")
+                                .method(Method::Post)
+                                .json(&transaction)?
+                                .fetch()
+                                .await?
+                                .json()
+                                .await
+                        }
+                        .await;
+                        match result {
+                            Ok(id) => Some(DepositionMsg::DepositSent(id)),
+                            Err(e) => {
+                                error!("Failed to post deposit", e);
+                                None
+                            }
+                        }
+                    });
                 }
             }
 
-            DepositionMsg::DepositSent(fetch_object) => match fetch_object.response() {
-                Ok(response) => {
-                    global.request_in_progress = false;
-                    log!("ID: ", response.data);
-                    self.amount = 0.into();
-                    self.credit_account = None;
-                    orders.send_msg(Msg::ReloadData);
-                }
-                Err(e) => {
-                    error!("Failed to post deposit", e);
-                }
-            },
+            DepositionMsg::DepositSent(id) => {
+                global.request_in_progress = false;
+                log!("ID: ", id);
+                self.amount = 0.into();
+                self.credit_account = None;
+                orders.send_msg(Msg::ReloadData);
+            }
             DepositionMsg::ShowNewMemberMenu => {
                 self.new_member = Some((String::new(), String::new(), String::new(), None));
             }
@@ -155,24 +163,39 @@ impl DepositionPage {
                             if first_name == "" || last_name == "" {
                                 log!("Missing fields: `first_name` and `last_name` required");
                             } else {
-                                orders_local.perform_cmd(
-                                    Request::new("/api/add_member_with_book_account")
-                                        .method(Method::Post)
-                                        .send_json(&(
-                                            NewMember {
-                                                first_name: first_name.clone(),
-                                                last_name: last_name.clone(),
-                                                nickname: match nickname.as_str() {
-                                                    "" => None,
-                                                    nickname => Some(nickname.to_string()),
-                                                },
-                                            },
-                                            acc_name.clone().unwrap_or(generate_tillgodo_acc_name(
-                                                first_name, nickname,
-                                            )),
-                                        ))
-                                        .fetch_json(DepositionMsg::NewMemberCreated),
+                                let msg = (
+                                    NewMember {
+                                        first_name: first_name.clone(),
+                                        last_name: last_name.clone(),
+                                        nickname: match nickname.as_str() {
+                                            "" => None,
+                                            nickname => Some(nickname.to_string()),
+                                        },
+                                    },
+                                    acc_name.clone().unwrap_or(generate_tillgodo_acc_name(
+                                        first_name, nickname,
+                                    )),
                                 );
+                                orders_local.perform_cmd(async move {
+                                    let response = async {
+                                        Request::new("/api/add_member_with_book_account")
+                                            .method(Method::Post)
+                                            .json(&msg)?
+                                            .fetch()
+                                            .await?
+                                            .json()
+                                            .await
+                                    }
+                                    .await;
+
+                                    match response {
+                                        Ok(data) => Some(DepositionMsg::NewMemberCreated(data)),
+                                        Err(e) => {
+                                            error!("Failed to create new member", e);
+                                            None
+                                        }
+                                    }
+                                });
                             }
                         }
                     }
@@ -180,18 +203,12 @@ impl DepositionPage {
                     error!("Tried to edit new member fields while in incorrect state.");
                 }
             }
-            DepositionMsg::NewMemberCreated(fetch_object) => match fetch_object.response() {
-                Ok(response) => {
-                    let (member_id, book_account_id) = response.data;
-                    log!("New member ID: ", member_id);
-                    log!("New book account ID: ", book_account_id);
-                    self.new_member = None;
-                    orders.send_msg(Msg::ReloadData);
-                }
-                Err(e) => {
-                    error!("Failed to post deposit", e);
-                }
-            },
+            DepositionMsg::NewMemberCreated((member_id, book_account_id)) => {
+                log!("New member ID: ", member_id);
+                log!("New book account ID: ", book_account_id);
+                self.new_member = None;
+                orders.send_msg(Msg::ReloadData);
+            }
         }
     }
 
