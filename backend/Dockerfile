@@ -1,8 +1,7 @@
 ###################
 ### BUILD STAGE ###
 ###################
-# TODO: use rust stable branch
-FROM rustlang/rust:nightly as build_stage
+FROM rust:1.45 as build_stage
 
 # Install build dependencies
 RUN rustup update
@@ -30,7 +29,7 @@ ENV DATABASE_URL="postgres://postgres@database/laggit"
 
 # Install dependencies
 RUN apt-get update \
- && apt-get install -y libpq5 \
+ && apt-get install -y libpq5 openssl \
  && apt-get autoremove && apt-get autoclean
 
 # Copy application binary
