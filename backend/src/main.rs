@@ -13,7 +13,7 @@ pub mod util;
 use crate::database::create_pool;
 use crate::database::DatabasePool;
 use crate::models::user::JWTConfig;
-use crate::routes::{graphql, rest, session};
+use crate::routes::{rest, session};
 use crate::util::catchers::catchers;
 use chrono::Duration;
 use diesel_migrations::{
@@ -22,7 +22,6 @@ use diesel_migrations::{
 use dotenv::dotenv;
 use frank_jwt::Algorithm;
 use rocket::routes;
-use rocket_contrib::serve::StaticFiles;
 use std::env;
 
 fn handle_migrations(db_pool: &DatabasePool) {
@@ -70,7 +69,8 @@ fn handle_migrations(db_pool: &DatabasePool) {
     }
 }
 
-fn main() {
+#[rocket::main]
+async fn main() {
     dotenv().ok();
 
     let db_pool = create_pool().expect("Could not create database pool");
@@ -85,10 +85,8 @@ fn main() {
 
     let mut rocket = rocket::ignite()
         .manage(db_pool)
-        .manage(graphql::create_schema())
         .manage(jwt_config)
         .register(catchers())
-        .mount("/", StaticFiles::from("static"))
         .mount(
             "/",
             routes![
@@ -109,17 +107,14 @@ fn main() {
                 rest::member::get_members,
                 rest::member::add_member_with_book_account,
                 rest::get_api_version,
-                graphql::post_graphql_handler_auth,
-                graphql::post_graphql_handler,
             ],
-        )
-        .mount("/graphiql/", routes![graphql::graphiql]);
-    let config = rocket.config();
+        );
+    let config = rocket.config().await;
 
     // Mount dev-only routes
     if config.environment.is_dev() {
         rocket = rocket.mount("/", routes![session::register]);
     }
 
-    rocket.launch();
+    rocket.launch().await.unwrap();
 }

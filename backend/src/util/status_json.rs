@@ -36,8 +36,8 @@ impl StatusJson {
     }
 }
 
-impl<'r> Responder<'r> for StatusJson {
-    fn respond_to(self, req: &Request) -> Result<Response<'r>, Status> {
+impl<'r> Responder<'r, 'static> for StatusJson {
+    fn respond_to(self, req: &'r Request) -> Result<Response<'static>, Status> {
         if self.status.code >= 400 {
             warn!(
                 "Responding with status {}.\n\
@@ -73,7 +73,7 @@ impl From<Status> for StatusJson {
     fn from(status: Status) -> StatusJson {
         StatusJson {
             description: status.reason.to_string(),
-            status: status,
+            status,
         }
     }
 }

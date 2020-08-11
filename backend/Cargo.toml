@@ -9,8 +9,10 @@ edition = "2018"
 workspace = ".."
 
 [dependencies]
-rocket = "0.4.5"
-rocket_contrib = "0.4.5"
+rocket = { git = "https://github.com/SergioBenitez/Rocket", branch = "master" }
+rocket_contrib = { git = "https://github.com/SergioBenitez/Rocket", branch = "master" }
+#rocket = "0.4.5"
+#rocket_contrib = "0.4.5"
 diesel = { version = "1.4.2", features = ["postgres", "chrono", "r2d2"] }
 diesel_migrations = "1.4.0"
 diesel-derive-enum = { version = "0.4", features = ["postgres"] }

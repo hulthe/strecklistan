@@ -103,7 +103,7 @@ impl UserSession {
 
         let jwt = JWT::new(&user, jwt_config);
         UserSession {
-            bearer: format!("Bearer {}", jwt.encode_jwt(jwt_config).unwrap()),
+            bearer: format!("Bearer {}", jwt.encode_jwt().unwrap()),
             user,
         }
     }
