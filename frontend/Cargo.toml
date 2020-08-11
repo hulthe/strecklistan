@@ -13,10 +13,7 @@ workspace = ".."
 crate-type = ["cdylib"]
 
 [dependencies]
-# Seed 0.5.1 has a bug where cloning Node:s doesn't clone event listeners
-# TODO: update this when new version is released
 seed = "=0.7.0"
-#seed = { git = "https://github.com/seed-rs/seed.git", branch = "master" }
 cfg-if = "0.1.7"
 wasm-bindgen = "^0.2.45"
 strum = "0.15.0"
