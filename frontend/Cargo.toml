@@ -1,10 +1,10 @@
 [package]
-name = "laggit_web"
-version = "0.6.0"
+name = "strecklistan_web"
+version = "0.7.0"
 authors = ["Joakim Hulthe <joakim@hulthe.net"]
-license = "LGPL-3.0"
-description = "The frontend of the LaggIT web page"
-repository = "https://github.com/hulthe/LaggIT"
+license = "MPL-2.0"
+description = "The frontend of strecklistan: a simple web-shop"
+repository = "https://github.com/hulthe/strecklistan"
 readme = "./README.md"
 edition = "2018"
 workspace = ".."
@@ -13,17 +13,13 @@ workspace = ".."
 crate-type = ["cdylib"]
 
 [dependencies]
-# Seed 0.5.1 has a bug where cloning Node:s doesn't clone event listeners
-# TODO: update this when new version is released
-#seed = "=0.5.2"
-seed = { git = "https://github.com/seed-rs/seed.git", branch = "master" }
+seed = "=0.7.0"
 cfg-if = "0.1.7"
 wasm-bindgen = "^0.2.45"
 strum = "0.15.0"
 strum_macros = "0.15.0"
 futures = "^0.1.26"
 itertools = "^0.8"
-staticvec = { version = "^0.3", default_features = false }
 serde = { version = "^1.0.90", features = ['derive'] }
 
 # Custom allocator. Smaller & slower than the default.
@@ -37,11 +33,11 @@ console_error_panic_hook = { version ="0.1.6", optional = true }
 semver = "0.9.0"
 
 [dependencies.chrono]
-version = "0.4.10"
+version = "=0.4.10"
 default-features = false
 features = ["serde", "wasmbind", "js-sys"]
 
-[dependencies.laggit_api]
+[dependencies.strecklistan_api]
 path="../common"
 
 [dependencies.css_typegen]

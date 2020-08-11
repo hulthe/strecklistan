@@ -7,9 +7,10 @@ use frank_jwt::{decode, encode, Algorithm, ValidationOptions};
 use orion::errors::UnknownCryptoError;
 use orion::pwhash::{hash_password, Password};
 use rocket::http::Status;
+use rocket::outcome::{try_outcome, Outcome};
 use rocket::request::{self, FromRequest, Request};
 use rocket::response::{self, Responder};
-use rocket::{Outcome, State};
+use rocket::State;
 use serde_derive::{Deserialize, Serialize};
 use serde_json::{self, Value as JsonValue};
 
@@ -32,11 +33,11 @@ pub struct Session {
     pub last_seen: u64,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
 pub struct JWT<T> {
     pub header: JWTHeader,
     pub payload: JWTPayload,
 
+    config: JWTConfig,
     wrapped_response: T,
 }
 
@@ -63,6 +64,7 @@ impl JWT<()> {
                 sub: user.name.clone(),
                 exp: (Utc::now() + config.token_lifetime).timestamp(),
             },
+            config: config.clone(),
             wrapped_response: (),
         }
     }
@@ -73,35 +75,31 @@ impl<T> JWT<T> {
     /// `Authorization`-header containing a bearer token.
     pub fn wrap<N>(self, response: N) -> JWT<N>
     where
-        N: for<'r> Responder<'r>,
+        N: for<'r> Responder<'r, 'static>,
     {
         JWT {
             header: self.header,
             payload: self.payload,
+            config: self.config,
             wrapped_response: response,
         }
     }
 
-    pub fn encode_jwt(&self, config: &JWTConfig) -> Result<String, JWTError> {
+    pub fn encode_jwt(&self) -> Result<String, JWTError> {
         let payload = serde_json::to_value(&self.payload).expect("Failed to serialize JWT payload");
 
         let header = serde_json::to_value(&self.header).expect("Failed to serialize JWT header");
 
-        encode(header, &config.secret, &payload, config.algorithm)
+        encode(header, &self.config.secret, &payload, self.config.algorithm)
     }
 }
 
-impl<'a, T> Responder<'a> for JWT<T>
+impl<'a, T> Responder<'a, 'static> for JWT<T>
 where
-    T: for<'r> Responder<'r>,
+    T: for<'r> Responder<'r, 'static>,
 {
-    fn respond_to(self, request: &Request) -> response::Result<'a> {
-        let jwt_config = request.guard::<State<JWTConfig>>().success_or_else(|| {
-            eprintln!("Failed to acquire JWT configuration");
-            Status::InternalServerError
-        })?;
-
-        let jwt = self.encode_jwt(&jwt_config).map_err(|e| {
+    fn respond_to(self, request: &Request) -> response::Result<'static> {
+        let jwt = self.encode_jwt().map_err(|e| {
             eprintln!("Failed to encode JWT: {}", e);
             Status::InternalServerError
         })?;
@@ -113,6 +111,7 @@ where
     }
 }
 
+#[derive(Clone)]
 pub struct JWTConfig {
     pub secret: String,
     pub algorithm: Algorithm,
@@ -135,12 +134,13 @@ fn get_user(user_name: String, connection: &DatabaseConn) -> Option<User> {
     users.find(user_name).first(connection).ok()
 }
 
+#[rocket::async_trait]
 impl<'a, 'r> FromRequest<'a, 'r> for User {
     type Error = ();
 
-    fn from_request(request: &'a Request<'r>) -> request::Outcome<User, ()> {
-        let db_pool: State<DatabasePool> = request.guard()?;
-        let jwt_config: State<JWTConfig> = request.guard()?;
+    async fn from_request(request: &'a Request<'r>) -> request::Outcome<Self, Self::Error> {
+        let db_pool: State<DatabasePool> = try_outcome!(request.guard().await);
+        let jwt_config: State<JWTConfig> = try_outcome!(request.guard().await);
 
         if let Some(header) = request
             .headers()
@@ -170,14 +170,17 @@ impl<'a, 'r> FromRequest<'a, 'r> for User {
                 }
             };
 
-            let payload: JWTPayload = serde_json::from_value(payload).map_err(|e| {
-                eprintln!(
-                    "Failed to deserialize JsonValue into struct: {}\n\
-                     This is a programmer error.",
-                    e
-                );
-                Err((Status::InternalServerError, ()))
-            })?;
+            let payload: JWTPayload = match serde_json::from_value(payload) {
+                Ok(payload) => payload,
+                Err(e) => {
+                    eprintln!(
+                        "Failed to deserialize JsonValue into struct: {}\n\
+                         This is a programmer error.",
+                        e
+                    );
+                    return Outcome::Failure((Status::InternalServerError, ()));
+                }
+            };
 
             let now: i64 = Utc::now().timestamp();
             if payload.exp <= now {

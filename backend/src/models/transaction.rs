@@ -1,5 +1,5 @@
 /// Object oriented data models - for consumers of the API.
-pub use laggit_api::transaction as object;
+pub use strecklistan_api::transaction as object;
 
 /// Relational data models - as represented by the database.
 pub mod relational {

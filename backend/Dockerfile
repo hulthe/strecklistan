@@ -1,8 +1,7 @@
 ###################
 ### BUILD STAGE ###
 ###################
-# TODO: use rust stable branch
-FROM rustlang/rust:nightly as build_stage
+FROM rust:1.45 as build_stage
 
 # Install build dependencies
 RUN rustup update
@@ -26,17 +25,17 @@ ENV ROCKET_ENV="staging"
 ENV RUN_MIGRATIONS="true"
 
 # Basic default configuration for database, suitable for dev.
-ENV DATABASE_URL="postgres://postgres@database/laggit"
+ENV DATABASE_URL="postgres://postgres@database/strecklistan"
 
 # Install dependencies
 RUN apt-get update \
- && apt-get install -y libpq5 \
+ && apt-get install -y libpq5 openssl \
  && apt-get autoremove && apt-get autoclean
 
 # Copy application binary
-COPY --from=build_stage /app/target/release/laggit_backend /usr/local/bin/
+COPY --from=build_stage /app/target/release/strecklistan_backend /usr/local/bin/
 
 # Copy database migrations
 COPY backend/migrations /migrations
 
-CMD /usr/local/bin/laggit_backend
+CMD /usr/local/bin/strecklistan_backend

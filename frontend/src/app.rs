@@ -7,7 +7,9 @@ use crate::page::{
     transactions::{TransactionsMsg, TransactionsPage},
     Page,
 };
-use laggit_api::{
+use crate::util::compare_semver;
+use chrono::{DateTime, FixedOffset, Local, Utc};
+use strecklistan_api::{
     book_account::{BookAccount, BookAccountId, MasterAccounts},
     inventory::{
         InventoryBundle, InventoryBundleId, InventoryItemId, InventoryItemStock as InventoryItem,
@@ -15,16 +17,15 @@ use laggit_api::{
     member::{Member, MemberId},
     transaction::Transaction,
 };
-use seed::browser::service::fetch::FetchObject;
 use seed::prelude::*;
 use seed::*;
+use semver::Version;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::fmt::Debug;
+use std::future::Future;
 use std::rc::Rc;
 use web_sys;
-use chrono::{DateTime, Utc, Local, FixedOffset};
-use semver::Version;
 
 const PKG_VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
@@ -87,14 +88,14 @@ impl Default for Model {
 
 #[derive(Clone, Debug)]
 pub enum FetchMsg {
-    ApiVersion(FetchObject<String>),
-    Events(FetchObject<Vec<Event>>),
-    Inventory(FetchObject<Vec<InventoryItem>>),
-    Bundles(FetchObject<Vec<InventoryBundle>>),
-    Transactions(FetchObject<Vec<Transaction>>),
-    BookAccounts(FetchObject<Vec<BookAccount>>),
-    MasterAccounts(FetchObject<MasterAccounts>),
-    Members(FetchObject<Vec<Member>>),
+    ApiVersion(String),
+    Events(Vec<Event>),
+    Inventory(Vec<InventoryItem>),
+    Bundles(Vec<InventoryBundle>),
+    Transactions(Vec<Transaction>),
+    BookAccounts(Vec<BookAccount>),
+    MasterAccounts(MasterAccounts),
+    Members(Vec<Member>),
 }
 
 #[derive(Clone, Debug)]
@@ -102,6 +103,8 @@ pub enum Msg {
     ChangePage(Page),
 
     Fetched(FetchMsg),
+
+    ShowError { header: String, dump: String },
 
     KeyPressed(web_sys::KeyboardEvent),
 
@@ -114,10 +117,10 @@ pub enum Msg {
 }
 
 pub fn routes(url: Url) -> Option<Msg> {
-    Some(if url.path.is_empty() {
+    Some(if url.path().is_empty() {
         Msg::ChangePage(Page::Root)
     } else {
-        match url.path[0].as_ref() {
+        match url.path()[0].as_ref() {
             "accounting" => Msg::ChangePage(Page::Accounting),
             "deposit" => Msg::ChangePage(Page::Deposit),
             "" | "store" => Msg::ChangePage(Page::Store),
@@ -150,132 +153,107 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             model.page = page;
         }
 
+        Msg::ShowError { header, dump } => {
+            model.state = State::LoadingFailed(header, dump);
+        }
+
         Msg::Fetched(msg) => {
-            fn handle_fetch<T: Debug>(
+            fn prepare_state<T: Debug>(
                 model: &mut Model,
-                fetch: FetchObject<T>,
-                errid: &str,
+                fetched: T,
                 handler: impl FnOnce(T, &mut StateLoading),
             ) {
-                match fetch.response() {
-                    Ok(response) => {
-                        match &mut model.state {
-                            State::Loading(data) => {
-                                handler(response.data, data);
-                                model.state = match data {
-                                    StateLoading {
-                                        book_accounts: Some(book_accounts),
-                                        master_accounts: Some(master_accounts),
-                                        transaction_history: Some(transaction_history),
-                                        inventory: Some(inventory),
-                                        bundles: Some(bundles),
-                                        events: Some(events),
-                                        members: Some(members),
-                                    } => {
-                                        let data = StateReady {
-                                            book_accounts: book_accounts.clone(),
-                                            master_accounts: master_accounts.clone(),
-                                            transaction_history: transaction_history.clone(),
-                                            inventory: inventory.clone(),
-                                            bundles: bundles.clone(),
-                                            events: events.clone(),
-                                            members: members.clone(),
-                                            timezone: *Local::now().offset(),
-                                            request_in_progress: false,
-                                        };
-                                        State::Ready {
-                                            accounting_page: AccountingPage::new(&data),
-                                            deposition_page: DepositionPage::new(&data),
-                                            transactions_page: TransactionsPage::new(&data),
-                                            store_page: StorePage::new(&data),
-                                            state: data,
-                                        }
-                                    }
-                                    // TODO: Remove clone
-                                    still_loading => State::Loading(still_loading.clone()),
+                match &mut model.state {
+                    State::Loading(data) => {
+                        handler(fetched, data);
+                        model.state = match data {
+                            StateLoading {
+                                book_accounts: Some(book_accounts),
+                                master_accounts: Some(master_accounts),
+                                transaction_history: Some(transaction_history),
+                                inventory: Some(inventory),
+                                bundles: Some(bundles),
+                                events: Some(events),
+                                members: Some(members),
+                            } => {
+                                let data = StateReady {
+                                    book_accounts: book_accounts.clone(),
+                                    master_accounts: master_accounts.clone(),
+                                    transaction_history: transaction_history.clone(),
+                                    inventory: inventory.clone(),
+                                    bundles: bundles.clone(),
+                                    events: events.clone(),
+                                    members: members.clone(),
+                                    timezone: *Local::now().offset(),
+                                    request_in_progress: false,
                                 };
+                                State::Ready {
+                                    accounting_page: AccountingPage::new(&data),
+                                    deposition_page: DepositionPage::new(&data),
+                                    transactions_page: TransactionsPage::new(&data),
+                                    store_page: StorePage::new(&data),
+                                    state: data,
+                                }
                             }
-                            State::LoadingFailed(_, _) => {}
-                            State::Ready { .. } => {
-                                error!("Tried to load an aspect of the page while already loaded");
-                            }
-                        }
+                            // TODO: Remove clone
+                            still_loading => State::Loading(still_loading.clone()),
+                        };
                     }
-                    Err(e) => {
-                        error!(format!("Failed to fetch {}", errid), e);
-                        model.state = State::LoadingFailed(
-                            format!("Failed to fetch {}.", errid),
-                            format!("{:#?}", e),
-                        );
+                    State::LoadingFailed(_, _) => {}
+                    State::Ready { .. } => {
+                        error!("Tried to load an aspect of the page while already loaded");
                     }
                 }
             }
 
             use FetchMsg::*;
             match msg {
-                ApiVersion(fetch) => match fetch.response() {
-                    Ok(response) => {
-                        if let Ok(api_version) = Version::parse(&response.data) {
-                            let frontend_version = Version::parse(PKG_VERSION).unwrap();
-                            let is_valid = match (&frontend_version, &api_version) {
-                                (
-                                    Version { major: 0, minor: 0, patch: v1, ..},
-                                    Version { major: 0, minor: 0, patch: v2, ..},
-                                ) => v1 == v2,
-                                (
-                                    Version { major: 0, minor: mi1, patch: p1, ..},
-                                    Version { major: 0, minor: mi2, patch: p2, ..},
-                                ) => (mi1 == mi2) && (p2 >= p1),
-                                (
-                                    Version { major: ma1, minor: mi1, ..},
-                                    Version { major: ma2, minor: mi2, ..},
-                                ) => (ma1 == ma2) && (mi2 >= mi1),
-                            };
+                ApiVersion(response) => {
+                    if let Ok(api_version) = Version::parse(&response) {
+                        let frontend_version = Version::parse(PKG_VERSION).unwrap();
 
-                            log!("API version:", response.data);
-                            log!("Application version:", PKG_VERSION);
+                        log!("API version:", response);
+                        log!("Application version:", PKG_VERSION);
 
-                            if !is_valid {
-                                model.state = State::LoadingFailed(
-                                    "Mismatching api version.".to_string(),
-                                    format!("API version: {}\nApplication version: {}", response.data, PKG_VERSION),
-                                );
-                            }
+                        if !compare_semver(frontend_version, api_version) {
+                            model.state = State::LoadingFailed(
+                                "Mismatching api version.".to_string(),
+                                format!(
+                                    "API version: {}\nApplication version: {}",
+                                    response, PKG_VERSION
+                                ),
+                            );
                         }
-                    }
-                    Err(e) => {
-                        error!("Failed to fetch api version", e);
+                    } else {
                         model.state = State::LoadingFailed(
-                            format!("Failed to fetch api version."),
-                            format!("{:#?}", e),
+                            "Failed to parse server api version.".to_string(),
+                            response,
                         );
                     }
-                },
-                Events(fetch) => handle_fetch(model, fetch, "event", |data, s| {
+                }
+                Events(fetch) => prepare_state(model, fetch, |data, s| {
                     let mut events: BTreeMap<DateTime<Utc>, Vec<Event>> = BTreeMap::new();
                     for event in data {
                         events.entry(event.start_time).or_default().push(event)
                     }
                     s.events = Some(events);
                 }),
-                Inventory(fetch) => handle_fetch(model, fetch, "inventory", |data, s| {
+                Inventory(fetch) => prepare_state(model, fetch, |data, s| {
                     s.inventory = Some(vec_id_to_map!(data));
                 }),
-                Bundles(fetch) => handle_fetch(model, fetch, "bundles", |data, s| {
+                Bundles(fetch) => prepare_state(model, fetch, |data, s| {
                     s.bundles = Some(vec_id_to_map!(data));
                 }),
-                Transactions(fetch) => handle_fetch(model, fetch, "transactions", |data, s| {
+                Transactions(fetch) => prepare_state(model, fetch, |data, s| {
                     s.transaction_history = Some(data);
                 }),
-                BookAccounts(fetch) => handle_fetch(model, fetch, "book-accounts", |data, s| {
+                BookAccounts(fetch) => prepare_state(model, fetch, |data, s| {
                     s.book_accounts = Some(vec_id_to_map!(data));
                 }),
-                MasterAccounts(fetch) => {
-                    handle_fetch(model, fetch, "master book-accounts", |data, s| {
-                        s.master_accounts = Some(data);
-                    })
-                }
-                Members(fetch) => handle_fetch(model, fetch, "members", |data, s| {
+                MasterAccounts(fetch) => prepare_state(model, fetch, |data, s| {
+                    s.master_accounts = Some(data);
+                }),
+                Members(fetch) => prepare_state(model, fetch, |data, s| {
                     s.members = Some(vec_id_to_map!(data));
                 }),
             }
@@ -357,7 +335,10 @@ pub fn view(model: &Model) -> Vec<Node<Msg>> {
                     div![class![C.not_found_message, C.unselectable], "404"]
                 }
             },
-            State::Loading(_) => div![class![C.text_center, C.mt_2], div![class![C.lds_heart], div![]]],
+            State::Loading(_) => div![
+                class![C.text_center, C.mt_2],
+                div![class![C.lds_heart], div![]]
+            ],
             State::LoadingFailed(msg, error) => div![
                 class![C.flex, C.flex_col],
                 p!["An has error occured."],
@@ -373,42 +354,62 @@ pub fn view(model: &Model) -> Vec<Node<Msg>> {
     ]]
 }
 
+fn handle_fetch(
+    orders: &mut impl Orders<Msg>,
+    label: &'static str,
+    request: impl Future<Output = Result<Msg, FetchError>> + 'static,
+) {
+    orders.perform_cmd(async move {
+        match request.await {
+            Ok(response) => response,
+            Err(fetch_error) => Msg::ShowError {
+                header: format!("Failed to fetch network resource: \"{}\"", label),
+                dump: format!("{:?}", fetch_error),
+            },
+        }
+    });
+}
+
 pub fn fetch_data(orders: &mut impl Orders<Msg>) {
-    orders.perform_cmd(
-        Request::new("/api/version")
-            .fetch_string(|data| Msg::Fetched(FetchMsg::ApiVersion(data))),
-    );
-    orders.perform_cmd(
-        Request::new("/api/book_accounts")
-            .fetch_json(|data| Msg::Fetched(FetchMsg::BookAccounts(data))),
-    );
-    orders.perform_cmd(
-        Request::new("/api/book_accounts/masters")
-            .fetch_json(|data| Msg::Fetched(FetchMsg::MasterAccounts(data))),
-    );
-    orders.perform_cmd(
-        Request::new("/api/members").fetch_json(|data| Msg::Fetched(FetchMsg::Members(data))),
-    );
-    orders.perform_cmd(fetch_events(-1, 2));
-    orders.perform_cmd(
-        Request::new("/api/inventory/items")
-            .fetch_json(|data| Msg::Fetched(FetchMsg::Inventory(data))),
-    );
-    orders.perform_cmd(
-        Request::new("/api/inventory/bundles")
-            .fetch_json(|data| Msg::Fetched(FetchMsg::Bundles(data))),
-    );
-    orders.perform_cmd(
-        Request::new("/api/transactions")
-            .fetch_json(|data| Msg::Fetched(FetchMsg::Transactions(data))),
-    );
+    handle_fetch(orders, "api_version", async {
+        let data = fetch("/api/version").await?.text().await?;
+        Ok(Msg::Fetched(FetchMsg::ApiVersion(data)))
+    });
+    handle_fetch(orders, "book_accounts", async {
+        let data = fetch("/api/book_accounts").await?.json().await?;
+        Ok(Msg::Fetched(FetchMsg::BookAccounts(data)))
+    });
+    handle_fetch(orders, "book_account_masters", async {
+        let data = fetch("/api/book_accounts/masters").await?.json().await?;
+        Ok(Msg::Fetched(FetchMsg::MasterAccounts(data)))
+    });
+    handle_fetch(orders, "members", async {
+        let data = fetch("/api/members").await?.json().await?;
+        Ok(Msg::Fetched(FetchMsg::Members(data)))
+    });
+    fetch_events(orders, -1, 2);
+    handle_fetch(orders, "inventory_items", async {
+        let data = fetch("/api/inventory/items").await?.json().await?;
+        Ok(Msg::Fetched(FetchMsg::Inventory(data)))
+    });
+    handle_fetch(orders, "inventory_bundles", async {
+        let data = fetch("/api/inventory/bundles").await?.json().await?;
+        Ok(Msg::Fetched(FetchMsg::Bundles(data)))
+    });
+    handle_fetch(orders, "transactions", async {
+        let data = fetch("/api/transactions").await?.json().await?;
+        Ok(Msg::Fetched(FetchMsg::Transactions(data)))
+    });
 }
 
-async fn fetch_events(low: i64, high: i64) -> Result<Msg, Msg> {
+fn fetch_events(orders: &mut impl Orders<Msg>, low: i64, high: i64) {
     let url = format!("/api/events?low={}&high={}", low, high);
-    Request::new(url).fetch_json(|data| Msg::Fetched(FetchMsg::Events(data))).await
+    handle_fetch(orders, "events", async {
+        let data = fetch(url).await?.json().await?;
+        Ok(Msg::Fetched(FetchMsg::Events(data)))
+    });
 }
 
-pub fn window_events(_model: &Model) -> Vec<Listener<Msg>> {
+pub fn window_events(_model: &Model) -> Vec<EventHandler<Msg>> {
     vec![keyboard_ev("keydown", |ev| Msg::KeyPressed(ev))]
 }

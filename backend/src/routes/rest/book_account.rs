@@ -3,7 +3,7 @@ use crate::models::book_account as relational;
 use crate::models::transaction::relational::Transaction;
 use crate::util::status_json::StatusJson as SJ;
 use diesel::prelude::*;
-use laggit_api::book_account::{BookAccount, BookAccountType, MasterAccounts, NewBookAccount};
+use strecklistan_api::book_account::{BookAccount, BookAccountType, MasterAccounts, NewBookAccount};
 use rocket::{get, post, State};
 use rocket_contrib::json::Json;
 use std::collections::HashMap;

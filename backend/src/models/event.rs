@@ -1,7 +1,6 @@
 use crate::schema::tables::events;
 use crate::util::StatusJson;
 use chrono::{DateTime, Utc};
-use juniper_codegen::GraphQLInputObject;
 use rocket::http::Status;
 use rocket::FromForm;
 use serde_derive::{Deserialize, Serialize};
@@ -49,7 +48,7 @@ pub struct Event {
     pub published: bool,
 }
 
-#[derive(Insertable, GraphQLInputObject, Serialize, Deserialize, Debug)]
+#[derive(Insertable, Serialize, Deserialize, Debug)]
 #[table_name = "events"]
 pub struct NewEvent {
     pub title: String,

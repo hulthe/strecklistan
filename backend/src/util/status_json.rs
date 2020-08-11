@@ -1,5 +1,5 @@
 use diesel::result::Error as DieselError;
-use diesel::ConnectionError as DieselConnectionError;
+use duplicate::duplicate;
 use log::{info, warn};
 use rocket::http::Status;
 use rocket::response::{Responder, Response};
@@ -36,8 +36,8 @@ impl StatusJson {
     }
 }
 
-impl<'r> Responder<'r> for StatusJson {
-    fn respond_to(self, req: &Request) -> Result<Response<'r>, Status> {
+impl<'r> Responder<'r, 'static> for StatusJson {
+    fn respond_to(self, req: &'r Request) -> Result<Response<'static>, Status> {
         if self.status.code >= 400 {
             warn!(
                 "Responding with status {}.\n\
@@ -60,10 +60,17 @@ impl<'r> Responder<'r> for StatusJson {
     }
 }
 
-impl<T: ToString> From<T> for StatusJson {
-    default fn from(e: T) -> StatusJson {
+
+#[duplicate(
+  status_code                     T;
+  [ Status::BadRequest ]          [ orion::errors::UnknownCryptoError ];
+  [ Status::BadRequest ]          [ r2d2::Error ];
+  [ Status::InternalServerError ] [ diesel::ConnectionError ];
+)]
+impl From<T> for StatusJson {
+    fn from(e: T) -> StatusJson {
         StatusJson {
-            status: Status::BadRequest,
+            status: status_code,
             description: e.to_string(),
         }
     }
@@ -73,7 +80,7 @@ impl From<Status> for StatusJson {
     fn from(status: Status) -> StatusJson {
         StatusJson {
             description: status.reason.to_string(),
-            status: status,
+            status,
         }
     }
 }
@@ -89,15 +96,6 @@ impl From<DieselError> for StatusJson {
                 status: Status::InternalServerError,
                 description: err.to_string(),
             },
-        }
-    }
-}
-
-impl From<DieselConnectionError> for StatusJson {
-    fn from(e: DieselConnectionError) -> StatusJson {
-        StatusJson {
-            status: Status::InternalServerError,
-            description: e.to_string(),
         }
     }
 }

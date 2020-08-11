@@ -5,7 +5,7 @@ use crate::util::{compare_fuzzy, sort_tillgodolista_search};
 use crate::views::{
     view_inventory_bundle, view_inventory_item, view_new_transaction, view_tillgodo,
 };
-use laggit_api::{
+use strecklistan_api::{
     book_account::{BookAccount, BookAccountId},
     inventory::{
         InventoryBundle, InventoryBundleId, InventoryItemId, InventoryItemStock as InventoryItem,
@@ -14,7 +14,7 @@ use laggit_api::{
     transaction::{NewTransaction, TransactionBundle, TransactionId},
 };
 use seed::prelude::*;
-use seed::{browser::service::fetch::FetchObject, *};
+use seed::*;
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -63,7 +63,7 @@ pub enum StoreMsg {
     SearchInput(String),
     SearchKeyDown(web_sys::KeyboardEvent),
     ConfirmPurchase,
-    PurchaseSent(FetchObject<TransactionId>),
+    PurchaseSent(TransactionId),
 
     NewTransactionTotalInput(String),
     AddItemToNewTransaction(InventoryItemId, i32),
@@ -165,26 +165,35 @@ impl StorePage {
             StoreMsg::ConfirmPurchase => {
                 self.transaction.bundles.retain(|bundle| bundle.change != 0);
                 global.request_in_progress = true;
-                orders.perform_cmd(
-                    Request::new("/api/transaction")
-                        .method(Method::Post)
-                        .send_json(&self.transaction)
-                        .fetch_json(|fetch| Msg::StoreMsg(StoreMsg::PurchaseSent(fetch))),
-                );
+                let msg = self.transaction.clone();
+                orders.perform_cmd(async move {
+                    let result = async {
+                        Request::new("/api/transaction")
+                            .method(Method::Post)
+                            .json(&msg)?
+                            .fetch()
+                            .await?
+                            .json()
+                            .await
+                    }
+                    .await;
+                    match result {
+                        Ok(id) => Some(Msg::StoreMsg(StoreMsg::PurchaseSent(id))),
+                        Err(e) => {
+                            error!("Failed to post purchase", e);
+                            None
+                        }
+                    }
+                });
             }
-            StoreMsg::PurchaseSent(fetch_object) => match fetch_object.response() {
-                Ok(response) => {
-                    global.request_in_progress = false;
-                    log!("ID: ", response.data);
-                    self.transaction.amount = 0.into();
-                    self.transaction.bundles = vec![];
-                    self.transaction.description = Some("Försäljning".into());
-                    orders.send_msg(Msg::ReloadData);
-                }
-                Err(e) => {
-                    error!("Failed to post purchase", e);
-                }
-            },
+            StoreMsg::PurchaseSent(id) => {
+                global.request_in_progress = false;
+                log!("ID: ", id);
+                self.transaction.amount = 0.into();
+                self.transaction.bundles = vec![];
+                self.transaction.description = Some("Försäljning".into());
+                orders.send_msg(Msg::ReloadData);
+            }
 
             StoreMsg::NewTransactionTotalInput(input) => {
                 log!("Input", input);

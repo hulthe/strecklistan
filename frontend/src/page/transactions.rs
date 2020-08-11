@@ -1,12 +1,12 @@
 use crate::app::{Msg, StateReady};
 use crate::generated::css_classes::C;
 use crate::views::filter_menu::{FilterMenu, FilterMenuMsg};
-use laggit_api::book_account::BookAccountId;
-use laggit_api::currency::Currency;
-use laggit_api::inventory::InventoryItemStock as InventoryItem;
-use laggit_api::transaction::{Transaction, TransactionId};
+use strecklistan_api::book_account::BookAccountId;
+use strecklistan_api::currency::Currency;
+use strecklistan_api::inventory::InventoryItemStock as InventoryItem;
+use strecklistan_api::transaction::{Transaction, TransactionId};
 use seed::prelude::*;
-use seed::{browser::service::fetch::FetchObject, *};
+use seed::*;
 use std::collections::HashMap;
 use std::ops::Deref;
 
@@ -15,7 +15,7 @@ const VIEW_COUNT_CHUNK: usize = 50;
 #[derive(Clone, Debug)]
 pub enum TransactionsMsg {
     DeleteTransaction(TransactionId),
-    TransactionDeleted(FetchObject<TransactionId>),
+    TransactionDeleted(TransactionId),
     SetShowDelete(bool),
     SetShowLeftPanel(bool),
     FilterMenuMsg(FilterMenuMsg),
@@ -96,22 +96,29 @@ impl TransactionsPage {
         let mut orders_local = orders.proxy(|msg| Msg::TransactionsMsg(msg));
         match msg {
             TransactionsMsg::DeleteTransaction(id) => {
-                orders_local.perform_cmd(
-                    Request::new(format!("/api/transaction/{}", id))
-                        .method(Method::Delete)
-                        .fetch_json(TransactionsMsg::TransactionDeleted),
-                );
+                orders_local.perform_cmd(async move {
+                    let result = async {
+                        Request::new(format!("/api/transaction/{}", id))
+                            .method(Method::Delete)
+                            .fetch()
+                            .await?
+                            .json()
+                            .await
+                    }
+                    .await;
+                    result
+                        .map_err(|e| {
+                            error!("Failed to delete transaction", e);
+                        })
+                        .map(|id| TransactionsMsg::TransactionDeleted(id))
+                        .ok()
+                });
             }
 
-            TransactionsMsg::TransactionDeleted(fetch_object) => match fetch_object.response() {
-                Ok(response) => {
-                    log!(format!("Transaction {} deleted", response.data));
-                    orders.send_msg(Msg::ReloadData);
-                }
-                Err(e) => {
-                    error!("Failed to delete transaction", e);
-                }
-            },
+            TransactionsMsg::TransactionDeleted(id) => {
+                log!(format!("Transaction {} deleted", id));
+                orders.send_msg(Msg::ReloadData);
+            }
 
             TransactionsMsg::SetShowDelete(show_delete) => {
                 self.show_delete = show_delete;

@@ -1,7 +1,7 @@
-laggit_backend
-==============
+strecklistan
+============
 
-This is the backend for the LaggIT web page.
+This is the backend of strecklistan: a simple web-shop.
 
 It is built in Rust_ using the Rocket_ framework.
 Database integration and migrations are provided by Diesel_.
@@ -14,15 +14,13 @@ Database integration and migrations are provided by Diesel_.
 Local Development
 -----------------
 
-Install Rust using rustup_. This application currently requires Rust version
-1.33, which means that you have to install the nightly branch (as of the time
-when writing this).
+Install the latest version of Rust using rustup_.
 
 .. _rustup: https://rustup.rs/
 
-You also require the Postgres C/C++ client library: ``libpq``.
-Install this via your preferred package manager,
-otherwise compiling will fail with linking errors.
+You also require the Postgres C/C++ client library
+``libpq``, as well as ``openssl``.
+Install these via your preferred package manager.
 
 Then make sure to setup your local ``.env``-file. ::
 

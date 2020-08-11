@@ -1,6 +1,6 @@
 table! {
     use diesel::sql_types::*;
-    use laggit_api::book_account::BookAccountTypeMapping;
+    use strecklistan_api::book_account::BookAccountTypeMapping;
     book_accounts (id) {
         id -> Int4,
         name -> Text,

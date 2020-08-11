@@ -1,10 +1,14 @@
 use crate::generated::css_classes::C;
-use laggit_api::book_account::BookAccount;
-use laggit_api::member::Member;
+use strecklistan_api::book_account::BookAccount;
+use strecklistan_api::member::Member;
 use seed::prelude::*;
 use seed::*;
 
-pub fn view_tillgodo<M: Clone>(account: &BookAccount, member: &Member, msg: M) -> Node<M> {
+pub fn view_tillgodo<M: 'static + Clone>(
+    account: &BookAccount,
+    member: &Member,
+    msg: M,
+) -> Node<M> {
     div![
         class![C.tillgodo_entry],
         div![
@@ -13,9 +17,9 @@ pub fn view_tillgodo<M: Clone>(account: &BookAccount, member: &Member, msg: M) -
         ],
         div![
             class![C.tillgodo_name],
-            member.first_name,
+            member.first_name.clone(),
             " ",
-            member.last_name,
+            member.last_name.clone(),
         ],
         div![class![C.tillgodo_money], format!("{}:-", account.balance)],
         simple_ev(Ev::Click, msg),

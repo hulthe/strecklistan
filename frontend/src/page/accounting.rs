@@ -1,7 +1,7 @@
 use crate::app::{Msg, StateReady};
 //use crate::generated::css_classes::C;
 use chrono::{DateTime, NaiveDate, NaiveTime, Utc};
-use laggit_api::{book_account::BookAccountId, currency::Currency};
+use strecklistan_api::{book_account::BookAccountId, currency::Currency};
 use seed::{prelude::*, *};
 use std::collections::HashMap;
 
