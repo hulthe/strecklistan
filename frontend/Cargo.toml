@@ -2,7 +2,7 @@
 name = "laggit_web"
 version = "0.7.0"
 authors = ["Joakim Hulthe <joakim@hulthe.net"]
-license = "LGPL-3.0"
+license = "MPL-2.0"
 description = "The frontend of the LaggIT web page"
 repository = "https://github.com/hulthe/LaggIT"
 readme = "./README.md"
