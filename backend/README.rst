@@ -1,7 +1,7 @@
-laggit_backend
-==============
+strecklistan
+============
 
-This is the backend for the LaggIT web page.
+This is the backend of strecklistan: a simple web-shop.
 
 It is built in Rust_ using the Rocket_ framework.
 Database integration and migrations are provided by Diesel_.

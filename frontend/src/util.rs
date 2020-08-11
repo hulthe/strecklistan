@@ -1,6 +1,6 @@
 use crate::fuzzy_search::FuzzySearch;
-use laggit_api::book_account::BookAccount;
-use laggit_api::member::Member;
+use strecklistan_api::book_account::BookAccount;
+use strecklistan_api::member::Member;
 use semver::Version;
 use std::rc::Rc;
 

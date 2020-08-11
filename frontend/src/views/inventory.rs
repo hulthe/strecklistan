@@ -1,7 +1,7 @@
 use crate::app::Msg;
 use crate::generated::css_classes::C;
 use itertools::Itertools;
-use laggit_api::inventory::{
+use strecklistan_api::inventory::{
     InventoryBundle, InventoryBundleId, InventoryItemId, InventoryItemStock,
 };
 use seed::prelude::*;

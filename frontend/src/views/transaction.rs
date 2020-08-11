@@ -1,7 +1,7 @@
 use crate::app::Msg;
 use crate::generated::css_classes::C;
-use laggit_api::inventory::{InventoryItemId, InventoryItemStock as InventoryItem};
-use laggit_api::transaction::NewTransaction;
+use strecklistan_api::inventory::{InventoryItemId, InventoryItemStock as InventoryItem};
+use strecklistan_api::transaction::NewTransaction;
 use seed::prelude::*;
 use seed::*;
 use std::collections::HashMap;

@@ -9,7 +9,7 @@ use crate::page::{
 };
 use crate::util::compare_semver;
 use chrono::{DateTime, FixedOffset, Local, Utc};
-use laggit_api::{
+use strecklistan_api::{
     book_account::{BookAccount, BookAccountId, MasterAccounts},
     inventory::{
         InventoryBundle, InventoryBundleId, InventoryItemId, InventoryItemStock as InventoryItem,

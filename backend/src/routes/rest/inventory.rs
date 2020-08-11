@@ -3,8 +3,8 @@ use crate::models::inventory::{InventoryBundle as InventoryBundleRel, InventoryB
 use crate::util::status_json::StatusJson as SJ;
 use diesel::prelude::*;
 use itertools::Itertools;
-use laggit_api::inventory::InventoryBundle as InventoryBundleObj;
-use laggit_api::inventory::{InventoryItemStock, InventoryItemTag};
+use strecklistan_api::inventory::InventoryBundle as InventoryBundleObj;
+use strecklistan_api::inventory::{InventoryItemStock, InventoryItemTag};
 use rocket::{get, State};
 use rocket_contrib::json::Json;
 

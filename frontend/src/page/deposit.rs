@@ -2,7 +2,7 @@ use crate::app::{Msg, StateReady};
 use crate::generated::css_classes::C;
 use crate::util::sort_tillgodolista_search;
 use crate::views::view_tillgodo;
-use laggit_api::{
+use strecklistan_api::{
     book_account::{BookAccount, BookAccountId},
     currency::Currency,
     member::{Member, MemberId, NewMember},

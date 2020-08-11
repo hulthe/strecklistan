@@ -5,7 +5,7 @@ use crate::util::{compare_fuzzy, sort_tillgodolista_search};
 use crate::views::{
     view_inventory_bundle, view_inventory_item, view_new_transaction, view_tillgodo,
 };
-use laggit_api::{
+use strecklistan_api::{
     book_account::{BookAccount, BookAccountId},
     inventory::{
         InventoryBundle, InventoryBundleId, InventoryItemId, InventoryItemStock as InventoryItem,

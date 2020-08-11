@@ -1,6 +1,6 @@
 use crate::generated::css_classes::C;
-use laggit_api::book_account::BookAccount;
-use laggit_api::member::Member;
+use strecklistan_api::book_account::BookAccount;
+use strecklistan_api::member::Member;
 use seed::prelude::*;
 use seed::*;
 

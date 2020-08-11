@@ -1,10 +1,10 @@
 [package]
-name = "laggit_web"
+name = "strecklistan_web"
 version = "0.7.0"
 authors = ["Joakim Hulthe <joakim@hulthe.net"]
 license = "MPL-2.0"
-description = "The frontend of the LaggIT web page"
-repository = "https://github.com/hulthe/LaggIT"
+description = "The frontend of strecklistan: a simple web-shop"
+repository = "https://github.com/hulthe/strecklistan"
 readme = "./README.md"
 edition = "2018"
 workspace = ".."
@@ -37,7 +37,7 @@ version = "=0.4.10"
 default-features = false
 features = ["serde", "wasmbind", "js-sys"]
 
-[dependencies.laggit_api]
+[dependencies.strecklistan_api]
 path="../common"
 
 [dependencies.css_typegen]

@@ -1,8 +1,8 @@
 use crate::database::DatabasePool;
 use crate::util::status_json::StatusJson as SJ;
 use diesel::prelude::*;
-use laggit_api::book_account::{BookAccountId, BookAccountType};
-use laggit_api::member::{Member, MemberId, NewMember};
+use strecklistan_api::book_account::{BookAccountId, BookAccountType};
+use strecklistan_api::member::{Member, MemberId, NewMember};
 use rocket::{get, post, State};
 use rocket_contrib::json::Json;
 

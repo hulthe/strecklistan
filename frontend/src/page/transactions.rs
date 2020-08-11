@@ -1,10 +1,10 @@
 use crate::app::{Msg, StateReady};
 use crate::generated::css_classes::C;
 use crate::views::filter_menu::{FilterMenu, FilterMenuMsg};
-use laggit_api::book_account::BookAccountId;
-use laggit_api::currency::Currency;
-use laggit_api::inventory::InventoryItemStock as InventoryItem;
-use laggit_api::transaction::{Transaction, TransactionId};
+use strecklistan_api::book_account::BookAccountId;
+use strecklistan_api::currency::Currency;
+use strecklistan_api::inventory::InventoryItemStock as InventoryItem;
+use strecklistan_api::transaction::{Transaction, TransactionId};
 use seed::prelude::*;
 use seed::*;
 use std::collections::HashMap;

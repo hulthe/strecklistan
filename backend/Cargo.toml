@@ -1,10 +1,11 @@
 [package]
-name = "laggit_backend"
+name = "strecklistan_backend"
 version = "0.7.0"
 authors = ["Joakim Hulthe <joakim@hulthe.net>"]
 license = "MPL-2.0"
-description = "The backend of the LaggIT web page"
-repository = "https://github.com/hulthe/LaggIT"
+description = "The backend of strecklistan: a simple web-shop"
+repository = "https://github.com/hulthe/strecklistan"
+readme = "./README.rst"
 edition = "2018"
 workspace = ".."
 
@@ -29,6 +30,6 @@ frank_jwt = "3.1"
 itertools = "0.8.0"
 log = "0.4.8"
 
-[dependencies.laggit_api]
+[dependencies.strecklistan_api]
 path = "../common"
 features = ["diesel_impl"]
