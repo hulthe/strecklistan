@@ -132,11 +132,11 @@ mod test {
 
     #[test]
     fn test_currency_parsing() {
-        assert_eq!("123.123".parse::<Currency>(), Err(()));
-        assert_eq!("123.-3".parse::<Currency>(), Err(()));
-        assert_eq!("-123.-23".parse::<Currency>(), Err(()));
-        assert_eq!("123.-123".parse::<Currency>(), Err(()));
-        assert_eq!("0.0.0".parse::<Currency>(), Err(()));
+        assert_eq!("123.123".parse::<Currency>(), Err(CurrencyParseError::FracGreaterThan100));
+        assert_eq!("123.-3".parse::<Currency>(), Err(CurrencyParseError::MatchFailed));
+        assert_eq!("-123.-23".parse::<Currency>(), Err(CurrencyParseError::MatchFailed));
+        assert_eq!("123.-123".parse::<Currency>(), Err(CurrencyParseError::MatchFailed));
+        assert_eq!("0.0.0".parse::<Currency>(), Err(CurrencyParseError::MatchFailed));
 
         for i in (-9999..9999).step_by(9) {
             let f = format!("{}", Currency(i));

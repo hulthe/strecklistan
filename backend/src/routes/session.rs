@@ -122,7 +122,7 @@ mod tests {
     use crate::util::testing::DatabaseState;
     use diesel::RunQueryDsl;
     use rocket::http::{ContentType, Header, Status};
-    use rocket::local::Client;
+    use rocket::local::blocking::Client;
     use rocket::routes;
 
     #[test]
@@ -168,21 +168,22 @@ mod tests {
             .to_owned();
         assert_eq!(response.status(), Status::Ok);
 
-        let mut response = client
+        let response = client
             .get("/me")
             .header(Header::new("Authorization", jwt_header))
             .dispatch();
 
-        let body = response.body_string().expect("Response has no body");
+        let status = response.status();
+        let body = response.into_string().expect("Response has no body");
         let data: serde_json::Value =
             serde_json::from_str(&body).expect(&format!("Could not deserialize JSON: {}", body));
         assert!(data.is_object());
         let json = data.as_object().unwrap();
-        assert!(json.contains_key("user"));
+        assert!(json.contains_key("name"));
         assert_eq!(
-            json.get("user").unwrap().get("name").unwrap(),
+            json.get("name").unwrap(),
             &credentials.name
         );
-        assert_eq!(response.status(), Status::Ok);
+        assert_eq!(status, Status::Ok);
     }
 }
