@@ -1,4 +1,5 @@
 pub mod accounting;
+pub mod analytics;
 pub mod deposit;
 pub mod store;
 pub mod transactions;
@@ -11,4 +12,5 @@ pub enum Page {
     Store,
     Deposit,
     TransactionHistory,
+    Analytics,
 }

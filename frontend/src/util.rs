@@ -4,6 +4,9 @@ use strecklistan_api::member::Member;
 use semver::Version;
 use std::rc::Rc;
 
+pub const DATE_INPUT_FMT: &'static str = "%Y-%m-%d";
+pub const TIME_INPUT_FMT: &'static str = "%H:%M";
+
 /// Check if client version supports version api version
 pub fn compare_semver(client_version: Version, api_version: Version) -> bool {
     match (&client_version, &api_version) {

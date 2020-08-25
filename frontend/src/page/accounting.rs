@@ -1,5 +1,5 @@
 use crate::app::{Msg, StateReady};
-//use crate::generated::css_classes::C;
+use crate::util::{DATE_INPUT_FMT, TIME_INPUT_FMT};
 use chrono::{DateTime, NaiveDate, NaiveTime, Utc};
 use strecklistan_api::{book_account::BookAccountId, currency::Currency};
 use seed::{prelude::*, *};
@@ -18,9 +18,6 @@ pub struct AccountingPage {
     end_time: Option<NaiveTime>,
     accounts_balance: HashMap<BookAccountId, Currency>,
 }
-
-const DATE_FMT: &'static str = "%Y-%m-%d";
-const TIME_FMT: &'static str = "%H:%M";
 
 impl AccountingPage {
     pub fn new(global: &StateReady) -> Self {
@@ -42,11 +39,11 @@ impl AccountingPage {
         let mut orders_local = orders.proxy(|msg| Msg::AccountingMsg(msg));
         match msg {
             AccountingMsg::SetEndDate(input) => {
-                self.end_date = NaiveDate::parse_from_str(&input, DATE_FMT).ok();
+                self.end_date = NaiveDate::parse_from_str(&input, DATE_INPUT_FMT).ok();
                 orders_local.send_msg(AccountingMsg::UpdateFilter);
             }
             AccountingMsg::SetEndTime(input) => {
-                self.end_time = NaiveTime::parse_from_str(&input, TIME_FMT).ok();
+                self.end_time = NaiveTime::parse_from_str(&input, TIME_INPUT_FMT).ok();
                 orders_local.send_msg(AccountingMsg::UpdateFilter);
             }
             AccountingMsg::UpdateFilter => self.update_filter(global),
@@ -77,15 +74,15 @@ impl AccountingPage {
                 input![
                     attrs! {At::Type => "date"},
                     attrs! {At::Value => self.end_date.as_ref()
-                    .map(|d| d.format(DATE_FMT).to_string())
-                    .unwrap_or(String::new())},
+                        .map(|d| d.format(DATE_INPUT_FMT).to_string())
+                        .unwrap_or(String::new())},
                     input_ev(Ev::Input, |input| AccountingMsg::SetEndDate(input)),
                 ],
                 input![
                     attrs! {At::Type => "time"},
                     attrs! {At::Value => self.end_time.as_ref()
-                    .map(|d| d.format(TIME_FMT).to_string())
-                    .unwrap_or(String::new())},
+                        .map(|d| d.format(TIME_INPUT_FMT).to_string())
+                        .unwrap_or(String::new())},
                     input_ev(Ev::Input, |input| AccountingMsg::SetEndTime(input)),
                 ],
             ],

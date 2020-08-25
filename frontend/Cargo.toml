@@ -21,6 +21,7 @@ strum_macros = "0.15.0"
 futures = "^0.1.26"
 itertools = "^0.8"
 serde = { version = "^1.0.90", features = ['derive'] }
+plotters = "0.2"
 
 # Custom allocator. Smaller & slower than the default.
 wee_alloc = { version = "0.4.3", optional = true }
