@@ -1,16 +1,23 @@
 use crate::app::{Msg, StateReady};
 use crate::generated::css_classes::C;
+use crate::util::export::{download_file, make_csv_transaction_list, CSVStyleTransaction};
 use crate::views::filter_menu::{FilterMenu, FilterMenuMsg};
-use strecklistan_api::book_account::BookAccountId;
-use strecklistan_api::currency::Currency;
-use strecklistan_api::inventory::InventoryItemStock as InventoryItem;
-use strecklistan_api::transaction::{Transaction, TransactionId};
 use seed::prelude::*;
 use seed::*;
 use std::collections::HashMap;
 use std::ops::Deref;
+use strecklistan_api::book_account::BookAccountId;
+use strecklistan_api::currency::Currency;
+use strecklistan_api::inventory::InventoryItemStock as InventoryItem;
+use strecklistan_api::transaction::{Transaction, TransactionId};
 
 const VIEW_COUNT_CHUNK: usize = 50;
+
+#[derive(Copy, Clone, Debug)]
+pub enum ExportFormat {
+    JSON,
+    CSV(CSVStyleTransaction),
+}
 
 #[derive(Clone, Debug)]
 pub enum TransactionsMsg {
@@ -20,6 +27,7 @@ pub enum TransactionsMsg {
     SetShowLeftPanel(bool),
     FilterMenuMsg(FilterMenuMsg),
     IncreaseViewLimit,
+    ExportData(ExportFormat),
 }
 
 #[derive(Clone)]
@@ -138,6 +146,24 @@ impl TransactionsPage {
                 self.view_limit += VIEW_COUNT_CHUNK;
                 self.filter_transactions(global);
             }
+            TransactionsMsg::ExportData(format) => {
+                let transactions: Vec<_> = self
+                    .filtered_transactions
+                    .iter()
+                    .map(|&index| global.transaction_history[index].clone())
+                    .collect();
+                match format {
+                    ExportFormat::JSON => {
+                        let serialized = serde_json::to_string(&transactions).unwrap();
+                        download_file("transactions.json", mime::APPLICATION_JSON, &serialized)
+                            .ok();
+                    }
+                    ExportFormat::CSV(style) => {
+                        let serialized = make_csv_transaction_list(&transactions, style);
+                        download_file("transactions.csv", mime::TEXT_CSV, &serialized).ok();
+                    }
+                }
+            }
         }
     }
 
@@ -213,9 +239,37 @@ impl TransactionsPage {
                 self.filter_menu
                     .view()
                     .map_msg(|msg| TransactionsMsg::FilterMenuMsg(msg)),
+                div![
+                    class![C.flex, C.flex_row, C.text_3xl, C.font_bold],
+                    h2![class![C.mx_auto, C.my_2], "Exportera Data"],
+                ],
+                button![
+                    class![C.wide_button],
+                    "JSON",
+                    simple_ev(Ev::Click, TransactionsMsg::ExportData(ExportFormat::JSON)),
+                ],
+                button![
+                    class![C.wide_button, C.mt_2],
+                    "CSV (En rad per vara)",
+                    simple_ev(
+                        Ev::Click,
+                        TransactionsMsg::ExportData(ExportFormat::CSV(
+                            CSVStyleTransaction::PerItem
+                        ))
+                    ),
+                ],
+                // TODO: implement this
+                /*
+                button![
+                    class![C.wide_button, C.mt_2],
+                    "CSV (En rad per transaktion)",
+                    simple_ev(Ev::Click, TransactionsMsg::ExportData(
+                            ExportFormat::CSV(CSVStyleTransaction::PerTransaction))),
+                ],
+                */
             ],
             button![
-                class![C.left_panel_button,],
+                class![C.left_panel_button],
                 simple_ev(
                     Ev::Click,
                     TransactionsMsg::SetShowLeftPanel(!self.show_left_panel),
@@ -229,10 +283,13 @@ impl TransactionsPage {
             },],
             div![
                 class![C.transactions_list],
-                button![
-                    class![C.transaction_page_show_delete],
-                    "Radera transaktioner?",
-                    simple_ev(Ev::Click, TransactionsMsg::SetShowDelete(!self.show_delete)),
+                div![
+                    class![C.transactions_page_button_box],
+                    button![
+                        class![C.transactions_page_show_delete],
+                        "Radera transaktioner?",
+                        simple_ev(Ev::Click, TransactionsMsg::SetShowDelete(!self.show_delete)),
+                    ],
                 ],
                 transaction_list,
                 if self.view_limit < self.filtered_transactions.len() {
