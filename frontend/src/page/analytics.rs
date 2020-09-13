@@ -1,16 +1,12 @@
 use crate::app::{Msg, StateReady};
 use crate::generated::css_classes::C;
-use seed::{prelude::*, *};
-use std::collections::{HashMap, BTreeMap};
-use strecklistan_api::{
-    inventory::InventoryItemId,
-    transaction::Transaction,
-};
-use plotters::prelude::*;
-use std::rc::Rc;
-use chrono::{Duration, Datelike, Utc, DateTime, NaiveDate, Weekday, IsoWeek};
 use crate::util::DATE_INPUT_FMT;
-
+use chrono::{DateTime, Datelike, Duration, IsoWeek, NaiveDate, Utc, Weekday};
+use plotters::prelude::*;
+use seed::{prelude::*, *};
+use std::collections::{BTreeMap, HashMap};
+use std::rc::Rc;
+use strecklistan_api::{inventory::InventoryItemId, transaction::Transaction};
 
 #[derive(Clone, Debug)]
 pub enum AnalyticsMsg {
@@ -91,14 +87,13 @@ impl AnalyticsPage {
                     simple_ev(Ev::Click, AnalyticsMsg::ComputeCharts),
                 ],
             ],
-            global.inventory.values()
-                .map(|item| {
-                    if let Some(svg) = self.charts.get(&item.id) {
-                        div![raw![svg]]
-                    } else {
-                        div!["not computed yet"]
-                    }
-                }),
+            global.inventory.values().map(|item| {
+                if let Some(svg) = self.charts.get(&item.id) {
+                    div![raw![svg]]
+                } else {
+                    div!["not computed yet"]
+                }
+            }),
         ]
         .map_msg(|msg| Msg::AnalyticsMsg(msg))
     }
@@ -112,15 +107,19 @@ impl AnalyticsPage {
                 let item_id = item.id;
                 let item_name = item.name.clone();
                 orders.after_next_render(move |_| {
-                    let chart = plot_item_stock_over_time(inventory_by_week, start_date, end_date
-                                                          ,item_id, item_name);
+                    let chart = plot_item_stock_over_time(
+                        inventory_by_week,
+                        start_date,
+                        end_date,
+                        item_id,
+                        item_name,
+                    );
                     AnalyticsMsg::ComputedChart { item_id, chart }
                 });
                 break;
             }
         }
     }
-
 }
 
 fn week_date(week: IsoWeek) -> DateTime<Utc> {
@@ -134,7 +133,10 @@ fn calculate_inventory_by_week(
     let mut transactions = BTreeMap::new();
 
     for transaction in transactions_unsorted.iter() {
-        transactions.entry(transaction.time.iso_week()).or_insert(vec![]).push(transaction.clone());
+        transactions
+            .entry(transaction.time.iso_week())
+            .or_insert(vec![])
+            .push(transaction.clone());
     }
 
     let mut inventory = HashMap::new();
@@ -159,15 +161,17 @@ fn plot_item_stock_over_time(
     start_date: DateTime<Utc>,
     end_date: DateTime<Utc>,
     item_id: InventoryItemId,
-    name: String) -> String {
-
-    let x_min = inventory_by_week.keys()
+    name: String,
+) -> String {
+    let x_min = inventory_by_week
+        .keys()
         .map(|&week| week_date(week))
         .filter(|&date| date >= start_date)
         .next()
         .unwrap();
 
-    let x_max = inventory_by_week.keys()
+    let x_max = inventory_by_week
+        .keys()
         .map(|&week| week_date(week))
         .filter(|&date| date <= end_date)
         .rev()
@@ -176,10 +180,12 @@ fn plot_item_stock_over_time(
         .max(x_min);
 
     let mut points = Vec::new();
-    for (week, stock) in inventory_by_week.iter()
-                .map(|(week, stock)| (week_date(*week), stock))
-                .filter(|&(date, _)| date >= start_date)
-                .filter(|&(date, _)| date <= end_date) {
+    for (week, stock) in inventory_by_week
+        .iter()
+        .map(|(week, stock)| (week_date(*week), stock))
+        .filter(|&(date, _)| date >= start_date)
+        .filter(|&(date, _)| date <= end_date)
+    {
         points.push((week, *stock.get(&item_id).unwrap_or(&0)));
     }
 
@@ -196,7 +202,9 @@ fn plot_item_stock_over_time(
         .build_ranged(x_min..x_max, 0..y_max)
         .unwrap();
 
-    chart.draw_series(LineSeries::new(points, &RED,)).unwrap()
+    chart
+        .draw_series(LineSeries::new(points, &RED))
+        .unwrap()
         .label("Antal i lager")
         .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &RED));
 

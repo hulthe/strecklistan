@@ -10,14 +10,6 @@ use crate::page::{
 };
 use crate::util::compare_semver;
 use chrono::{DateTime, FixedOffset, Local, Utc};
-use strecklistan_api::{
-    book_account::{BookAccount, BookAccountId, MasterAccounts},
-    inventory::{
-        InventoryBundle, InventoryBundleId, InventoryItemId, InventoryItemStock as InventoryItem,
-    },
-    member::{Member, MemberId},
-    transaction::Transaction,
-};
 use seed::prelude::*;
 use seed::*;
 use semver::Version;
@@ -26,6 +18,14 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::future::Future;
 use std::rc::Rc;
+use strecklistan_api::{
+    book_account::{BookAccount, BookAccountId, MasterAccounts},
+    inventory::{
+        InventoryBundle, InventoryBundleId, InventoryItemId, InventoryItemStock as InventoryItem,
+    },
+    member::{Member, MemberId},
+    transaction::Transaction,
+};
 use web_sys;
 
 const PKG_VERSION: &'static str = env!("CARGO_PKG_VERSION");

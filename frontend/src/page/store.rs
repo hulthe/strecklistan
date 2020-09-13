@@ -5,6 +5,10 @@ use crate::util::{compare_fuzzy, sort_tillgodolista_search};
 use crate::views::{
     view_inventory_bundle, view_inventory_item, view_new_transaction, view_tillgodo,
 };
+use seed::prelude::*;
+use seed::*;
+use std::collections::HashMap;
+use std::rc::Rc;
 use strecklistan_api::{
     book_account::{BookAccount, BookAccountId},
     inventory::{
@@ -13,10 +17,6 @@ use strecklistan_api::{
     member::Member,
     transaction::{NewTransaction, TransactionBundle, TransactionId},
 };
-use seed::prelude::*;
-use seed::*;
-use std::collections::HashMap;
-use std::rc::Rc;
 
 #[derive(Clone, Debug)]
 pub enum StoreItem {

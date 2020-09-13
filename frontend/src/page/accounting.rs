@@ -1,9 +1,9 @@
 use crate::app::{Msg, StateReady};
 use crate::util::{DATE_INPUT_FMT, TIME_INPUT_FMT};
 use chrono::{DateTime, NaiveDate, NaiveTime, Utc};
-use strecklistan_api::{book_account::BookAccountId, currency::Currency};
 use seed::{prelude::*, *};
 use std::collections::HashMap;
+use strecklistan_api::{book_account::BookAccountId, currency::Currency};
 
 #[derive(Clone, Debug)]
 pub enum AccountingMsg {
@@ -74,15 +74,15 @@ impl AccountingPage {
                 input![
                     attrs! {At::Type => "date"},
                     attrs! {At::Value => self.end_date.as_ref()
-                        .map(|d| d.format(DATE_INPUT_FMT).to_string())
-                        .unwrap_or(String::new())},
+                    .map(|d| d.format(DATE_INPUT_FMT).to_string())
+                    .unwrap_or(String::new())},
                     input_ev(Ev::Input, |input| AccountingMsg::SetEndDate(input)),
                 ],
                 input![
                     attrs! {At::Type => "time"},
                     attrs! {At::Value => self.end_time.as_ref()
-                        .map(|d| d.format(TIME_INPUT_FMT).to_string())
-                        .unwrap_or(String::new())},
+                    .map(|d| d.format(TIME_INPUT_FMT).to_string())
+                    .unwrap_or(String::new())},
                     input_ev(Ev::Input, |input| AccountingMsg::SetEndTime(input)),
                 ],
             ],
