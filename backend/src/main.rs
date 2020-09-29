@@ -21,6 +21,8 @@ use dotenv::dotenv;
 use frank_jwt::Algorithm;
 use rocket::routes;
 use std::env;
+use crate::routes::rest::izettle_poll::IZettleState;
+use futures::lock::Mutex;
 
 fn handle_migrations(db_pool: &DatabasePool) {
     let run_migrations = env::var("RUN_MIGRATIONS")
@@ -81,9 +83,15 @@ async fn main() {
         token_lifetime: Duration::weeks(2),
     };
 
+    let izettle_state = IZettleState {
+        pending_transaction: None,
+        last_transaction_accepted: false,
+    };
+
     let mut rocket = rocket::ignite()
         .manage(db_pool)
         .manage(jwt_config)
+        .manage(Mutex::new(izettle_state))
         .register(catchers())
         .mount(
             "/",
@@ -105,6 +113,8 @@ async fn main() {
                 rest::member::get_members,
                 rest::member::add_member_with_book_account,
                 rest::get_api_version,
+                rest::izettle_poll::poll_for_transaction,
+                rest::izettle_transaction::begin_izettle_transaction,
             ],
         );
     let config = rocket.config().await;
