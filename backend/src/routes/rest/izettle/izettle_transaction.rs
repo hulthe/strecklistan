@@ -4,20 +4,20 @@ use crate::models::transaction::object;
 use rocket::{post, State};
 use serde_derive::{Serialize};
 use futures::lock::Mutex;
-use crate::routes::rest::izettle_poll::{IZettleState, TransactionResult};
 use rocket::http::Status;
+use crate::routes::rest::izettle::izettle_poll::{IZettleState, TransactionResult};
 
 #[post("/izettle/client/transaction", data = "<transaction>")]
 pub async fn begin_izettle_transaction(
     transaction: Json<object::NewTransaction>,
     izettle_state: State<'_, Mutex<IZettleState>>,
-) -> Result<Json<i32>, SJ> {
+) -> Json<i32> {
 
     let mut guard = izettle_state.inner().lock().await;
     guard.pending_transaction = Some(TransactionResult {
         amount: transaction.amount,
+        paid: false,
     });
-    guard.last_transaction_accepted = false;
 
-    Ok(Json(0))
+    Json(0)
 }
