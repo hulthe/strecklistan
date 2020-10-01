@@ -10,6 +10,15 @@ table! {
 }
 
 table! {
+    event_signups (id) {
+        id -> Int4,
+        event -> Int4,
+        name -> Varchar,
+        email -> Varchar,
+    }
+}
+
+table! {
     events (id) {
         id -> Int4,
         title -> Text,
@@ -19,15 +28,6 @@ table! {
         end_time -> Timestamptz,
         price -> Int4,
         published -> Bool,
-    }
-}
-
-table! {
-    event_signups (id) {
-        id -> Int4,
-        event -> Int4,
-        name -> Varchar,
-        email -> Varchar,
     }
 }
 
@@ -60,6 +60,34 @@ table! {
 table! {
     inventory_tags (tag, item_id) {
         tag -> Text,
+        item_id -> Int4,
+    }
+}
+
+table! {
+    izettle_transaction (id) {
+        id -> Int4,
+        description -> Nullable<Text>,
+        debited_account -> Int4,
+        credited_account -> Int4,
+        amount -> Int4,
+    }
+}
+
+table! {
+    izettle_transaction_bundle (id) {
+        id -> Int4,
+        transaction_id -> Int4,
+        description -> Nullable<Text>,
+        prince -> Int4,
+        change -> Int4,
+    }
+}
+
+table! {
+    izettle_transaction_item (id) {
+        id -> Int4,
+        bundle_id -> Int4,
         item_id -> Int4,
     }
 }
@@ -116,18 +144,24 @@ joinable!(event_signups -> events (event));
 joinable!(inventory_bundle_items -> inventory (item_id));
 joinable!(inventory_bundle_items -> inventory_bundles (bundle_id));
 joinable!(inventory_tags -> inventory (item_id));
+joinable!(izettle_transaction_bundle -> izettle_transaction (transaction_id));
+joinable!(izettle_transaction_item -> inventory (item_id));
+joinable!(izettle_transaction_item -> izettle_transaction_bundle (bundle_id));
 joinable!(transaction_bundles -> transactions (transaction_id));
 joinable!(transaction_items -> inventory (item_id));
 joinable!(transaction_items -> transaction_bundles (bundle_id));
 
 allow_tables_to_appear_in_same_query!(
     book_accounts,
-    events,
     event_signups,
+    events,
     inventory,
     inventory_bundle_items,
     inventory_bundles,
     inventory_tags,
+    izettle_transaction,
+    izettle_transaction_bundle,
+    izettle_transaction_item,
     members,
     transaction_bundles,
     transaction_items,
