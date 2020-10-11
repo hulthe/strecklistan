@@ -2,7 +2,6 @@ use crate::app::{Msg, StateReady};
 use crate::generated::css_classes::C;
 use crate::util::DATE_INPUT_FMT;
 use chrono::{DateTime, Datelike, Duration, IsoWeek, NaiveDate, Utc, Weekday};
-use plotters::prelude::*;
 use seed::{prelude::*, *};
 use std::collections::{BTreeMap, HashMap};
 use std::rc::Rc;
@@ -13,7 +12,7 @@ pub enum AnalyticsMsg {
     ComputeCharts,
     ComputedChart {
         item_id: InventoryItemId,
-        chart: String,
+        chart: Node<AnalyticsMsg>,
     },
     SetStartDate(String),
     SetEndDate(String),
@@ -21,10 +20,20 @@ pub enum AnalyticsMsg {
 
 #[derive(Clone)]
 pub struct AnalyticsPage {
+    /// An index of the inventory stocks at the start of every week
     inventory_by_week: Rc<BTreeMap<IsoWeek, HashMap<InventoryItemId, i32>>>,
-    charts: HashMap<InventoryItemId, String>,
+
+    /// Pre-computed and cached charts
+    charts: HashMap<InventoryItemId, Node<AnalyticsMsg>>,
+
+    /// Start-date filter for computing charts
     start_date: DateTime<Utc>,
+
+    /// End-date filter for computing charts
     end_date: DateTime<Utc>,
+
+    /// Toggle for disabling the "calculate charts" button
+    calculation_in_progress: bool,
 }
 
 impl AnalyticsPage {
@@ -35,6 +44,7 @@ impl AnalyticsPage {
             charts: HashMap::new(),
             start_date: now - Duration::days(365),
             end_date: now,
+            calculation_in_progress: false,
         }
     }
 
@@ -48,6 +58,7 @@ impl AnalyticsPage {
         match msg {
             AnalyticsMsg::ComputeCharts => {
                 self.charts.clear();
+                self.calculation_in_progress = true;
                 self.plot_next_item(global, &mut orders_local);
             }
             AnalyticsMsg::ComputedChart { item_id, chart } => {
@@ -69,7 +80,7 @@ impl AnalyticsPage {
 
     pub fn view(&self, global: &StateReady) -> Node<Msg> {
         div![
-            class!["accounting_page"],
+            class![C.accounting_page],
             div![
                 input![
                     attrs! {At::Type => "date"},
@@ -81,33 +92,63 @@ impl AnalyticsPage {
                     attrs! {At::Value => self.end_date.format(DATE_INPUT_FMT).to_string()},
                     input_ev(Ev::Input, |input| AnalyticsMsg::SetEndDate(input)),
                 ],
-                button![
-                    "Beräkna Statistik",
-                    class![C.wide_button, C.border_on_focus],
-                    simple_ev(Ev::Click, AnalyticsMsg::ComputeCharts),
-                ],
-            ],
-            global.inventory.values().map(|item| {
-                if let Some(svg) = self.charts.get(&item.id) {
-                    div![raw![svg]]
+                if self.calculation_in_progress {
+                    button![
+                        class![C.wide_button],
+                        div![
+                            class![C.lds_ripple],
+                            style! {
+                                St::Position => "absolute",
+                                St::MarginTop => "-20px",
+                            },
+                            div![],
+                            div![],
+                        ],
+                        attrs! { At::Disabled => true },
+                        "Beräkna Statistik",
+                    ]
                 } else {
-                    div!["not computed yet"]
-                }
-            }),
+                    button![
+                        class![C.wide_button],
+                        simple_ev(Ev::Click, AnalyticsMsg::ComputeCharts),
+                        "Beräkna Statistik",
+                    ]
+                },
+            ],
+            if self.charts.is_empty() {
+                i!["Här var det tomt... Prova att trycka på knappen ;)"]
+            } else {
+                div![
+                    global.inventory.values().map(|item| {
+                        if let Some(chart) = self.charts.get(&item.id) {
+                            chart.clone()
+                        } else {
+                            h2![
+                                &item.name,
+                                i![" - laddar..."],
+                            ]
+                        }
+                    })
+                ]
+            },
         ]
         .map_msg(|msg| Msg::AnalyticsMsg(msg))
     }
 
     fn plot_next_item(&mut self, global: &StateReady, orders: &mut impl Orders<AnalyticsMsg>) {
+        self.calculation_in_progress = false;
         for item in global.inventory.values() {
             if !self.charts.contains_key(&item.id) {
+                self.calculation_in_progress = true;
+
                 let inventory_by_week = self.inventory_by_week.clone();
                 let start_date = self.start_date;
                 let end_date = self.end_date;
                 let item_id = item.id;
                 let item_name = item.name.clone();
+
                 orders.after_next_render(move |_| {
-                    let chart = plot_item_stock_over_time(
+                    let chart = plot_sales_over_time(
                         inventory_by_week,
                         start_date,
                         end_date,
@@ -156,67 +197,77 @@ fn calculate_inventory_by_week(
     result
 }
 
-fn plot_item_stock_over_time(
+fn plot_sales_over_time(
     inventory_by_week: Rc<BTreeMap<IsoWeek, HashMap<InventoryItemId, i32>>>,
     start_date: DateTime<Utc>,
     end_date: DateTime<Utc>,
     item_id: InventoryItemId,
     name: String,
-) -> String {
-    let x_min = inventory_by_week
-        .keys()
-        .map(|&week| week_date(week))
-        .filter(|&date| date >= start_date)
-        .next()
-        .unwrap();
-
-    let x_max = inventory_by_week
-        .keys()
-        .map(|&week| week_date(week))
-        .filter(|&date| date <= end_date)
-        .rev()
-        .next()
-        .unwrap()
-        .max(x_min);
-
-    let mut points = Vec::new();
-    for (week, stock) in inventory_by_week
+) -> Node<AnalyticsMsg> {
+    let mut iter = inventory_by_week
         .iter()
-        .map(|(week, stock)| (week_date(*week), stock))
+        .map(|(week, inventory)| {
+            let stock = *inventory.get(&item_id).unwrap_or(&0);
+            (week_date(*week), stock)
+        })
         .filter(|&(date, _)| date >= start_date)
-        .filter(|&(date, _)| date <= end_date)
-    {
-        points.push((week, *stock.get(&item_id).unwrap_or(&0)));
-    }
+        .filter(|&(date, _)| date <= end_date);
 
-    let mut svg_data = String::new();
-    let canvas = SVGBackend::with_string(&mut svg_data, (640, 480)).into_drawing_area();
+    let mut last_weeks_stock = iter.next().map(|(_, s)| s).unwrap_or(0);
+    let points: Vec<(String, u32)> = iter.map(|(date, this_weeks_stock)| {
+            let sales = last_weeks_stock - this_weeks_stock;
+            last_weeks_stock = this_weeks_stock;
+            (date, sales)
+        })
+        .filter(|(_, sales)| *sales >= 0)
+        .map(|(date, sales)| {
+            let datefmt = format!("{} w{:.02}", date.year(), date.iso_week().week());
+            (datefmt, sales as u32)
+        })
+        .collect();
 
-    let y_max = *points.iter().map(|(_, count)| count).max().unwrap_or(&0);
-
-    let mut chart = ChartBuilder::on(&canvas)
-        .caption(name, ("sans-serif", 50).into_font())
-        .margin(5)
-        .x_label_area_size(30)
-        .y_label_area_size(30)
-        .build_ranged(x_min..x_max, 0..y_max)
-        .unwrap();
-
-    chart
-        .draw_series(LineSeries::new(points, &RED))
-        .unwrap()
-        .label("Antal i lager")
-        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &RED));
-
-    chart
-        .configure_series_labels()
-        .background_style(&WHITE.mix(0.8))
-        .border_style(&BLACK)
-        .draw()
-        .unwrap();
-
-    drop(chart);
-    drop(canvas);
-
-    svg_data
+    plot(name, &points)
 }
+
+fn plot<K>(
+    name: String,
+    points: &[(K, u32)],
+) -> Node<AnalyticsMsg>
+where K: std::fmt::Display {
+    let y_max = points.iter().map(|(_, v)| *v).max().unwrap();
+    div![
+        class![C.mx_2],
+        h2![class![C.mt_2], name],
+        div![
+            class![C.chart_histogram],
+            points.iter().map(|(k, v)| {
+                    let percentage = if y_max == 0 {
+                        0
+                    } else {
+                        v * 100 / y_max
+                    };
+
+                    div![
+                        class![C.chart_histogram_col],
+                        div![
+                            style!(St::FlexBasis => format!("{}%", 100 - percentage)),
+                        ],
+                        div![
+                            class![C.chart_histogram_col_line, C.chart_col_tooltip],
+                            style!(St::FlexBasis => format!("{}%", percentage)),
+                            span![
+                                class![C.chart_col_tooltiptext],
+                                format!("{}", v),
+                            ],
+                        ],
+                        div![
+                            class![C.chart_histogram_col_label],
+                            format!("{}", k),
+                        ],
+                    ]
+                })
+                .collect::<Vec<_>>()
+        ],
+    ]
+}
+
