@@ -1,7 +1,7 @@
 use crate::generated::css_classes::C;
 use crate::models::event::Event;
 use crate::page::{
-    accounting::{AccountingMsg, AccountingPage},
+    analytics::{AnalyticsMsg, AnalyticsPage},
     deposit::{DepositionMsg, DepositionPage},
     store::{StoreMsg, StorePage},
     transactions::{TransactionsMsg, TransactionsPage},
@@ -9,14 +9,6 @@ use crate::page::{
 };
 use crate::util::compare_semver;
 use chrono::{DateTime, FixedOffset, Local, Utc};
-use strecklistan_api::{
-    book_account::{BookAccount, BookAccountId, MasterAccounts},
-    inventory::{
-        InventoryBundle, InventoryBundleId, InventoryItemId, InventoryItemStock as InventoryItem,
-    },
-    member::{Member, MemberId},
-    transaction::Transaction,
-};
 use seed::prelude::*;
 use seed::*;
 use semver::Version;
@@ -25,6 +17,14 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::future::Future;
 use std::rc::Rc;
+use strecklistan_api::{
+    book_account::{BookAccount, BookAccountId, MasterAccounts},
+    inventory::{
+        InventoryBundle, InventoryBundleId, InventoryItemId, InventoryItemStock as InventoryItem,
+    },
+    member::{Member, MemberId},
+    transaction::Transaction,
+};
 use web_sys;
 
 const PKG_VERSION: &'static str = env!("CARGO_PKG_VERSION");
@@ -63,7 +63,7 @@ pub struct StateReady {
 pub enum State {
     Loading(StateLoading),
     Ready {
-        accounting_page: AccountingPage,
+        analytics_page: AnalyticsPage,
         deposition_page: DepositionPage,
         transactions_page: TransactionsPage,
         store_page: StorePage,
@@ -108,7 +108,7 @@ pub enum Msg {
 
     KeyPressed(web_sys::KeyboardEvent),
 
-    AccountingMsg(AccountingMsg),
+    AnalyticsMsg(AnalyticsMsg),
     DepositionMsg(DepositionMsg),
     TransactionsMsg(TransactionsMsg),
     StoreMsg(StoreMsg),
@@ -118,13 +118,13 @@ pub enum Msg {
 
 pub fn routes(url: Url) -> Option<Msg> {
     Some(if url.path().is_empty() {
-        Msg::ChangePage(Page::Root)
+        Msg::ChangePage(Page::Store)
     } else {
         match url.path()[0].as_ref() {
-            "accounting" => Msg::ChangePage(Page::Accounting),
             "deposit" => Msg::ChangePage(Page::Deposit),
             "" | "store" => Msg::ChangePage(Page::Store),
             "transactions" => Msg::ChangePage(Page::TransactionHistory),
+            "analytics" => Msg::ChangePage(Page::Analytics),
             _ => Msg::ChangePage(Page::NotFound),
         }
     })
@@ -188,7 +188,7 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                                     request_in_progress: false,
                                 };
                                 State::Ready {
-                                    accounting_page: AccountingPage::new(&data),
+                                    analytics_page: AnalyticsPage::new(&data),
                                     deposition_page: DepositionPage::new(&data),
                                     transactions_page: TransactionsPage::new(&data),
                                     store_page: StorePage::new(&data),
@@ -260,7 +260,7 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         }
 
         Msg::DepositionMsg(msg) => fwd_child_msg!(model.state, deposition_page, msg, orders),
-        Msg::AccountingMsg(msg) => fwd_child_msg!(model.state, accounting_page, msg, orders),
+        Msg::AnalyticsMsg(msg) => fwd_child_msg!(model.state, analytics_page, msg, orders),
         Msg::TransactionsMsg(msg) => fwd_child_msg!(model.state, transactions_page, msg, orders),
         Msg::StoreMsg(msg) => fwd_child_msg!(model.state, store_page, msg, orders),
 
@@ -307,9 +307,9 @@ pub fn view(model: &Model) -> Vec<Node<Msg>> {
                     attrs! {At::Href => "/transactions"}
                 ],
                 a![
-                    "bokföring",
+                    "analys",
                     class![C.header_link],
-                    attrs! {At::Href => "/accounting"}
+                    attrs! {At::Href => "/analytics"}
                 ],
             ],
         ],
@@ -321,13 +321,13 @@ pub fn view(model: &Model) -> Vec<Node<Msg>> {
         div![class![C.header_margin], raw!["&nbsp;"]],
         match &model.state {
             State::Ready {
-                accounting_page,
+                analytics_page,
                 deposition_page,
                 transactions_page,
                 store_page,
                 state,
             } => match model.page {
-                Page::Accounting => accounting_page.view(state),
+                Page::Analytics => analytics_page.view(state),
                 Page::Store => store_page.view(state),
                 Page::Deposit => deposition_page.view(state),
                 Page::TransactionHistory => transactions_page.view(state),

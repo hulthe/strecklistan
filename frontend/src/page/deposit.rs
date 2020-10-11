@@ -2,15 +2,15 @@ use crate::app::{Msg, StateReady};
 use crate::generated::css_classes::C;
 use crate::util::sort_tillgodolista_search;
 use crate::views::view_tillgodo;
+use seed::prelude::*;
+use seed::*;
+use std::rc::Rc;
 use strecklistan_api::{
     book_account::{BookAccount, BookAccountId},
     currency::Currency,
     member::{Member, MemberId, NewMember},
     transaction::{NewTransaction, TransactionId},
 };
-use seed::prelude::*;
-use seed::*;
-use std::rc::Rc;
 
 #[derive(Clone, Debug)]
 pub enum DepositionMsg {

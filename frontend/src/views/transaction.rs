@@ -1,12 +1,12 @@
 use crate::app::Msg;
 use crate::generated::css_classes::C;
-use strecklistan_api::inventory::{InventoryItemId, InventoryItemStock as InventoryItem};
-use strecklistan_api::transaction::NewTransaction;
 use seed::prelude::*;
 use seed::*;
 use std::collections::HashMap;
 use std::ops::Deref;
 use std::rc::Rc;
+use strecklistan_api::inventory::{InventoryItemId, InventoryItemStock as InventoryItem};
+use strecklistan_api::transaction::NewTransaction;
 
 pub fn view_new_transaction(
     transaction: &NewTransaction,
@@ -94,7 +94,10 @@ pub fn view_new_transaction(
                 class![C.wide_button, C.border_on_focus],
                 div![
                     class![C.lds_ripple],
-                    attrs! { At::Style => "position: fixed; margin-top: -20px;" },
+                    style! {
+                        St::Position => "absolute",
+                        St::MarginTop => "-20px",
+                    },
                     div![],
                     div![],
                 ],

@@ -1,8 +1,8 @@
 use crate::generated::css_classes::C;
-use strecklistan_api::book_account::BookAccount;
-use strecklistan_api::member::Member;
 use seed::prelude::*;
 use seed::*;
+use strecklistan_api::book_account::BookAccount;
+use strecklistan_api::member::Member;
 
 pub fn view_tillgodo<M: 'static + Clone>(
     account: &BookAccount,

@@ -1,11 +1,11 @@
 use crate::app::Msg;
 use crate::generated::css_classes::C;
 use itertools::Itertools;
+use seed::prelude::*;
+use seed::*;
 use strecklistan_api::inventory::{
     InventoryBundle, InventoryBundleId, InventoryItemId, InventoryItemStock,
 };
-use seed::prelude::*;
-use seed::*;
 
 /// string: the string
 /// highlight_chars: iterator over the indexes of highlighted characters in string

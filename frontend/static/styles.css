@@ -342,10 +342,21 @@ body {
     border-bottom: solid black;
 }
 
-.transaction_page_show_delete {
+.transactions_page_button_box {
     margin-left: auto;
     margin-right: auto;
+}
+
+.transactions_page_show_delete {
     background-color: #fdc;
+    padding: 0.2rem;
+    border-radius: 0.2rem;
+    font-size: 1.2rem;
+    font-family: 'Ubuntu';
+}
+
+.transactions_page_export_button {
+    background-color: #fffd74;
     padding: 0.2rem;
     border-radius: 0.2rem;
     font-size: 1.2rem;
