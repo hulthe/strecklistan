@@ -118,18 +118,13 @@ impl AnalyticsPage {
             if self.charts.is_empty() {
                 i!["Här var det tomt... Prova att trycka på knappen ;)"]
             } else {
-                div![
-                    global.inventory.values().map(|item| {
-                        if let Some(chart) = self.charts.get(&item.id) {
-                            chart.clone()
-                        } else {
-                            h2![
-                                &item.name,
-                                i![" - laddar..."],
-                            ]
-                        }
-                    })
-                ]
+                div![global.inventory.values().map(|item| {
+                    if let Some(chart) = self.charts.get(&item.id) {
+                        chart.clone()
+                    } else {
+                        h2![&item.name, i![" - laddar..."],]
+                    }
+                })]
             },
         ]
         .map_msg(|msg| Msg::AnalyticsMsg(msg))
@@ -214,7 +209,8 @@ fn plot_sales_over_time(
         .filter(|&(date, _)| date <= end_date);
 
     let mut last_weeks_stock = iter.next().map(|(_, s)| s).unwrap_or(0);
-    let points: Vec<(String, u32)> = iter.map(|(date, this_weeks_stock)| {
+    let points: Vec<(String, u32)> = iter
+        .map(|(date, this_weeks_stock)| {
             let sales = last_weeks_stock - this_weeks_stock;
             last_weeks_stock = this_weeks_stock;
             (date, sales)
@@ -229,45 +225,33 @@ fn plot_sales_over_time(
     plot(name, &points)
 }
 
-fn plot<K>(
-    name: String,
-    points: &[(K, u32)],
-) -> Node<AnalyticsMsg>
-where K: std::fmt::Display {
+fn plot<K>(name: String, points: &[(K, u32)]) -> Node<AnalyticsMsg>
+where
+    K: std::fmt::Display,
+{
     let y_max = points.iter().map(|(_, v)| *v).max().unwrap();
     div![
         class![C.mx_2],
         h2![class![C.mt_2], name],
         div![
             class![C.chart_histogram],
-            points.iter().map(|(k, v)| {
-                    let percentage = if y_max == 0 {
-                        0
-                    } else {
-                        v * 100 / y_max
-                    };
+            points
+                .iter()
+                .map(|(k, v)| {
+                    let percentage = if y_max == 0 { 0 } else { v * 100 / y_max };
 
                     div![
                         class![C.chart_histogram_col],
-                        div![
-                            style!(St::FlexBasis => format!("{}%", 100 - percentage)),
-                        ],
+                        div![style!(St::FlexBasis => format!("{}%", 100 - percentage)),],
                         div![
                             class![C.chart_histogram_col_line, C.chart_col_tooltip],
                             style!(St::FlexBasis => format!("{}%", percentage)),
-                            span![
-                                class![C.chart_col_tooltiptext],
-                                format!("{}", v),
-                            ],
+                            span![class![C.chart_col_tooltiptext], format!("{}", v),],
                         ],
-                        div![
-                            class![C.chart_histogram_col_label],
-                            format!("{}", k),
-                        ],
+                        div![class![C.chart_histogram_col_label], format!("{}", k),],
                     ]
                 })
                 .collect::<Vec<_>>()
         ],
     ]
 }
-
