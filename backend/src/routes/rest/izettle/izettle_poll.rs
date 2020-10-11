@@ -18,6 +18,7 @@ pub struct IZettleState {
 }
 
 #[derive(Serialize)]
+#[serde(tag = "type")]
 pub enum BridgePollResult {
     PaymentOk(TransactionResult),
     NoPendingTransaction(IZettleErrorResponse)

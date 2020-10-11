@@ -15,20 +15,55 @@ pub enum BridgePayResult {
     NoPendingTransaction(IZettleErrorResponse)
 }
 
+#[derive(Clone, Serialize)]
+pub struct SuccessfulPaymentResponse {
+    pub date: Date<Utc>,
+    pub time: NaiveTime,
+    pub recipe_nr: i32,
+    pub amount: i64,
+    pub fee: i64,
+    pub payment_method: String,
+    pub card_issues: String,
+    pub staff_name: String,
+    pub description: String,
+}
+
+#[derive(Serialize)]
+#[serde(tag = "type")]
+pub enum PaymentResponse {
+    Successful(SuccessfulPaymentResponse),
+    Failed{
+        reason: String,
+    },
+    Canceled,
+}
+
 use BridgePayResult::*;
+use chrono::{Utc, Date, NaiveTime};
 
 
-#[post("/izettle/bridge/pay", data = "<transaction>")]
+#[post("/izettle/bridge/payment_response", data = "<payment_response>")]
 pub async fn complete_izettle_transaction(
-    transaction: Json<Currency>,
+    payment_response: Json<PaymentResponse>,
     izettle_state: State<'_, Mutex<IZettleState>>,
 ) -> Json<BridgePayResult> {
-    let mut guard = izettle_state.inner().lock().await;
+    match *payment_response {
+        PaymentResponse::Successful(transaction) => {
+            let mut guard = izettle_state.inner().lock().await;
 
-    if let Some(pending_transaction) = guard.pending_transaction.as_mut() {
-        if pending_transaction.amount == *transaction {
-            pending_transaction.paid = true;
-            return Json(PaymentOk(42));
+            if let Some(pending_transaction) = guard.pending_transaction.as_mut() {
+                if pending_transaction.amount == *pending_transaction.amount {
+                    pending_transaction.paid = true;
+                    return Json(PaymentOk(42));
+                }
+            }
+
+        }
+        PaymentResponse::Failed { reason } => {
+            // Do shit
+        }
+        PaymentResponse::Canceled => {
+            // Do shit
         }
     }
 
