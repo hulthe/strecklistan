@@ -6,26 +6,18 @@ use uuid::Uuid;
 
 use crate::database::DatabasePool;
 use crate::models::transaction::{object, relational};
-use crate::routes::rest::izettle::izettle_poll::{IZettleState, TransactionResult};
+use crate::models::transaction::relational::NewTransaction;
 use crate::schema::tables::izettle_transaction_bundle::dsl::izettle_transaction_bundle;
 use crate::schema::tables::izettle_transaction_item::dsl::izettle_transaction_item;
 use crate::util::status_json::StatusJson as SJ;
-use crate::models::transaction::relational::NewTransaction;
+use crate::models::izettle_transaction::{NewIZettleTransaction, NewIZettleTransactionBundle, NewIZettleTransactionItem};
 
 #[post("/izettle/client/transaction", data = "<transaction>")]
 pub async fn begin_izettle_transaction(
     db_pool: State<'_, DatabasePool>,
     transaction: Json<object::NewTransaction>,
-    izettle_state: State<'_, Mutex<IZettleState>>,
 ) -> Result<Json<i32>, SJ> {
     let connection = db_pool.inner().get()?;
-
-    let mut guard = izettle_state.inner().lock().await;
-    guard.pending_transaction = Some(TransactionResult {
-        reference: Uuid::new_v4(),
-        amount: transaction.amount,
-        paid: false,
-    });
 
     let object::NewTransaction {
         description,
@@ -35,7 +27,7 @@ pub async fn begin_izettle_transaction(
         amount,
     } = transaction.into_inner();
 
-    let transaction = relational::NewIZettleTransaction {
+    let transaction = NewIZettleTransaction {
         description,
         time: None,
         debited_account,
@@ -54,7 +46,7 @@ pub async fn begin_izettle_transaction(
         };
 
         for bundle in bundles.into_iter() {
-            let new_bundle = relational::NewIZettleTransactionBundle {
+            let new_bundle = NewIZettleTransactionBundle {
                 transaction_id,
                 description: bundle.description,
                 price: bundle.price.map(|p| p.into()),
@@ -73,7 +65,7 @@ pub async fn begin_izettle_transaction(
                 .item_ids
                 .into_iter()
                 .flat_map(|(item_id, count)| std::iter::repeat(item_id).take(count as usize))
-                .map(|item_id| relational::NewIZettleTransactionItem {
+                .map(|item_id| NewIZettleTransactionItem {
                     bundle_id,
                     item_id,
                 })

@@ -22,7 +22,6 @@ use frank_jwt::Algorithm;
 use rocket::routes;
 use std::env;
 use futures::lock::Mutex;
-use crate::routes::rest::izettle::izettle_poll::IZettleState;
 
 fn handle_migrations(db_pool: &DatabasePool) {
     let run_migrations = env::var("RUN_MIGRATIONS")
@@ -83,14 +82,9 @@ async fn main() {
         token_lifetime: Duration::weeks(2),
     };
 
-    let izettle_state = IZettleState {
-        pending_transaction: None,
-    };
-
     let mut rocket = rocket::ignite()
         .manage(db_pool)
         .manage(jwt_config)
-        .manage(Mutex::new(izettle_state))
         .register(catchers())
         .mount(
             "/",
