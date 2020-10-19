@@ -1,8 +1,6 @@
-use crate::util::status_json::StatusJson as SJ;
 use rocket_contrib::json::Json;
-use serde_derive::{Serialize};
+use serde_derive::Serialize;
 use rocket::{get, State};
-use rocket::http::Status;
 use futures::lock::Mutex;
 use crate::routes::rest::izettle::izettle_poll::IZettleState;
 use crate::routes::rest::izettle::IZettleErrorResponse;

@@ -1,14 +1,14 @@
-use crate::util::status_json::StatusJson as SJ;
 use strecklistan_api::currency::Currency;
 use rocket_contrib::json::Json;
 use rocket::{get, State};
-use serde_derive::{Serialize};
+use serde_derive::Serialize;
 use futures::lock::Mutex;
-use rocket::http::Status;
 use crate::routes::rest::izettle::IZettleErrorResponse;
+use uuid::Uuid;
 
 #[derive(Clone, Serialize)]
 pub struct TransactionResult {
+    pub reference: Uuid,
     pub amount: Currency,
     pub paid: bool
 }
