@@ -3,7 +3,9 @@ pub use strecklistan_api::transaction as object;
 
 /// Relational data models - as represented by the database.
 pub mod relational {
-    use crate::schema::tables::{transaction_bundles, transaction_items, transactions};
+    use crate::schema::tables::{transaction_bundles, transaction_items, transactions,
+                                izettle_transaction_item, izettle_transaction,
+                                izettle_transaction_bundle};
     use chrono::{DateTime, Utc};
     use serde_derive::{Deserialize, Serialize};
 
@@ -15,6 +17,17 @@ pub mod relational {
         pub debited_account: i32,
         pub credited_account: i32,
         pub amount: i32,
+    }
+
+    #[derive(Insertable, Serialize, Deserialize, Debug, PartialEq)]
+    #[table_name = "izettle_transaction"]
+    pub struct NewIZettleTransaction {
+        pub description: Option<String>,
+        pub time: Option<DateTime<Utc>>,
+        pub debited_account: i32,
+        pub credited_account: i32,
+        pub amount: i32,
+        pub paid: bool,
     }
 
     #[derive(Queryable, Serialize, Deserialize, Debug, PartialEq)]
@@ -36,6 +49,16 @@ pub mod relational {
         pub change: i32,
     }
 
+    #[derive(Insertable, Serialize, Deserialize, Debug, PartialEq)]
+    #[table_name = "izettle_transaction_bundle"]
+    pub struct NewIZettleTransactionBundle {
+        pub transaction_id: i32,
+        pub description: Option<String>,
+        pub price: Option<i32>,
+        pub change: i32,
+    }
+
+
     #[derive(Queryable, Serialize, Deserialize, Debug, PartialEq)]
     pub struct TransactionBundle {
         pub id: i32,
@@ -48,6 +71,13 @@ pub mod relational {
     #[derive(Insertable, Serialize, Deserialize, Debug, PartialEq)]
     #[table_name = "transaction_items"]
     pub struct NewTransactionItem {
+        pub bundle_id: i32,
+        pub item_id: i32,
+    }
+
+    #[derive(Insertable, Serialize, Deserialize, Debug, PartialEq)]
+    #[table_name = "izettle_transaction_item"]
+    pub struct NewIZettleTransactionItem {
         pub bundle_id: i32,
         pub item_id: i32,
     }

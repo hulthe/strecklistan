@@ -1,10 +1,12 @@
+use futures::lock::Mutex;
+use rocket::{get, State};
 use rocket_contrib::json::Json;
 use serde_derive::Serialize;
-use rocket::{get, State};
-use futures::lock::Mutex;
+
+use ClientPollResult::*;
+
 use crate::routes::rest::izettle::izettle_poll::IZettleState;
 use crate::routes::rest::izettle::IZettleErrorResponse;
-
 
 #[derive(Clone, Serialize)]
 pub struct IZettleResult {
@@ -17,8 +19,6 @@ pub enum ClientPollResult {
     NotPaid(IZettleErrorResponse),
     Paid(IZettleResult),
 }
-
-use ClientPollResult::*;
 
 #[get("/izettle/client/poll")]
 pub async fn poll_for_izettle(
@@ -39,5 +39,5 @@ pub async fn poll_for_izettle(
 
     return Json(NoTransaction(IZettleErrorResponse {
         message: "No transaction waiting for izettle result currently.".to_string()
-    }))
+    }));
 }

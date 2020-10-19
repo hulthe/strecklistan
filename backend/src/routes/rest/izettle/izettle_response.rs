@@ -1,16 +1,17 @@
-use rocket_contrib::json::Json;
-use rocket::{post, State};
-use serde_derive::{Serialize, Deserialize};
 use futures::lock::Mutex;
+use rocket::{post, State};
+use rocket_contrib::json::Json;
+use serde_derive::{Deserialize, Serialize};
+use uuid::Uuid;
+
 use crate::routes::rest::izettle::izettle_poll::IZettleState;
 use crate::routes::rest::izettle::IZettleErrorResponse;
-use uuid::Uuid;
 
 #[derive(Serialize)]
 #[serde(tag = "type")]
 pub enum BridgePayResult {
-    PaymentOk(i32),
-    NoPendingTransaction(IZettleErrorResponse)
+    PaymentOk,
+    NoPendingTransaction(IZettleErrorResponse),
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -44,10 +45,9 @@ pub async fn complete_izettle_transaction(
             if let Some(pending_transaction) = guard.pending_transaction.as_mut() {
                 if transaction.reference == pending_transaction.reference {
                     pending_transaction.paid = true;
-                    return Json(PaymentOk(42));
+                    return Json(PaymentOk);
                 }
             }
-
         }
         PaymentResponse::TransactionFailed { reason } => {
             // Do shit

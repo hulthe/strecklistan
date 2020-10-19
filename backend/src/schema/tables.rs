@@ -68,9 +68,11 @@ table! {
     izettle_transaction (id) {
         id -> Int4,
         description -> Nullable<Text>,
+        time -> Timestamptz,
         debited_account -> Int4,
         credited_account -> Int4,
         amount -> Int4,
+        paid -> Bool,
     }
 }
 
@@ -79,7 +81,7 @@ table! {
         id -> Int4,
         transaction_id -> Int4,
         description -> Nullable<Text>,
-        prince -> Int4,
+        price -> Int4,
         change -> Int4,
     }
 }
