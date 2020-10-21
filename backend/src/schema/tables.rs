@@ -65,6 +65,14 @@ table! {
 }
 
 table! {
+    izettle_post_transaction (id) {
+        id -> Int4,
+        izettle_transaction_id -> Int4,
+        transaction_id -> Nullable<Int4>,
+    }
+}
+
+table! {
     izettle_transaction (id) {
         id -> Int4,
         description -> Nullable<Text>,
@@ -145,6 +153,7 @@ joinable!(event_signups -> events (event));
 joinable!(inventory_bundle_items -> inventory (item_id));
 joinable!(inventory_bundle_items -> inventory_bundles (bundle_id));
 joinable!(inventory_tags -> inventory (item_id));
+joinable!(izettle_post_transaction -> transactions (transaction_id));
 joinable!(izettle_transaction_bundle -> izettle_transaction (transaction_id));
 joinable!(izettle_transaction_item -> inventory (item_id));
 joinable!(izettle_transaction_item -> izettle_transaction_bundle (bundle_id));
@@ -160,6 +169,7 @@ allow_tables_to_appear_in_same_query!(
     inventory_bundle_items,
     inventory_bundles,
     inventory_tags,
+    izettle_post_transaction,
     izettle_transaction,
     izettle_transaction_bundle,
     izettle_transaction_item,

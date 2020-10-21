@@ -163,6 +163,17 @@ pub async fn complete_izettle_transaction(
                     item_ids.push(izettle_item_id);
                 }
 
+                // Add data to the izettle post transactions table
+                {
+                    use crate::schema::tables::izettle_post_transaction::dsl::{izettle_transaction_id, transaction_id as post_id, izettle_post_transaction};
+                    diesel::insert_into(izettle_post_transaction)
+                        .values((
+                            izettle_transaction_id.eq(cached_transaction.id),
+                            post_id.eq(trans_id)
+                        ))
+                        .execute(&connection)?;
+                }
+
                 // Remove the entries from the izettle tables.
                 for item in cached_items.into_iter() {
                     use crate::schema::tables::izettle_transaction_item::dsl::{id as item_id, izettle_transaction_item};

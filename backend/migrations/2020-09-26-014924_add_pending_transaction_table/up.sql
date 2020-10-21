@@ -20,3 +20,9 @@ CREATE TABLE izettle_transaction_item (
     bundle_id INTEGER NOT NULL REFERENCES izettle_transaction_bundle(id),
     item_id INTEGER NOT NULL REFERENCES inventory(id)
 );
+
+CREATE TABLE izettle_post_transaction (
+    id SERIAL PRIMARY KEY,
+    izettle_transaction_id INTEGER NOT NULL,
+    transaction_id INTEGER REFERENCES transactions(id)
+)
