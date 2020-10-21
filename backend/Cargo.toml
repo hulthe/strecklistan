@@ -31,6 +31,7 @@ itertools = "0.8.0"
 log = "0.4.8"
 futures = "0.3"
 uuid = { version = "0.8", features = ["v4", "serde"] }
+tokio = { version = "0.2", features = ["time"] }
 
 
 [dependencies.strecklistan_api]
