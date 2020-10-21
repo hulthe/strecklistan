@@ -72,7 +72,6 @@ table! {
         debited_account -> Int4,
         credited_account -> Int4,
         amount -> Int4,
-        paid -> Bool,
     }
 }
 
@@ -81,7 +80,7 @@ table! {
         id -> Int4,
         transaction_id -> Int4,
         description -> Nullable<Text>,
-        price -> Int4,
+        price -> Nullable<Int4>,
         change -> Int4,
     }
 }

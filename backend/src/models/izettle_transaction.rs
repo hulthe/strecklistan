@@ -12,15 +12,23 @@ pub struct NewIZettleTransaction {
     pub debited_account: i32,
     pub credited_account: i32,
     pub amount: i32,
-    pub paid: bool,
+}
+
+#[derive(Queryable, Serialize, Deserialize, Debug, PartialEq)]
+pub struct IZettleTransactionPartial {
+    pub id: i32,
+    pub amount: i32,
 }
 
 #[derive(Queryable, Serialize, Deserialize, Debug, PartialEq)]
 pub struct IZettleTransaction {
     pub id: i32,
+    pub description: Option<String>,
+    pub time: DateTime<Utc>,
+    pub debited_account: i32,
+    pub credited_account: i32,
     pub amount: i32,
 }
-
 
 #[derive(Insertable, Serialize, Deserialize, Debug, PartialEq)]
 #[table_name = "izettle_transaction_bundle"]

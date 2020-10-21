@@ -33,7 +33,6 @@ pub async fn begin_izettle_transaction(
         debited_account,
         credited_account,
         amount: amount.into(),
-        paid: false,
     };
 
     connection.transaction::<_, SJ, _>(|| {

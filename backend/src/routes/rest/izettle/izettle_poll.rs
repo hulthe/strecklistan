@@ -11,7 +11,7 @@ use strecklistan_api::currency::Currency;
 
 use crate::database::DatabasePool;
 use crate::diesel::RunQueryDsl;
-use crate::models::izettle_transaction::IZettleTransaction;
+use crate::models::izettle_transaction::{IZettleTransaction, IZettleTransactionPartial};
 use crate::routes::rest::izettle::IZettleErrorResponse;
 use crate::schema::tables::izettle_transaction::dsl::izettle_transaction;
 use crate::util::StatusJson;
@@ -19,7 +19,7 @@ use crate::util::StatusJson;
 #[derive(Serialize)]
 #[serde(tag = "type")]
 pub enum BridgePollResult {
-    PaymentOk(IZettleTransaction),
+    PaymentOk(IZettleTransactionPartial),
     NoPendingTransaction(IZettleErrorResponse),
 }
 
@@ -29,7 +29,7 @@ pub async fn poll_for_transaction(
 ) -> Result<Json<BridgePollResult>, StatusJson> {
     let connection = db_pool.inner().get()?;
 
-    let transaction_res: QueryResult<IZettleTransaction> = {
+    let transaction_res: QueryResult<IZettleTransactionPartial> = {
         use crate::schema::tables::izettle_transaction::dsl::{
             id, amount, time,
         };
@@ -45,6 +45,8 @@ pub async fn poll_for_transaction(
             message: "No pending transaction".to_string(),
         })));
     }
+
+    // todo!("Should sleep for up to 5s before responding");
 
     Ok(Json(BridgePollResult::PaymentOk(transaction_res?)))
 }
