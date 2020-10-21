@@ -43,7 +43,7 @@ pub async fn poll_for_izettle(
 
     match post_izettle_transaction {
         Err(diesel::result::Error::NotFound) => {
-            return Ok(Json(NoTransaction(
+            return Ok(Json(NotPaid(
                 IZettleErrorResponse {
                     message: "Not paid".to_string()
                 },
