@@ -94,7 +94,10 @@ pub fn view_new_transaction(
                 class![C.wide_button, C.border_on_focus],
                 div![
                     class![C.lds_ripple],
-                    attrs! { At::Style => "position: fixed; margin-top: -20px;" },
+                    style! {
+                        St::Position => "absolute",
+                        St::MarginTop => "-20px",
+                    },
                     div![],
                     div![],
                 ],

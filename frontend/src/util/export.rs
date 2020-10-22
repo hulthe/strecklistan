@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use chrono::{NaiveDate, NaiveTime};
 use core::fmt::Debug;
 use js_sys::encode_uri_component;
 use mime::Mime;
@@ -44,7 +44,8 @@ pub fn make_csv_transaction_list(
             struct Record<'a> {
                 transaction_id: TransactionId,
                 description: Option<&'a String>,
-                time: DateTime<Utc>,
+                date: NaiveDate,
+                time: NaiveTime,
                 debited_account: BookAccountId,
                 credited_account: BookAccountId,
                 amount: Currency,
@@ -59,57 +60,55 @@ pub fn make_csv_transaction_list(
             }
 
             for transaction in transactions {
-                if transaction
-                    .bundles
-                    .iter()
-                    .all(|bundle| bundle.item_ids.is_empty())
-                {
-                    let record = Record {
-                        transaction_id: transaction.id,
-                        description: transaction.description.as_ref(),
-                        time: transaction.time,
-                        debited_account: transaction.debited_account,
-                        credited_account: transaction.credited_account,
-                        amount: transaction.amount,
+                let tr_record = Record {
+                    transaction_id: transaction.id,
+                    description: transaction.description.as_ref(),
+                    date: transaction.time.naive_utc().date(),
+                    time: transaction.time.time(),
+                    debited_account: transaction.debited_account,
+                    credited_account: transaction.credited_account,
+                    amount: transaction.amount,
 
-                        bundle_index: None,
-                        bundle_description: None,
-                        bundle_price: None,
-                        bundle_change: None,
+                    bundle_index: None,
+                    bundle_description: None,
+                    bundle_price: None,
+                    bundle_change: None,
 
-                        item_id: None,
-                        item_amount: None,
-                    };
+                    item_id: None,
+                    item_amount: None,
+                };
 
-                    writer.serialize(record).unwrap();
+                if transaction.bundles.is_empty() {
+                    writer.serialize(tr_record).unwrap();
                 } else {
                     for (bundle_index, bundle) in transaction.bundles.iter().enumerate() {
-                        for (item_id, item_amount) in bundle.item_ids.iter() {
-                            let record = Record {
-                                transaction_id: transaction.id,
-                                description: transaction.description.as_ref(),
-                                time: transaction.time,
-                                debited_account: transaction.debited_account,
-                                credited_account: transaction.credited_account,
-                                amount: transaction.amount,
+                        let bundle_record = Record {
+                            bundle_index: Some(bundle_index),
+                            bundle_description: bundle.description.as_ref(),
+                            bundle_price: bundle.price,
+                            bundle_change: Some(bundle.change),
 
-                                bundle_index: Some(bundle_index),
-                                bundle_description: bundle.description.as_ref(),
-                                bundle_price: bundle.price,
-                                bundle_change: Some(bundle.change),
+                            ..tr_record
+                        };
 
-                                item_id: Some(*item_id),
-                                item_amount: Some(*item_amount),
-                            };
+                        if bundle.item_ids.is_empty() {
+                            writer.serialize(bundle_record).unwrap();
+                        } else {
+                            for (item_id, item_amount) in bundle.item_ids.iter() {
+                                let item_record = Record {
+                                    item_id: Some(*item_id),
+                                    item_amount: Some(*item_amount),
 
-                            writer.serialize(record).unwrap();
+                                    ..bundle_record
+                                };
+
+                                writer.serialize(item_record).unwrap();
+                            }
                         }
                     }
                 }
             }
-        } //CSVStyleTransaction::PerTransaction => {
-          // TODO
-          //}
+        }
     }
 
     drop(writer);

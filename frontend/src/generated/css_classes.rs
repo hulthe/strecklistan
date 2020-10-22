@@ -10,6 +10,7 @@ css_typegen!(
     "frontend/static/heart_spinner.css",
     "frontend/static/ripple_spinner.css",
     "frontend/static/filter_menu.css",
+    "frontend/static/charts.css",
     "frontend/static/notifications.css",
     "frontend/static/tailwind.css",
 );

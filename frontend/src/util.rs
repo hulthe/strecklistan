@@ -7,7 +7,7 @@ use strecklistan_api::book_account::BookAccount;
 use strecklistan_api::member::Member;
 
 pub const DATE_INPUT_FMT: &'static str = "%Y-%m-%d";
-pub const TIME_INPUT_FMT: &'static str = "%H:%M";
+//pub const TIME_INPUT_FMT: &'static str = "%H:%M";
 
 /// Check if client version supports api version
 pub fn compare_semver(client_version: Version, api_version: Version) -> bool {
