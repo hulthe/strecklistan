@@ -19,9 +19,10 @@ pub struct IZettleResult {
 
 #[derive(Serialize)]
 pub enum ClientPollResult {
-    NoTransaction(IZettleErrorResponse),
-    NotPaid(IZettleErrorResponse),
     Paid,
+    NotPaid,
+    Canceled,
+    NoTransaction(IZettleErrorResponse),
 }
 
 #[get("/izettle/client/poll/<izettle_transaction_id>")]
@@ -43,21 +44,13 @@ pub async fn poll_for_izettle(
 
     match post_izettle_transaction {
         Err(diesel::result::Error::NotFound) => {
-            return Ok(Json(NotPaid(
-                IZettleErrorResponse {
-                    message: "Not paid".to_string()
-                },
-            )));
+            return Ok(Json(NotPaid))
         }
         Ok(IZettlePostTransaction{
             transaction_id: None,
             ..
            }) => {
-            return Ok(Json(NotPaid(
-                IZettleErrorResponse {
-                    message: "IZettle failed".to_string()
-                },
-            )))
+            return Ok(Json(Canceled))
         }
         Ok(_) => {
             return Ok(Json(Paid))
