@@ -1,8 +1,10 @@
 use chrono::{DateTime, Utc};
-use serde_derive::{Serialize, Deserialize};
+use serde_derive::{Deserialize, Serialize};
 pub use strecklistan_api::transaction as object;
 
-use crate::schema::tables::{izettle_transaction, izettle_transaction_item, izettle_transaction_bundle};
+use crate::schema::tables::{
+    izettle_transaction, izettle_transaction_bundle, izettle_transaction_item,
+};
 
 #[derive(Insertable, Serialize, Deserialize, Debug, PartialEq)]
 #[table_name = "izettle_transaction"]

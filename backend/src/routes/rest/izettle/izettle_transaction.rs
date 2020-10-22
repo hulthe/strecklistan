@@ -1,16 +1,12 @@
+use crate::database::DatabasePool;
+use crate::models::izettle_transaction::{
+    NewIZettleTransaction, NewIZettleTransactionBundle, NewIZettleTransactionItem,
+};
+use crate::models::transaction::object;
+use crate::util::status_json::StatusJson as SJ;
 use diesel::{Connection, RunQueryDsl};
-use futures::lock::Mutex;
 use rocket::{post, State};
 use rocket_contrib::json::Json;
-use uuid::Uuid;
-
-use crate::database::DatabasePool;
-use crate::models::transaction::{object, relational};
-use crate::models::transaction::relational::NewTransaction;
-use crate::schema::tables::izettle_transaction_bundle::dsl::izettle_transaction_bundle;
-use crate::schema::tables::izettle_transaction_item::dsl::izettle_transaction_item;
-use crate::util::status_json::StatusJson as SJ;
-use crate::models::izettle_transaction::{NewIZettleTransaction, NewIZettleTransactionBundle, NewIZettleTransactionItem};
 
 #[post("/izettle/client/transaction", data = "<transaction>")]
 pub async fn begin_izettle_transaction(
@@ -64,10 +60,7 @@ pub async fn begin_izettle_transaction(
                 .item_ids
                 .into_iter()
                 .flat_map(|(item_id, count)| std::iter::repeat(item_id).take(count as usize))
-                .map(|item_id| NewIZettleTransactionItem {
-                    bundle_id,
-                    item_id,
-                })
+                .map(|item_id| NewIZettleTransactionItem { bundle_id, item_id })
                 .collect();
 
             {

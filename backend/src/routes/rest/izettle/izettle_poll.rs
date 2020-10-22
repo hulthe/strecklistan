@@ -1,20 +1,15 @@
-use diesel::{ExpressionMethods, QueryDsl, QueryResult};
-use diesel::result::Error;
-use futures::lock::Mutex;
-use rocket::{get, State};
-use rocket_contrib::json::Json;
-use serde_derive::Serialize;
-use uuid::Uuid;
-
-use BridgePollResult::*;
-use strecklistan_api::currency::Currency;
-
 use crate::database::DatabasePool;
 use crate::diesel::RunQueryDsl;
-use crate::models::izettle_transaction::{IZettleTransaction, IZettleTransactionPartial};
+use crate::models::izettle_transaction::IZettleTransactionPartial;
 use crate::routes::rest::izettle::IZettleErrorResponse;
 use crate::schema::tables::izettle_transaction::dsl::izettle_transaction;
 use crate::util::StatusJson;
+use diesel::result::Error;
+use diesel::{ExpressionMethods, QueryDsl, QueryResult};
+use rocket::{get, State};
+use rocket_contrib::json::Json;
+use serde_derive::Serialize;
+use BridgePollResult::*;
 
 #[derive(Serialize)]
 #[serde(tag = "type")]
@@ -25,14 +20,12 @@ pub enum BridgePollResult {
 
 #[get("/izettle/bridge/poll")]
 pub async fn poll_for_transaction(
-    db_pool: State<'_, DatabasePool>
+    db_pool: State<'_, DatabasePool>,
 ) -> Result<Json<BridgePollResult>, StatusJson> {
     let connection = db_pool.inner().get()?;
 
     let transaction_res: QueryResult<IZettleTransactionPartial> = {
-        use crate::schema::tables::izettle_transaction::dsl::{
-            id, amount, time,
-        };
+        use crate::schema::tables::izettle_transaction::dsl::{amount, id, time};
 
         izettle_transaction
             .order_by(time.asc())
@@ -46,7 +39,7 @@ pub async fn poll_for_transaction(
         })));
     }
 
-    // todo!("Should sleep for up to 5s before responding");
+    // TODO: Should sleep for up to 5s before responding
 
-    Ok(Json(BridgePollResult::PaymentOk(transaction_res?)))
+    Ok(Json(PaymentOk(transaction_res?)))
 }

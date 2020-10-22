@@ -1,9 +1,9 @@
 pub mod book_account;
 pub mod event;
 pub mod inventory;
+pub mod izettle;
 pub mod member;
 pub mod transaction;
-pub mod izettle;
 
 use rocket::get;
 

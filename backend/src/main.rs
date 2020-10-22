@@ -21,7 +21,6 @@ use dotenv::dotenv;
 use frank_jwt::Algorithm;
 use rocket::routes;
 use std::env;
-use futures::lock::Mutex;
 
 fn handle_migrations(db_pool: &DatabasePool) {
     let run_migrations = env::var("RUN_MIGRATIONS")

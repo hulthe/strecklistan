@@ -1,16 +1,15 @@
-use futures::lock::Mutex;
 use rocket::{get, State};
 use rocket_contrib::json::Json;
 use serde_derive::Serialize;
 
 use ClientPollResult::*;
 
-use diesel::{QueryDsl, JoinOnDsl, ExpressionMethods, Connection};
-use crate::diesel::RunQueryDsl;
-use crate::util::status_json::StatusJson as SJ;
-use crate::routes::rest::izettle::IZettleErrorResponse;
-use crate::models::izettle_transaction::IZettlePostTransaction;
 use crate::database::DatabasePool;
+use crate::diesel::RunQueryDsl;
+use crate::models::izettle_transaction::IZettlePostTransaction;
+use crate::routes::rest::izettle::IZettleErrorResponse;
+use crate::util::status_json::StatusJson as SJ;
+use diesel::{ExpressionMethods, QueryDsl};
 
 #[derive(Clone, Serialize)]
 pub struct IZettleResult {
@@ -34,7 +33,7 @@ pub async fn poll_for_izettle(
 
     let post_izettle_transaction = {
         use crate::schema::tables::izettle_post_transaction::dsl::{
-            izettle_transaction_id as iz_id, izettle_post_transaction
+            izettle_post_transaction, izettle_transaction_id as iz_id,
         };
 
         izettle_post_transaction
@@ -43,20 +42,12 @@ pub async fn poll_for_izettle(
     };
 
     match post_izettle_transaction {
-        Err(diesel::result::Error::NotFound) => {
-            return Ok(Json(NotPaid))
-        }
-        Ok(IZettlePostTransaction{
+        Err(diesel::result::Error::NotFound) => return Ok(Json(NotPaid)),
+        Ok(IZettlePostTransaction {
             transaction_id: None,
             ..
-           }) => {
-            return Ok(Json(Canceled))
-        }
-        Ok(_) => {
-            return Ok(Json(Paid))
-        }
-        Err(err) => {
-            return Err(err.into())
-        }
+        }) => return Ok(Json(Canceled)),
+        Ok(_) => return Ok(Json(Paid)),
+        Err(err) => return Err(err.into()),
     }
 }
