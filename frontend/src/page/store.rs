@@ -1,10 +1,12 @@
 use crate::app::{Msg, StateReady};
 use crate::fuzzy_search::FuzzySearch;
 use crate::generated::css_classes::C;
+use crate::notification_manager::{Notification, NotificationMessage};
 use crate::util::{compare_fuzzy, sort_tillgodolista_search};
 use crate::views::{
     view_inventory_bundle, view_inventory_item, view_new_transaction, view_tillgodo,
 };
+use seed::app::cmds::timeout;
 use seed::prelude::*;
 use seed::*;
 use std::collections::HashMap;
@@ -69,6 +71,10 @@ pub enum StoreMsg {
     AddItemToNewTransaction(InventoryItemId, i32),
     AddBundleToNewTransaction(InventoryBundleId, i32),
     SetNewTransactionBundleChange { bundle_index: usize, change: i32 },
+
+    ToggleIZettle,
+    PollForPendingIZettleTransaction(i32),
+    IZettleCanceled,
 }
 
 #[derive(Clone)]
@@ -82,6 +88,8 @@ pub struct StorePage {
 
     pub tillgodolista_search_string: String,
     pub tillgodolista_search: Vec<(i32, Vec<(usize, usize)>, Rc<BookAccount>, Rc<Member>)>,
+
+    pub izettle: bool,
 }
 
 impl StorePage {
@@ -114,6 +122,8 @@ impl StorePage {
                 debited_account: global.master_accounts.bank_account_id,
                 credited_account: global.master_accounts.sales_account_id,
             },
+
+            izettle: false,
         };
         p.rebuild_store_list(global);
         p
@@ -166,27 +176,63 @@ impl StorePage {
                 self.transaction.bundles.retain(|bundle| bundle.change != 0);
                 global.request_in_progress = true;
                 let msg = self.transaction.clone();
-                orders.perform_cmd(async move {
-                    let result = async {
-                        Request::new("/api/transaction")
-                            .method(Method::Post)
-                            .json(&msg)?
-                            .fetch()
-                            .await?
-                            .json()
-                            .await
-                    }
-                    .await;
-                    match result {
-                        Ok(id) => Some(Msg::StoreMsg(StoreMsg::PurchaseSent(id))),
-                        Err(e) => {
-                            error!("Failed to post purchase", e);
-                            None
+
+                if self.izettle {
+                    orders.perform_cmd(async move {
+                        let result = async {
+                            Request::new("/api/izettle/client/transaction")
+                                .method(Method::Post)
+                                .json(&msg)?
+                                .fetch()
+                                .await?
+                                .json()
+                                .await
                         }
-                    }
-                });
+                        .await;
+                        match result {
+                            Ok(reference) => Some(Msg::StoreMsg(
+                                StoreMsg::PollForPendingIZettleTransaction(reference),
+                            )),
+                            Err(e) => {
+                                error!("Failed to post purchase", e);
+                                None
+                            }
+                        }
+                    });
+                } else {
+                    orders.perform_cmd(async move {
+                        let result = async {
+                            Request::new("/api/transaction")
+                                .method(Method::Post)
+                                .json(&msg)?
+                                .fetch()
+                                .await?
+                                .json()
+                                .await
+                        }
+                        .await;
+                        match result {
+                            Ok(id) => Some(Msg::StoreMsg(StoreMsg::PurchaseSent(id))),
+                            Err(e) => {
+                                error!("Failed to post purchase", e);
+                                None
+                            }
+                        }
+                    });
+                }
             }
+
             StoreMsg::PurchaseSent(id) => {
+                orders.send_msg(Msg::NotificationMessage(
+                    NotificationMessage::ShowNotification {
+                        duration_ms: 5000,
+                        notification: Notification {
+                            title: "Purchase complete".to_string(),
+                            body: Some(format!("Total: {}:-", self.transaction.amount)),
+                        },
+                    },
+                ));
+
                 global.request_in_progress = false;
                 log!("ID: ", id);
                 self.transaction.amount = 0.into();
@@ -238,6 +284,7 @@ impl StorePage {
 
                 self.recompute_new_transaction_total();
             }
+
             StoreMsg::AddBundleToNewTransaction(bundle_id, amount) => {
                 let bundle = global
                     .bundles
@@ -283,6 +330,71 @@ impl StorePage {
                 }
                 bundle.change = change;
             }
+
+            StoreMsg::PollForPendingIZettleTransaction(reference) => {
+                use serde::Deserialize;
+                #[derive(Deserialize)]
+                pub struct IZettleErrorResponse {
+                    pub message: String,
+                }
+                #[derive(Deserialize)]
+                pub enum ClientPollResult {
+                    Paid,
+                    NotPaid,
+                    Canceled,
+                    NoTransaction(IZettleErrorResponse),
+                }
+
+                orders.perform_cmd(async move {
+                    let result = async {
+                        Request::new(&format!("/api/izettle/client/poll/{}", reference))
+                            .method(Method::Get)
+                            //.json(&msg)?
+                            .fetch()
+                            .await?
+                            .json()
+                            .await
+                    }
+                    .await;
+                    match result {
+                        Ok(ClientPollResult::NotPaid) => {
+                            timeout(1000u32, || ()).await;
+                            Some(Msg::StoreMsg(StoreMsg::PollForPendingIZettleTransaction(
+                                reference,
+                            )))
+                        }
+                        // TODO: get ID instead of passing 0
+                        Ok(ClientPollResult::Paid) => {
+                            Some(Msg::StoreMsg(StoreMsg::PurchaseSent(0)))
+                        }
+                        Ok(ClientPollResult::Canceled) | Ok(ClientPollResult::NoTransaction(_)) => {
+                            Some(Msg::StoreMsg(StoreMsg::IZettleCanceled))
+                        }
+                        Err(e) => {
+                            error!("Failed to post purchase", e);
+                            None
+                        }
+                    }
+                });
+            }
+
+            StoreMsg::ToggleIZettle => {
+                self.izettle = !self.izettle;
+                log!(self.izettle);
+            }
+
+            StoreMsg::IZettleCanceled => {
+                global.request_in_progress = false;
+                orders.send_msg(Msg::NotificationMessage(
+                    NotificationMessage::ShowNotification {
+                        duration_ms: 10000,
+                        notification: Notification {
+                            title: "Purchase cancelled".to_string(),
+                            body: None,
+                        },
+                    },
+                ));
+            }
         }
     }
 
@@ -327,9 +439,9 @@ impl StorePage {
     }
 
     pub fn view(&self, global: &StateReady) -> Node<Msg> {
-        let selected_bank_account =
+        let bank_account_selected =
             global.master_accounts.bank_account_id == self.transaction.debited_account;
-        let selected_cash_account =
+        let cash_account_selected =
             global.master_accounts.cash_account_id == self.transaction.debited_account;
 
         div![
@@ -346,14 +458,14 @@ impl StorePage {
                             C.h_12,
                             C.border_on_focus,
                         ],
-                        if !(selected_bank_account || selected_cash_account) {
+                        if !(bank_account_selected || cash_account_selected) {
                             class![C.debit_selected]
                         } else {
                             class![]
                         },
                         attrs! {At::Value => self.tillgodolista_search_string},
                         {
-                            let s = if selected_cash_account || selected_bank_account {
+                            let s = if cash_account_selected || bank_account_selected {
                                 "Tillgodolista".into()
                             } else {
                                 global
@@ -390,7 +502,7 @@ impl StorePage {
                             empty![]
                         },
                         button![
-                            if selected_bank_account {
+                            if bank_account_selected {
                                 class![C.debit_selected]
                             } else {
                                 class![]
@@ -405,7 +517,7 @@ impl StorePage {
                             "Swish",
                         ],
                         button![
-                            if selected_cash_account {
+                            if cash_account_selected {
                                 class![C.debit_selected]
                             } else {
                                 class![]
@@ -436,6 +548,24 @@ impl StorePage {
                     ))),
                     keyboard_ev(Ev::KeyDown, |ev| Msg::StoreMsg(StoreMsg::SearchKeyDown(ev))),
                 ],
+                // IZettle-stuff, very temp
+                div![
+                    class![C.my_4,],
+                    input![
+                        class![C.my_4, C.mr_2, C.h_6, C.w_6, C.border_on_focus,],
+                        attrs! {
+                            At::Type => "checkbox"
+                            At::Value => self.izettle,
+                        },
+                        if global.request_in_progress {
+                            attrs! { At::Disabled => true }
+                        } else {
+                            attrs! {}
+                        },
+                        simple_ev(Ev::Click, Msg::StoreMsg(StoreMsg::ToggleIZettle),),
+                    ],
+                    "Toggle iZettle",
+                ]
             ],
             div![
                 class![C.inventory_view],

@@ -1,5 +1,6 @@
 use crate::generated::css_classes::C;
 use crate::models::event::Event;
+use crate::notification_manager::{NotificationManager, NotificationMessage};
 use crate::page::{
     accounting::{AccountingMsg, AccountingPage},
     analytics::{AnalyticsMsg, AnalyticsPage},
@@ -77,6 +78,7 @@ pub enum State {
 pub struct Model {
     pub page: Page,
     pub state: State,
+    pub notifications: NotificationManager,
 }
 
 impl Default for Model {
@@ -84,6 +86,7 @@ impl Default for Model {
         Self {
             page: Page::Root,
             state: State::Loading(Default::default()),
+            notifications: Default::default(),
         }
     }
 }
@@ -115,6 +118,8 @@ pub enum Msg {
     DepositionMsg(DepositionMsg),
     TransactionsMsg(TransactionsMsg),
     StoreMsg(StoreMsg),
+
+    NotificationMessage(NotificationMessage),
 
     ReloadData,
 }
@@ -270,6 +275,8 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         Msg::TransactionsMsg(msg) => fwd_child_msg!(model.state, transactions_page, msg, orders),
         Msg::StoreMsg(msg) => fwd_child_msg!(model.state, store_page, msg, orders),
 
+        Msg::NotificationMessage(msg) => model.notifications.update(msg, orders),
+
         Msg::KeyPressed(ev) => {
             match ev.key().as_str() {
                 //key => log!(key),
@@ -285,86 +292,89 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
 }
 
 pub fn view(model: &Model) -> Vec<Node<Msg>> {
-    vec![div![
+    vec![
+        model.notifications.view(),
         div![
-            class![C.header],
+            div![
+                class![C.header],
+                if cfg!(debug_assertions) {
+                    div![class![C.debug_banner], "DEBUG"]
+                } else {
+                    empty![]
+                },
+                div![
+                    // links
+                    //a!["hem", class![C.header_link], attrs! {At::Href => "/"}],
+                    class![C.header_link_box],
+                    a![
+                        "försäljning",
+                        class![C.header_link],
+                        attrs! {At::Href => "/store"}
+                    ],
+                    a![
+                        "tillgodo",
+                        class![C.header_link],
+                        attrs! {At::Href => "/deposit"}
+                    ],
+                    a![
+                        "transaktioner",
+                        class![C.header_link],
+                        attrs! {At::Href => "/transactions"}
+                    ],
+                    a![
+                        "bokföring",
+                        class![C.header_link],
+                        attrs! {At::Href => "/accounting"}
+                    ],
+                    a![
+                        "analys",
+                        class![C.header_link],
+                        attrs! {At::Href => "/analytics"}
+                    ],
+                ],
+            ],
             if cfg!(debug_assertions) {
-                div![class![C.debug_banner], "DEBUG"]
+                div![raw!["&nbsp;"]]
             } else {
                 empty![]
             },
-            div![
-                // links
-                //a!["hem", class![C.header_link], attrs! {At::Href => "/"}],
-                class![C.header_link_box],
-                a![
-                    "försäljning",
-                    class![C.header_link],
-                    attrs! {At::Href => "/store"}
+            div![class![C.header_margin], raw!["&nbsp;"]],
+            match &model.state {
+                State::Ready {
+                    accounting_page,
+                    analytics_page,
+                    deposition_page,
+                    transactions_page,
+                    store_page,
+                    state,
+                } => match model.page {
+                    Page::Accounting => accounting_page.view(state),
+                    Page::Analytics => analytics_page.view(state),
+                    Page::Store => store_page.view(state),
+                    Page::Deposit => deposition_page.view(state),
+                    Page::TransactionHistory => transactions_page.view(state),
+                    Page::Root | Page::NotFound => {
+                        div![class![C.not_found_message, C.unselectable], "404"]
+                    }
+                },
+                State::Loading(_) => div![
+                    class![C.text_center, C.mt_2],
+                    div![class![C.lds_heart], div![]]
                 ],
-                a![
-                    "tillgodo",
-                    class![C.header_link],
-                    attrs! {At::Href => "/deposit"}
+                State::LoadingFailed(msg, error) => div![
+                    class![C.flex, C.flex_col],
+                    p!["An has error occured."],
+                    p![msg],
+                    textarea![
+                        class![C.code_box],
+                        attrs! { At::ReadOnly => true, },
+                        attrs! { At::Rows => error.lines().count(), },
+                        error,
+                    ],
                 ],
-                a![
-                    "transaktioner",
-                    class![C.header_link],
-                    attrs! {At::Href => "/transactions"}
-                ],
-                a![
-                    "bokföring",
-                    class![C.header_link],
-                    attrs! {At::Href => "/accounting"}
-                ],
-                a![
-                    "analys",
-                    class![C.header_link],
-                    attrs! {At::Href => "/analytics"}
-                ],
-            ],
-        ],
-        if cfg!(debug_assertions) {
-            div![raw!["&nbsp;"]]
-        } else {
-            empty![]
-        },
-        div![class![C.header_margin], raw!["&nbsp;"]],
-        match &model.state {
-            State::Ready {
-                accounting_page,
-                analytics_page,
-                deposition_page,
-                transactions_page,
-                store_page,
-                state,
-            } => match model.page {
-                Page::Accounting => accounting_page.view(state),
-                Page::Analytics => analytics_page.view(state),
-                Page::Store => store_page.view(state),
-                Page::Deposit => deposition_page.view(state),
-                Page::TransactionHistory => transactions_page.view(state),
-                Page::Root | Page::NotFound => {
-                    div![class![C.not_found_message, C.unselectable], "404"]
-                }
             },
-            State::Loading(_) => div![
-                class![C.text_center, C.mt_2],
-                div![class![C.lds_heart], div![]]
-            ],
-            State::LoadingFailed(msg, error) => div![
-                class![C.flex, C.flex_col],
-                p!["An has error occured."],
-                p![msg],
-                textarea![
-                    class![C.code_box],
-                    attrs! { At::ReadOnly => true, },
-                    attrs! { At::Rows => error.lines().count(), },
-                    error,
-                ],
-            ],
-        },
-    ]]
+        ],
+    ]
 }
 
 fn handle_fetch(

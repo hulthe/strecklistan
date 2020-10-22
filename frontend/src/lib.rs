@@ -4,6 +4,7 @@ mod app;
 mod fuzzy_search;
 mod generated;
 mod models;
+mod notification_manager;
 mod page;
 mod util;
 mod views;
