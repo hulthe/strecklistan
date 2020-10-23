@@ -10,6 +10,15 @@ table! {
 }
 
 table! {
+    event_signups (id) {
+        id -> Int4,
+        event -> Int4,
+        name -> Varchar,
+        email -> Varchar,
+    }
+}
+
+table! {
     events (id) {
         id -> Int4,
         title -> Text,
@@ -19,15 +28,6 @@ table! {
         end_time -> Timestamptz,
         price -> Int4,
         published -> Bool,
-    }
-}
-
-table! {
-    event_signups (id) {
-        id -> Int4,
-        event -> Int4,
-        name -> Varchar,
-        email -> Varchar,
     }
 }
 
@@ -163,8 +163,8 @@ joinable!(transaction_items -> transaction_bundles (bundle_id));
 
 allow_tables_to_appear_in_same_query!(
     book_accounts,
-    events,
     event_signups,
+    events,
     inventory,
     inventory_bundle_items,
     inventory_bundles,

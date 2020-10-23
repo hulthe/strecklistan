@@ -9,7 +9,7 @@ CREATE TABLE izettle_transaction (
 
 CREATE TABLE izettle_transaction_bundle (
     id SERIAL PRIMARY KEY,
-    transaction_id INTEGER NOT NULL REFERENCES izettle_transaction(id),
+    transaction_id INTEGER NOT NULL REFERENCES izettle_transaction(id) ON DELETE CASCADE,
     description TEXT,
     price INTEGER,
     change INTEGER NOT NULL
@@ -17,12 +17,12 @@ CREATE TABLE izettle_transaction_bundle (
 
 CREATE TABLE izettle_transaction_item (
     id SERIAL PRIMARY KEY,
-    bundle_id INTEGER NOT NULL REFERENCES izettle_transaction_bundle(id),
+    bundle_id INTEGER NOT NULL REFERENCES izettle_transaction_bundle(id) ON DELETE CASCADE,
     item_id INTEGER NOT NULL REFERENCES inventory(id)
 );
 
 CREATE TABLE izettle_post_transaction (
     id SERIAL PRIMARY KEY,
     izettle_transaction_id INTEGER NOT NULL,
-    transaction_id INTEGER REFERENCES transactions(id)
+    transaction_id INTEGER REFERENCES transactions(id) ON DELETE CASCADE    
 )
