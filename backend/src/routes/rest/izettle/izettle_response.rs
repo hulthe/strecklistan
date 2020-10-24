@@ -5,15 +5,12 @@ use std::collections::HashMap;
 
 use crate::database::DatabasePool;
 use crate::diesel::RunQueryDsl;
-use crate::models::izettle_transaction::{IZettleTransaction, IZettlePostTransaction, NewIZettlePostTransaction, TRANSACTION_PAID, TRANSACTION_FAILED, TRANSACTION_CANCELED};
-use crate::models::transaction::relational::{TransactionBundle, TransactionItem, NewTransaction, NewTransactionBundle, NewTransactionItem};
+use crate::models::izettle_transaction::{TRANSACTION_PAID, TRANSACTION_FAILED, TRANSACTION_CANCELED};
+use crate::models::transaction::relational::{NewTransaction, NewTransactionBundle, NewTransactionItem};
 use crate::routes::rest::izettle::IZettleErrorResponse;
 use crate::util::status_json::StatusJson as SJ;
 use diesel::{Connection, ExpressionMethods, JoinOnDsl, QueryDsl, PgConnection};
-use crate::util::StatusJson;
-use rocket::http::Status;
 use crate::models::transaction::relational;
-use crate::schema::tables::transactions::columns::{description, credited_account};
 use diesel::r2d2::{PooledConnection, ConnectionManager};
 
 #[derive(Serialize)]
@@ -57,7 +54,7 @@ pub async fn complete_izettle_transaction(
                 bundle_id as item_bundle_id, izettle_transaction_item,
             };
             use crate::schema::tables::izettle_transaction::dsl::{
-                id as transaction_id, time, izettle_transaction
+                id as transaction_id, izettle_transaction
             };
             izettle_transaction
                 .left_join(izettle_transaction_bundle.on(bundle_trans_id.eq(transaction_id)))
@@ -66,7 +63,7 @@ pub async fn complete_izettle_transaction(
                 .load(&connection)?
         };
 
-        let mut izettle_transaction_id: i32;
+        let izettle_transaction_id: i32;
 
         match joined.first() {
             Some((izettle_tran, _, _)) => {

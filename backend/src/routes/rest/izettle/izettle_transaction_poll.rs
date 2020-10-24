@@ -10,7 +10,6 @@ use crate::diesel::RunQueryDsl;
 use crate::models::izettle_transaction::{IZettlePostTransaction, TRANSACTION_IN_PROGRESS, TRANSACTION_PAID, TRANSACTION_CANCELED, TRANSACTION_FAILED};
 use crate::routes::rest::izettle::IZettleErrorResponse;
 use crate::util::status_json::StatusJson as SJ;
-use diesel::result::Error;
 use crate::util::StatusJson;
 use rocket::http::Status;
 
