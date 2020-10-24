@@ -69,6 +69,7 @@ table! {
         id -> Int4,
         izettle_transaction_id -> Int4,
         transaction_id -> Nullable<Int4>,
+        status -> Text,
     }
 }
 

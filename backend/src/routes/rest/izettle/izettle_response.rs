@@ -5,17 +5,23 @@ use std::collections::HashMap;
 
 use crate::database::DatabasePool;
 use crate::diesel::RunQueryDsl;
-use crate::models::izettle_transaction::IZettleTransaction;
-use crate::models::transaction::relational::{TransactionBundle, TransactionItem};
+use crate::models::izettle_transaction::{IZettleTransaction, IZettlePostTransaction, NewIZettlePostTransaction, TRANSACTION_PAID, TRANSACTION_FAILED, TRANSACTION_CANCELED};
+use crate::models::transaction::relational::{TransactionBundle, TransactionItem, NewTransaction, NewTransactionBundle, NewTransactionItem};
 use crate::routes::rest::izettle::IZettleErrorResponse;
 use crate::util::status_json::StatusJson as SJ;
-use diesel::{Connection, ExpressionMethods, JoinOnDsl, QueryDsl};
+use diesel::{Connection, ExpressionMethods, JoinOnDsl, QueryDsl, PgConnection};
+use crate::util::StatusJson;
+use rocket::http::Status;
+use crate::models::transaction::relational;
+use crate::schema::tables::transactions::columns::{description, credited_account};
+use diesel::r2d2::{PooledConnection, ConnectionManager};
 
 #[derive(Serialize)]
 #[serde(tag = "type")]
 pub enum BridgePayResult {
     PaymentOk,
-    NoPendingTransaction(IZettleErrorResponse),
+    Acknowledge,
+    NoPendingTransaction(IZettleErrorResponse)
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -39,165 +45,145 @@ pub async fn complete_izettle_transaction(
     let connection = db_pool.inner().get()?;
 
     connection.transaction::<_, SJ, _>(|| {
-        // Select the transaction with the given reference
-        // Move the transaction, item/bundle to the standard tables.
-
-        // let joined: Vec<(
-        //     IZettleTransaction,
-        //     Option<relational::TransactionBundle>,
-        //     Option<relational::TransactionItem>,
-        // )> = {
-        //     use crate::schema::tables::izettle_transaction_bundle::dsl::{
-        //         id as bundle_id, izettle_transaction_bundle, transaction_id as bundle_transaction_id,
-        //     };
-        //     use crate::schema::tables::izettle_transaction_item::dsl::{
-        //         bundle_id as item_bundle_id, izettle_transaction_item,
-        //     };
-        //     use crate::schema::tables::izettle_transaction::dsl::{id as transaction_id, time, izettle_transaction};
-        //     izettle_transaction
-        //         .left_join(izettle_transaction_bundle.on(transaction_id.eq(bundle_transaction_id)))
-        //         .left_join(izettle_transaction_item.on(bundle_id.eq(item_bundle_id)))
-        //         .filter(transaction_id.eq(*reference))
-        //         .load(&connection)?
-        // };
-
-        let cached_transaction: IZettleTransaction = {
-            use crate::schema::tables::izettle_transaction::dsl::{
-                id as transaction_id, izettle_transaction,
-            };
-            let result = izettle_transaction
-                .filter(transaction_id.eq(reference))
-                .first(&connection);
-
-            match result {
-                Err(diesel::result::Error::NotFound) => {
-                    return Ok(Json(NoPendingTransaction(IZettleErrorResponse {
-                        message: "No pending transaction".to_string(),
-                    })));
-                }
-                _ => result?,
-            }
-        };
-
-        let cached_bundles: Vec<TransactionBundle> = {
+        let joined: Vec<(
+            relational::Transaction,
+            Option<relational::TransactionBundle>,
+            Option<relational::TransactionItem>,
+        )> = {
             use crate::schema::tables::izettle_transaction_bundle::dsl::{
-                izettle_transaction_bundle, transaction_id as bundle_transaction_id,
+                id as bundle_id, izettle_transaction_bundle, transaction_id as bundle_trans_id,
             };
-
-            izettle_transaction_bundle
-                .filter(bundle_transaction_id.eq(reference))
-                .load(&connection)?
-        };
-
-        let cached_items: Vec<TransactionItem> = {
             use crate::schema::tables::izettle_transaction_item::dsl::{
-                bundle_id as item_bundle_id, id as item_db_id, item_id, izettle_transaction_item,
+                bundle_id as item_bundle_id, izettle_transaction_item,
             };
-
-            use crate::schema::tables::izettle_transaction_bundle::dsl::{
-                izettle_transaction_bundle, transaction_id as bundle_transaction_id,
+            use crate::schema::tables::izettle_transaction::dsl::{
+                id as transaction_id, time, izettle_transaction
             };
-
-            izettle_transaction_item
-                .left_join(izettle_transaction_bundle.on(bundle_transaction_id.eq(item_bundle_id)))
-                .select((item_db_id, item_bundle_id, item_id))
+            izettle_transaction
+                .left_join(izettle_transaction_bundle.on(bundle_trans_id.eq(transaction_id)))
+                .left_join(izettle_transaction_item.on(item_bundle_id.eq(bundle_id)))
+                .filter(transaction_id.eq(reference))
                 .load(&connection)?
         };
+
+        let mut izettle_transaction_id: i32;
+
+        match joined.first() {
+            Some((izettle_tran, _, _)) => {
+                izettle_transaction_id = izettle_tran.id;
+
+                use crate::schema::tables::izettle_transaction::dsl::{
+                    id as iz_id,
+                    izettle_transaction,
+                };
+                diesel::delete(izettle_transaction)
+                    .filter(iz_id.eq(izettle_transaction_id))
+                    .execute(&connection)?;
+            },
+            None => {
+                return Ok(Json(NoPendingTransaction(IZettleErrorResponse {
+                    message: format
+                    !("No transaction with id {}", reference)
+                })));
+            }
+        }
 
         match &*payment_response {
             PaymentResponse::TransactionPaid => {
-                let trans_id: i32 = {
-                    use crate::schema::tables::transactions::dsl::*;
-                    diesel::insert_into(transactions)
-                        .values((
-                            description.eq(cached_transaction.description),
-                            debited_account.eq(cached_transaction.debited_account),
-                            credited_account.eq(cached_transaction.credited_account),
-                            amount.eq(cached_transaction.amount),
-                        ))
-                        .returning(id)
-                        .get_result(&connection)?
-                };
-
-                // Map izettle_transaction_bundle ids to transaction_bundle ids.
+                // Map the old izettle bundle ids to the new bundle ids.
                 let mut bundle_ids: HashMap<i32, i32> = HashMap::new();
+                let mut transactions_id: i32 = -1;
 
-                for bundle in cached_bundles.iter() {
-                    use crate::schema::tables::transaction_bundles::dsl::*;
-                    let bundle_id = diesel::insert_into(transaction_bundles)
-                        .values((
-                            transaction_id.eq(trans_id),
-                            description.eq(&bundle.description),
-                            price.eq(bundle.price),
-                            change.eq(bundle.change),
-                        ))
-                        .returning(id)
-                        .get_result(&connection)?;
-                    bundle_ids.insert(bundle.id, bundle_id);
+                for (izettle_tran, bundle_opt, item_opt) in joined.iter() {
+                    // Make sure to only insert the transaction once.
+                    if transactions_id < 0 {
+                        let new_trans: NewTransaction = NewTransaction {
+                            description: izettle_tran.description.clone(),
+                            time: Some(izettle_tran.time),
+                            debited_account: izettle_tran.debited_account,
+                            credited_account: izettle_tran.credited_account,
+                            amount: izettle_tran.amount
+                        };
+
+                        use crate::schema::tables::transactions::dsl::*;
+                        transactions_id = diesel::insert_into(transactions)
+                            .values(new_trans)
+                            .returning(id)
+                            .get_result(&connection)?;
+                    }
+
+                    match bundle_opt {
+                        Some(bundle) => {
+                            // Only insert once per bundle.
+                            if bundle_ids.contains_key(&bundle.id) == false {
+                                let new_bundle: NewTransactionBundle = NewTransactionBundle {
+                                    transaction_id: transactions_id,
+                                    description: bundle.description.clone(),
+                                    price: bundle.price,
+                                    change: bundle.change,
+                                };
+
+                                use crate::schema::tables::transaction_bundles::dsl::*;
+                                bundle_ids.insert(bundle.id, diesel::insert_into(transaction_bundles)
+                                    .values(new_bundle)
+                                    .returning(id)
+                                    .get_result(&connection)?
+                                );
+                            }
+
+                            match item_opt {
+                                Some(item) => {
+                                    let new_item: NewTransactionItem = NewTransactionItem {
+                                        bundle_id: bundle_ids[&item.bundle_id],
+                                        item_id: item.item_id
+                                    };
+
+                                    use crate::schema::tables::transaction_items::dsl::*;
+                                    diesel::insert_into(transaction_items)
+                                        .values(new_item)
+                                        .execute(&connection)?;
+                                }
+                                None => {}
+                            }
+                        },
+                        None => {}
+                    }
                 }
 
-                let mut item_ids: Vec<i32> = Vec::new();
-
-                for item in cached_items.iter() {
-                    use crate::schema::tables::transaction_items::dsl::*;
-                    let izettle_item_id = diesel::insert_into(transaction_items)
-                        .values((
-                            bundle_id.eq(bundle_ids[&item.id]),
-                            item_id.eq(&item.item_id),
-                        ))
-                        .returning(id)
-                        .get_result(&connection)?;
-                    item_ids.push(izettle_item_id);
-                }
-
-                // Add data to the izettle post transactions table
-                {
-                    use crate::schema::tables::izettle_post_transaction::dsl::{
-                        izettle_post_transaction, izettle_transaction_id, transaction_id as post_id,
-                    };
-                    diesel::insert_into(izettle_post_transaction)
-                        .values((
-                            izettle_transaction_id.eq(cached_transaction.id),
-                            post_id.eq(trans_id),
-                        ))
-                        .execute(&connection)?;
-                }
+                update_izettle_post_transaction(izettle_transaction_id, TRANSACTION_PAID.to_string(), Some(transactions_id), &connection);
+                Ok(Json(PaymentOk))
             }
-            _ => {
-                use crate::schema::tables::izettle_post_transaction::dsl::{
-                    izettle_post_transaction, izettle_transaction_id,
-                };
-                diesel::insert_into(izettle_post_transaction)
-                    .values(izettle_transaction_id.eq(cached_transaction.id))
-                    .execute(&connection)?;
+            PaymentResponse::TransactionFailed {reason} => {
+                // TODO: Use the reason for something.
+                update_izettle_post_transaction(izettle_transaction_id, TRANSACTION_FAILED.to_string(), None, &connection);
+                Ok(Json(Acknowledge))
+            }
+            PaymentResponse::TransactionCanceled => {
+                update_izettle_post_transaction(izettle_transaction_id, TRANSACTION_CANCELED.to_string(), None, &connection);
+                Ok(Json(Acknowledge))
             }
         }
-
-        // Remove the entries from the izettle tables.
-        for item in cached_items.into_iter() {
-            use crate::schema::tables::izettle_transaction_item::dsl::{
-                id as item_id, izettle_transaction_item,
-            };
-            diesel::delete(izettle_transaction_item.filter(item_id.eq(item.id)))
-                .execute(&connection)?;
-        }
-
-        for bundle in cached_bundles.into_iter() {
-            use crate::schema::tables::izettle_transaction_bundle::dsl::{
-                id as bundle_id, izettle_transaction_bundle,
-            };
-            diesel::delete(izettle_transaction_bundle.filter(bundle_id.eq(bundle.id)))
-                .execute(&connection)?;
-        }
-
-        {
-            use crate::schema::tables::izettle_transaction::dsl::{
-                id as transaction_id, izettle_transaction,
-            };
-            diesel::delete(izettle_transaction.filter(transaction_id.eq(cached_transaction.id)))
-                .execute(&connection)?;
-        }
-
-        Ok(Json(PaymentOk))
     })
+}
+
+fn update_izettle_post_transaction(
+    izettle_transaction_id: i32,
+    status: String,
+    transaction_id: Option<i32>,
+    connection: &PooledConnection<ConnectionManager<PgConnection>>) {
+
+    use crate::schema::tables::izettle_post_transaction::dsl::{
+        izettle_post_transaction,
+        transaction_id as tran_id,
+        status as stat,
+        izettle_transaction_id as iz_tran_id
+    };
+
+    diesel::update(izettle_post_transaction)
+        .filter(iz_tran_id.eq(izettle_transaction_id))
+        .set((
+            tran_id.eq(transaction_id),
+            stat.eq(status),
+        ))
+        .execute(connection);
 }

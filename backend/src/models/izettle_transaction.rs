@@ -3,7 +3,7 @@ use serde_derive::{Deserialize, Serialize};
 pub use strecklistan_api::transaction as object;
 
 use crate::schema::tables::{
-    izettle_transaction, izettle_transaction_bundle, izettle_transaction_item,
+    izettle_transaction, izettle_transaction_bundle, izettle_transaction_item, izettle_post_transaction
 };
 
 #[derive(Insertable, Serialize, Deserialize, Debug, PartialEq)]
@@ -37,6 +37,7 @@ pub struct IZettlePostTransaction {
     pub id: i32,
     pub izettle_transaction_id: i32,
     pub transaction_id: Option<i32>,
+    pub status: String,
 }
 
 #[derive(Insertable, Serialize, Deserialize, Debug, PartialEq)]
@@ -54,3 +55,16 @@ pub struct NewIZettleTransactionItem {
     pub bundle_id: i32,
     pub item_id: i32,
 }
+
+#[derive(Insertable, Serialize, Deserialize, Debug, PartialEq)]
+#[table_name = "izettle_post_transaction"]
+pub struct NewIZettlePostTransaction {
+    pub izettle_transaction_id: i32,
+    pub transaction_id: Option<i32>,
+    pub status: String,
+}
+
+pub const TRANSACTION_IN_PROGRESS: &str = "in_progress";
+pub const TRANSACTION_PAID: &str = "paid";
+pub const TRANSACTION_CANCELED: &str = "canceled";
+pub const TRANSACTION_FAILED: &str = "failed";

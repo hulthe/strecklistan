@@ -1,7 +1,5 @@
 use crate::database::DatabasePool;
-use crate::models::izettle_transaction::{
-    NewIZettleTransaction, NewIZettleTransactionBundle, NewIZettleTransactionItem,
-};
+use crate::models::izettle_transaction::{NewIZettleTransaction, NewIZettleTransactionBundle, NewIZettleTransactionItem, NewIZettlePostTransaction, TRANSACTION_IN_PROGRESS};
 use crate::models::transaction::object;
 use crate::util::status_json::StatusJson as SJ;
 use diesel::{Connection, RunQueryDsl};
@@ -32,7 +30,7 @@ pub async fn begin_izettle_transaction(
     };
 
     connection.transaction::<_, SJ, _>(|| {
-        let transaction_id = {
+        let transactions_id = {
             use crate::schema::tables::izettle_transaction::dsl::*;
             diesel::insert_into(izettle_transaction)
                 .values(transaction)
@@ -42,7 +40,7 @@ pub async fn begin_izettle_transaction(
 
         for bundle in bundles.into_iter() {
             let new_bundle = NewIZettleTransactionBundle {
-                transaction_id,
+                transaction_id: transactions_id,
                 description: bundle.description,
                 price: bundle.price.map(|p| p.into()),
                 change: bundle.change,
@@ -71,6 +69,19 @@ pub async fn begin_izettle_transaction(
             }
         }
 
-        Ok(Json(transaction_id))
+        {
+            let post_tran: NewIZettlePostTransaction = NewIZettlePostTransaction {
+                izettle_transaction_id: transactions_id,
+                transaction_id: None,
+                status: TRANSACTION_IN_PROGRESS.to_string(),
+            };
+
+            use crate::schema::tables::izettle_post_transaction::dsl::*;
+            diesel::insert_into(izettle_post_transaction)
+                .values(post_tran)
+                .execute(&connection)?;
+        }
+
+        Ok(Json(transactions_id))
     })
 }
