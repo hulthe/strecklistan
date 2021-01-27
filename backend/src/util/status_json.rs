@@ -60,7 +60,6 @@ impl<'r> Responder<'r, 'static> for StatusJson {
     }
 }
 
-
 #[duplicate(
   status_code                     T;
   [ Status::BadRequest ]          [ orion::errors::UnknownCryptoError ];

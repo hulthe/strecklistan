@@ -180,10 +180,7 @@ mod tests {
         assert!(data.is_object());
         let json = data.as_object().unwrap();
         assert!(json.contains_key("name"));
-        assert_eq!(
-            json.get("name").unwrap(),
-            &credentials.name
-        );
+        assert_eq!(json.get("name").unwrap(), &credentials.name);
         assert_eq!(status, Status::Ok);
     }
 }

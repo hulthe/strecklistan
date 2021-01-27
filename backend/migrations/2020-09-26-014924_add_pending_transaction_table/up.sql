@@ -24,5 +24,5 @@ CREATE TABLE izettle_transaction_item (
 CREATE TABLE izettle_post_transaction (
     id SERIAL PRIMARY KEY,
     izettle_transaction_id INTEGER NOT NULL,
-    transaction_id INTEGER REFERENCES transactions(id) ON DELETE CASCADE    
+    transaction_id INTEGER REFERENCES transactions(id) ON DELETE CASCADE
 )

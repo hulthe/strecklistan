@@ -1,5 +1,8 @@
 use crate::database::DatabasePool;
-use crate::models::izettle_transaction::{NewIZettleTransaction, NewIZettleTransactionBundle, NewIZettleTransactionItem, NewIZettlePostTransaction, TRANSACTION_IN_PROGRESS};
+use crate::models::izettle_transaction::{
+    NewIZettlePostTransaction, NewIZettleTransaction, NewIZettleTransactionBundle,
+    NewIZettleTransactionItem, TRANSACTION_IN_PROGRESS,
+};
 use crate::models::transaction::object;
 use crate::util::status_json::StatusJson as SJ;
 use diesel::{Connection, RunQueryDsl};

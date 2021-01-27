@@ -4,7 +4,9 @@ use diesel::prelude::*;
 use rocket::{get, post, State};
 use rocket_contrib::json::Json;
 
-use strecklistan_api::book_account::{BookAccount, BookAccountType, MasterAccounts, NewBookAccount};
+use strecklistan_api::book_account::{
+    BookAccount, BookAccountType, MasterAccounts, NewBookAccount,
+};
 
 use crate::database::DatabasePool;
 use crate::models::book_account as relational;
