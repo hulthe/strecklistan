@@ -16,6 +16,7 @@ use rocket::{post, State};
 use rocket_contrib::json::Json;
 use serde_derive::{Deserialize, Serialize};
 use std::iter;
+use log::{info};
 
 #[derive(Serialize)]
 #[serde(tag = "type")]
@@ -165,7 +166,8 @@ pub async fn complete_izettle_transaction(
                 Ok(Json(PaymentOk))
             }
             PaymentResponse::TransactionFailed { reason } => {
-                // TODO: Use the reason for something.
+                info!("IZettle failed due to: {}", reason);
+
                 // Mark the transaction as failed
                 update_izettle_post_transaction(
                     izettle_transaction_id,
