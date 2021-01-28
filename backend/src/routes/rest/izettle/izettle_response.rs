@@ -80,19 +80,19 @@ pub async fn complete_izettle_transaction(
             }
         };
 
+        { // Delete the transaction from izettle_transaction
+            use crate::schema::tables::izettle_transaction::dsl::{
+                id as iz_id, izettle_transaction,
+            };
+            diesel::delete(izettle_transaction)
+                .filter(iz_id.eq(izettle_transaction_id))
+                .execute(&connection)?;
+        }
+
         match &*payment_response {
             PaymentResponse::TransactionPaid => {
                 // Get all the joined rows for the selected izettle transaction
                 let (izettle_transaction, bundle0, item0) = transaction_rows.next().unwrap();
-
-                { // Delete the transaction from izettle_transaction
-                    use crate::schema::tables::izettle_transaction::dsl::{
-                        id as iz_id, izettle_transaction,
-                    };
-                    diesel::delete(izettle_transaction)
-                        .filter(iz_id.eq(izettle_transaction_id))
-                        .execute(&connection)?;
-                }
 
                 // Insert transaction row from izettle_transaction to regular transaction table
                 let new_transaction_id = {
