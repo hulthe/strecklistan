@@ -1,13 +1,12 @@
 use diesel::{ExpressionMethods, QueryDsl};
 use rocket::http::Status;
 use rocket::{get, State};
+use log::error;
 use rocket_contrib::json::Json;
 use serde_derive::Serialize;
-
 use strecklistan_api::izettle::ClientPollResult;
 use strecklistan_api::models::izettle::IZettleErrorResponse;
 use ClientPollResult::*;
-
 use crate::database::DatabasePool;
 use crate::diesel::RunQueryDsl;
 use crate::models::izettle_transaction::{
@@ -46,7 +45,13 @@ pub async fn poll_for_izettle(
         Ok(IZettlePostTransaction { status, .. }) if status == TRANSACTION_IN_PROGRESS => {
             Ok(Json(NotPaid))
         }
-        Ok(IZettlePostTransaction { status, .. }) if status == TRANSACTION_PAID => Ok(Json(Paid)),
+        Ok(IZettlePostTransaction { status, id, transaction_id, .. }) if status == TRANSACTION_PAID => {
+            let transaction_id = transaction_id.ok_or_else(|| {
+                error!("izettle_post_transaction {} marked as paid, not but transaction_id was None", id);
+                SJ::new(Status::InternalServerError, "Internal Server Error")
+            })?;
+            Ok(Json(Paid { transaction_id }))
+        }
         Ok(IZettlePostTransaction { status, .. }) if status == TRANSACTION_CANCELED => {
             Ok(Json(Canceled))
         }

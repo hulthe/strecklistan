@@ -1,3 +1,5 @@
+use crate::transaction::TransactionId;
+
 #[cfg(feature = "serde_impl")]
 use serde_derive::{Deserialize, Serialize};
 
@@ -11,7 +13,7 @@ pub struct IZettleErrorResponse {
 #[cfg_attr(feature = "serde_impl", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "debug", derive(Debug))]
 pub enum ClientPollResult {
-    Paid,
+    Paid { transaction_id: TransactionId },
     NotPaid,
     Canceled,
     Failed(IZettleErrorResponse),

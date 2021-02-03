@@ -358,9 +358,8 @@ impl StorePage {
                                 reference,
                             )))
                         }
-                        // TODO: get ID instead of passing 0
-                        Ok(ClientPollResult::Paid) => {
-                            Some(Msg::StoreMsg(StoreMsg::PurchaseSent(0)))
+                        Ok(ClientPollResult::Paid { transaction_id }) => {
+                            Some(Msg::StoreMsg(StoreMsg::PurchaseSent(transaction_id)))
                         }
                         Ok(ClientPollResult::NoTransaction(error)) => {
                             Some(Msg::StoreMsg(StoreMsg::CancelIZettle {
