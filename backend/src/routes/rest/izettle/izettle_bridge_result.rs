@@ -162,6 +162,7 @@ pub async fn complete_izettle_transaction(
                     izettle_transaction_id,
                     TRANSACTION_PAID.to_string(),
                     Some(new_transaction_id),
+                    None,
                     &connection,
                 )?;
 
@@ -175,6 +176,7 @@ pub async fn complete_izettle_transaction(
                     izettle_transaction_id,
                     TRANSACTION_FAILED.to_string(),
                     None,
+                    Some(reason.clone()),
                     &connection,
                 )?;
                 Ok(Json(Acknowledge))
@@ -184,6 +186,7 @@ pub async fn complete_izettle_transaction(
                 update_izettle_post_transaction(
                     izettle_transaction_id,
                     TRANSACTION_CANCELED.to_string(),
+                    None,
                     None,
                     &connection,
                 )?;
@@ -197,16 +200,17 @@ fn update_izettle_post_transaction(
     izettle_transaction_id: i32,
     status: String,
     transaction_id: Option<i32>,
+    error: Option<String>,
     connection: &PooledConnection<ConnectionManager<PgConnection>>,
 ) -> Result<(), diesel::result::Error> {
     use crate::schema::tables::izettle_post_transaction::dsl::{
-        izettle_post_transaction, izettle_transaction_id as iz_tran_id, status as stat,
-        transaction_id as tran_id,
+        error as err, izettle_post_transaction, izettle_transaction_id as iz_tran_id,
+        status as stat, transaction_id as tran_id,
     };
 
     diesel::update(izettle_post_transaction)
         .filter(iz_tran_id.eq(izettle_transaction_id))
-        .set((tran_id.eq(transaction_id), stat.eq(status)))
+        .set((tran_id.eq(transaction_id), stat.eq(status), err.eq(error)))
         .execute(connection)?;
 
     Ok(())

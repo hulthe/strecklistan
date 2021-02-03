@@ -70,6 +70,7 @@ table! {
         izettle_transaction_id -> Int4,
         transaction_id -> Nullable<Int4>,
         status -> Text,
+        error -> Nullable<Text>,
     }
 }
 

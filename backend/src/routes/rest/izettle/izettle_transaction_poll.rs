@@ -50,7 +50,13 @@ pub async fn poll_for_izettle(
         Ok(IZettlePostTransaction { status, .. }) if status == TRANSACTION_CANCELED => {
             Ok(Json(Canceled))
         }
-        Ok(IZettlePostTransaction { status, .. }) if status == TRANSACTION_FAILED => Ok(Json()),
+        Ok(IZettlePostTransaction { status, error, .. }) if status == TRANSACTION_FAILED => {
+            let mut message = "Unknown error".to_string();
+            if let Some(val) = error {
+                message = val;
+            }
+            Ok(Json(Failed(IZettleErrorResponse { message })))
+        }
         Err(err) => Err(err.into()),
         Ok(transaction) => Err(StatusJson {
             status: Status {

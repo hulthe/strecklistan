@@ -29,6 +29,7 @@ pub struct IZettlePostTransaction {
     pub izettle_transaction_id: i32,
     pub transaction_id: Option<i32>,
     pub status: String,
+    pub error: Option<String>,
 }
 
 #[derive(Insertable, Serialize, Deserialize, Debug, PartialEq)]
@@ -63,6 +64,7 @@ pub struct NewIZettlePostTransaction {
     pub izettle_transaction_id: i32,
     pub transaction_id: Option<i32>,
     pub status: String,
+    pub error: Option<String>,
 }
 
 pub const TRANSACTION_IN_PROGRESS: &str = "in_progress";

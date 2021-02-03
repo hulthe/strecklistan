@@ -1,3 +1,7 @@
+use diesel::{Connection, RunQueryDsl};
+use rocket::{post, State};
+use rocket_contrib::json::Json;
+
 use crate::database::DatabasePool;
 use crate::models::izettle_transaction::{
     NewIZettlePostTransaction, NewIZettleTransaction, NewIZettleTransactionBundle,
@@ -5,11 +9,6 @@ use crate::models::izettle_transaction::{
 };
 use crate::models::transaction::object;
 use crate::util::status_json::StatusJson as SJ;
-use diesel::{Connection, RunQueryDsl};
-use rocket::{post, State};
-use rocket_contrib::json::Json;
-
-use strecklistan_api::izettle::ClientPollResult;
 
 #[post("/izettle/client/transaction", data = "<transaction>")]
 pub async fn begin_izettle_transaction(
@@ -79,6 +78,7 @@ pub async fn begin_izettle_transaction(
                 izettle_transaction_id: transactions_id,
                 transaction_id: None,
                 status: TRANSACTION_IN_PROGRESS.to_string(),
+                error: None,
             };
 
             use crate::schema::tables::izettle_post_transaction::dsl::*;
