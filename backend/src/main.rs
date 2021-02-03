@@ -105,10 +105,10 @@ async fn main() {
                 rest::member::get_members,
                 rest::member::add_member_with_book_account,
                 rest::get_api_version,
-                rest::izettle::izettle_poll::poll_for_transaction,
+                rest::izettle::izettle_bridge_poll::poll_for_transaction,
+                rest::izettle::izettle_bridge_result::complete_izettle_transaction,
                 rest::izettle::izettle_transaction::begin_izettle_transaction,
                 rest::izettle::izettle_transaction_poll::poll_for_izettle,
-                rest::izettle::izettle_response::complete_izettle_transaction,
             ],
         );
     let config = rocket.config().await;

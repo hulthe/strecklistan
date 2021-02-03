@@ -1,15 +1,17 @@
-use crate::database::DatabasePool;
-use crate::diesel::RunQueryDsl;
-use crate::models::izettle_transaction::IZettleTransactionPartial;
-use crate::routes::rest::izettle::IZettleErrorResponse;
-use crate::schema::tables::izettle_transaction::dsl::izettle_transaction;
-use crate::util::StatusJson;
-use diesel::result::Error;
 use diesel::{ExpressionMethods, QueryDsl, QueryResult};
+use diesel::result::Error;
 use rocket::{get, State};
 use rocket_contrib::json::Json;
 use serde_derive::Serialize;
+
 use BridgePollResult::*;
+use strecklistan_api::models::izettle::IZettleErrorResponse;
+
+use crate::database::DatabasePool;
+use crate::diesel::RunQueryDsl;
+use crate::models::izettle_transaction::IZettleTransactionPartial;
+use crate::schema::tables::izettle_transaction::dsl::izettle_transaction;
+use crate::util::StatusJson;
 
 #[derive(Serialize)]
 #[serde(tag = "type")]

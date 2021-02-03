@@ -1,3 +1,15 @@
+use std::iter;
+
+use diesel::{Connection, ExpressionMethods, JoinOnDsl, PgConnection, QueryDsl};
+use diesel::r2d2::{ConnectionManager, PooledConnection};
+use itertools::Itertools;
+use log::info;
+use rocket::{post, State};
+use rocket_contrib::json::Json;
+use serde_derive::{Deserialize, Serialize};
+
+use strecklistan_api::models::izettle::IZettleErrorResponse;
+
 use crate::database::DatabasePool;
 use crate::diesel::RunQueryDsl;
 use crate::models::izettle_transaction::{
@@ -7,16 +19,7 @@ use crate::models::transaction::relational;
 use crate::models::transaction::relational::{
     NewTransaction, NewTransactionBundle, NewTransactionItem,
 };
-use crate::routes::rest::izettle::IZettleErrorResponse;
 use crate::util::status_json::StatusJson as SJ;
-use diesel::r2d2::{ConnectionManager, PooledConnection};
-use diesel::{Connection, ExpressionMethods, JoinOnDsl, PgConnection, QueryDsl};
-use itertools::Itertools;
-use rocket::{post, State};
-use rocket_contrib::json::Json;
-use serde_derive::{Deserialize, Serialize};
-use std::iter;
-use log::{info};
 
 #[derive(Serialize)]
 #[serde(tag = "type")]
@@ -35,8 +38,8 @@ pub enum PaymentResponse {
 }
 
 #[post(
-    "/izettle/bridge/payment_response/<reference>",
-    data = "<payment_response>"
+"/izettle/bridge/payment_response/<reference>",
+data = "<payment_response>"
 )]
 pub async fn complete_izettle_transaction(
     reference: i32,
@@ -81,7 +84,8 @@ pub async fn complete_izettle_transaction(
             }
         };
 
-        { // Delete the transaction from izettle_transaction
+        {
+            // Delete the transaction from izettle_transaction
             use crate::schema::tables::izettle_transaction::dsl::{
                 id as iz_id, izettle_transaction,
             };
