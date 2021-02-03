@@ -14,6 +14,6 @@ pub enum ClientPollResult {
     Paid,
     NotPaid,
     Canceled,
-    Failed,
+    Failed(IZettleErrorResponse),
     NoTransaction(IZettleErrorResponse),
 }
