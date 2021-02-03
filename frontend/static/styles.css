@@ -472,7 +472,7 @@ body {
 	padding-left: 0.5em;
 	overflow: hidden;
 	white-space: nowrap;
-	animation: 4s ease-out 0s 1 width_slide_in;
+	animation: 2s ease-out 0s 1 width_slide_in;
 }
 
 .text_center {
