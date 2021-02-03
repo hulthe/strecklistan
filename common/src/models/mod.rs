@@ -3,3 +3,4 @@ pub mod currency;
 pub mod inventory;
 pub mod member;
 pub mod transaction;
+pub mod izettle;
