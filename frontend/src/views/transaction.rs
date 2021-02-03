@@ -1,12 +1,16 @@
 use crate::app::Msg;
 use crate::generated::css_classes::C;
+use crate::views::{ParsedInput, ParsedInputMsg};
 use seed::prelude::*;
 use seed::*;
 use std::collections::HashMap;
 use std::ops::Deref;
 use std::rc::Rc;
-use strecklistan_api::inventory::{InventoryItemId, InventoryItemStock as InventoryItem};
-use strecklistan_api::transaction::NewTransaction;
+use strecklistan_api::{
+    currency::Currency,
+    inventory::{InventoryItemId, InventoryItemStock as InventoryItem},
+    transaction::NewTransaction,
+};
 
 pub fn view_new_transaction(
     transaction: &NewTransaction,
@@ -15,7 +19,8 @@ pub fn view_new_transaction(
     confirm_button_message: Option<&str>,
     inventory: &HashMap<InventoryItemId, Rc<InventoryItem>>,
     transaction_set_bundle_change_ev: impl FnOnce(usize, i32) -> Msg + Clone + 'static,
-    transaction_total_input_ev: impl FnOnce(String) -> Msg + Clone + 'static,
+    transaction_total: &ParsedInput<Currency>,
+    transaction_total_input_ev: impl FnOnce(ParsedInputMsg) -> Msg + Clone + 'static,
     confirm_purchase_ev: Msg,
 ) -> Node<Msg> {
     div![
@@ -72,18 +77,20 @@ pub fn view_new_transaction(
         p![span!["Totalt: "], {
             let amount = transaction.amount.to_string();
             let _len = (amount.len() as f32) / 2.0 + 0.5;
-            input![
-                class![C.new_transaction_total_field, C.border_on_focus],
-                attrs! { At::Value => &amount },
-                attrs! { At::Type => "number" },
-                if override_total {
-                    attrs! { At::Style => "color: #762;" }
-                } else {
-                    attrs! { At::Style => "color: black;" }
-                },
-                input_ev(Ev::Input, transaction_total_input_ev),
-            ]
-        },],
+            let color = if override_total {
+                "color: #762;"
+            } else {
+                "color: black;"
+            };
+            let attrs = attrs! {
+                At::Style => color,
+                At::Class => C.new_transaction_total_field,
+                At::Class => C.border_on_focus,
+            };
+            transaction_total
+                .view(attrs)
+                .map_msg(transaction_total_input_ev)
+        }],
         if enable_confirm_button {
             button![
                 class![C.wide_button, C.border_on_focus],

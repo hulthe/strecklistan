@@ -4,7 +4,8 @@ use crate::generated::css_classes::C;
 use crate::notification_manager::{Notification, NotificationMessage};
 use crate::util::{compare_fuzzy, sort_tillgodolista_search};
 use crate::views::{
-    view_inventory_bundle, view_inventory_item, view_new_transaction, view_tillgodo,
+    view_inventory_bundle, view_inventory_item, view_new_transaction, view_tillgodo, ParsedInput,
+    ParsedInputMsg,
 };
 use seed::app::cmds::timeout;
 use seed::prelude::*;
@@ -13,6 +14,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use strecklistan_api::{
     book_account::{BookAccount, BookAccountId},
+    currency::Currency,
     inventory::{
         InventoryBundle, InventoryBundleId, InventoryItemId, InventoryItemStock as InventoryItem,
     },
@@ -75,7 +77,7 @@ pub enum StoreMsg {
     ConfirmPurchase,
     PurchaseSent(TransactionId),
 
-    NewTransactionTotalInput(String),
+    NewTransactionTotalInput(ParsedInputMsg),
     AddItemToNewTransaction(InventoryItemId, i32),
     AddBundleToNewTransaction(InventoryBundleId, i32),
     SetNewTransactionBundleChange {
@@ -88,6 +90,7 @@ pub enum StoreMsg {
 pub struct StorePage {
     pub transaction: NewTransaction,
 
+    pub transaction_total: ParsedInput<Currency>,
     pub override_transaction_total: bool,
 
     pub inventory_search_string: String,
@@ -102,6 +105,7 @@ pub struct StorePage {
 impl StorePage {
     pub fn new(global: &StateReady) -> Self {
         let mut p = StorePage {
+            transaction_total: ParsedInput::new("0", "text", "ogiltig summa"),
             override_transaction_total: false,
 
             inventory_search_string: String::new(),
@@ -249,15 +253,25 @@ impl StorePage {
                 orders.send_msg(Msg::ReloadData);
             }
 
-            StoreMsg::NewTransactionTotalInput(input) => {
-                log!("Input", input);
-                if input == "" {
-                    self.override_transaction_total = false;
-                    self.recompute_new_transaction_total();
-                } else {
-                    self.override_transaction_total = true;
-                    self.transaction.amount = input.parse().unwrap_or(0.into());
-                    log!(format!("{}:-", self.transaction.amount));
+            StoreMsg::NewTransactionTotalInput(msg) => {
+                match &msg {
+                    ParsedInputMsg::FocusOut => {
+                        if self.transaction_total.get_value().is_none() {
+                            self.override_transaction_total = false;
+                            self.recompute_new_transaction_total();
+                        }
+                    }
+                    ParsedInputMsg::Input(_) => {
+                        self.override_transaction_total = true;
+                    }
+                    _ => {}
+                }
+                self.transaction_total.update(msg);
+
+                if self.override_transaction_total {
+                    let new_total = self.transaction_total.get_value().copied();
+                    log!(format!("new transaction total: {:?}", new_total));
+                    self.transaction.amount = new_total.unwrap_or(0.into());
                 }
             }
 
@@ -426,6 +440,7 @@ impl StorePage {
                 .map(|bundle| -bundle.change * bundle.price.map(|p| p.into()).unwrap_or(0i32))
                 .sum::<i32>()
                 .into();
+            self.transaction_total.set_value(self.transaction.amount);
         }
     }
 
@@ -608,6 +623,7 @@ impl StorePage {
                     bundle_index,
                     change,
                 }),
+                &self.transaction_total,
                 |input| Msg::StoreMsg(StoreMsg::NewTransactionTotalInput(input)),
                 Msg::StoreMsg(StoreMsg::ConfirmPurchase),
             ),

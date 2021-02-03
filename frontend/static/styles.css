@@ -43,6 +43,14 @@ body {
     padding: 0.5rem;
 }
 
+.border_on_focus {
+    border: 0.2rem solid rgba(0, 0, 0, 0);
+}
+
+.border_on_focus:focus {
+    border: 0.2rem solid blue;
+}
+
 .not_found_message {
     text-align: center;
     font-size: 12rem;
@@ -439,11 +447,36 @@ body {
     animation: 1s ease-out 0s 1 slide_down;
 }
 
-.border_on_focus {
-    border: 0.2rem solid rgba(0, 0, 0, 0);
+@keyframes width_slide_in {
+  0% {
+      max-width: 0;
+  }
+  100% {
+      max-width: 100%;
+  }
 }
-.border_on_focus:focus {
-    border: 0.2rem solid blue;
+
+
+.parsed_input {
+    display: inline-block;
+    padding-bottom: 0.8em;
+}
+
+.parsed_input_text {
+    border-bottom: solid 2px black;
+}
+
+.parsed_input_error {
+    font-family: Ubuntu;
+    position: absolute;
+    font-size: 0.6em;
+    color: red;
+    font-style: italic;
+    margin-top: -0.15em;
+    padding-left: 0.5em;
+    overflow: hidden;
+    white-space: nowrap;
+    animation: 4s ease-out 0s 1 width_slide_in;
 }
 
 .text_center {
