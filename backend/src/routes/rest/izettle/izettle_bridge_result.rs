@@ -1,7 +1,7 @@
 use std::iter;
 
-use diesel::{Connection, ExpressionMethods, JoinOnDsl, PgConnection, QueryDsl};
 use diesel::r2d2::{ConnectionManager, PooledConnection};
+use diesel::{Connection, ExpressionMethods, JoinOnDsl, PgConnection, QueryDsl};
 use itertools::Itertools;
 use log::info;
 use rocket::{post, State};
@@ -28,7 +28,6 @@ pub enum BridgePayResult {
     Acknowledge,
     NoPendingTransaction(IZettleErrorResponse),
 }
-
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum PaymentResponse {
@@ -38,8 +37,8 @@ pub enum PaymentResponse {
 }
 
 #[post(
-"/izettle/bridge/payment_response/<reference>",
-data = "<payment_response>"
+    "/izettle/bridge/payment_response/<reference>",
+    data = "<payment_response>"
 )]
 pub async fn complete_izettle_transaction(
     reference: i32,
@@ -145,7 +144,6 @@ pub async fn complete_izettle_transaction(
                         .chain(bundle_rows.map(|(_, item)| item))
                         .flatten();
                     for item in items {
-
                         // Insert item row ...
                         let new_item: NewTransactionItem = NewTransactionItem {
                             bundle_id: new_bundle_id,

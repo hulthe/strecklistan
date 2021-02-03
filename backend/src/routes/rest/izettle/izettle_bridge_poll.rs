@@ -1,11 +1,11 @@
-use diesel::{ExpressionMethods, QueryDsl, QueryResult};
 use diesel::result::Error;
+use diesel::{ExpressionMethods, QueryDsl, QueryResult};
 use rocket::{get, State};
 use rocket_contrib::json::Json;
 use serde_derive::Serialize;
 
-use BridgePollResult::*;
 use strecklistan_api::models::izettle::IZettleErrorResponse;
+use BridgePollResult::*;
 
 use crate::database::DatabasePool;
 use crate::diesel::RunQueryDsl;

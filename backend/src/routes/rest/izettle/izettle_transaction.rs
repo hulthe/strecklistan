@@ -9,9 +9,7 @@ use diesel::{Connection, RunQueryDsl};
 use rocket::{post, State};
 use rocket_contrib::json::Json;
 
-use strecklistan_api::izettle::{
-    ClientPollResult,
-};
+use strecklistan_api::izettle::ClientPollResult;
 
 #[post("/izettle/client/transaction", data = "<transaction>")]
 pub async fn begin_izettle_transaction(
