@@ -62,6 +62,10 @@ pub enum StoreMsg {
     DebitKeyDown(web_sys::KeyboardEvent),
     DebitSelect(BookAccountId),
 
+    DebitSelectIZettle,
+    PollForPendingIZettleTransaction(i32),
+    IZettleCanceled,
+
     SearchInput(String),
     SearchKeyDown(web_sys::KeyboardEvent),
     ConfirmPurchase,
@@ -71,10 +75,6 @@ pub enum StoreMsg {
     AddItemToNewTransaction(InventoryItemId, i32),
     AddBundleToNewTransaction(InventoryBundleId, i32),
     SetNewTransactionBundleChange { bundle_index: usize, change: i32 },
-
-    ToggleIZettle,
-    PollForPendingIZettleTransaction(i32),
-    IZettleCanceled,
 }
 
 #[derive(Clone)]
@@ -150,6 +150,7 @@ impl StorePage {
                 _ => {}
             },
             StoreMsg::DebitSelect(acc_id) => {
+                self.izettle = false;
                 self.tillgodolista_search_string = String::new();
                 self.transaction.debited_account = acc_id;
             }
@@ -378,9 +379,13 @@ impl StorePage {
                 });
             }
 
-            StoreMsg::ToggleIZettle => {
-                self.izettle = !self.izettle;
-                log!(self.izettle);
+            StoreMsg::DebitSelectIZettle => {
+                self.update(
+                    StoreMsg::DebitSelect(global.master_accounts.bank_account_id),
+                    global,
+                    orders,
+                );
+                self.izettle = true;
             }
 
             StoreMsg::IZettleCanceled => {
@@ -439,10 +444,31 @@ impl StorePage {
     }
 
     pub fn view(&self, global: &StateReady) -> Node<Msg> {
-        let bank_account_selected =
-            global.master_accounts.bank_account_id == self.transaction.debited_account;
-        let cash_account_selected =
-            global.master_accounts.cash_account_id == self.transaction.debited_account;
+        #[derive(PartialEq)]
+        enum SelectedDebit {
+            IZettleEPay,
+            OtherEPay,
+            Cash,
+            Tillgodo,
+        }
+
+        let selected_debit = if self.izettle {
+            SelectedDebit::IZettleEPay
+        } else if self.transaction.debited_account == global.master_accounts.bank_account_id {
+            SelectedDebit::OtherEPay
+        } else if self.transaction.debited_account == global.master_accounts.cash_account_id {
+            SelectedDebit::Cash
+        } else {
+            SelectedDebit::Tillgodo
+        };
+
+        let apply_selection_class_on = |matching_debit| {
+            if selected_debit == matching_debit {
+                class![C.debit_selected]
+            } else {
+                class![]
+            }
+        };
 
         div![
             class![C.store_page],
@@ -458,23 +484,19 @@ impl StorePage {
                             C.h_12,
                             C.border_on_focus,
                         ],
-                        if !(bank_account_selected || cash_account_selected) {
-                            class![C.debit_selected]
-                        } else {
-                            class![]
-                        },
+                        apply_selection_class_on(SelectedDebit::Tillgodo),
                         attrs! {At::Value => self.tillgodolista_search_string},
                         {
-                            let s = if cash_account_selected || bank_account_selected {
-                                "Tillgodolista".into()
-                            } else {
-                                global
-                                    .book_accounts
-                                    .get(&self.transaction.debited_account)
-                                    .map(|acc| format!("{}: {}:-", acc.name, acc.balance))
-                                    .unwrap_or("[MISSING]".into())
-                            };
-                            attrs! {At::Placeholder => s}
+                            attrs! {
+                                At::Placeholder => match selected_debit {
+                                    SelectedDebit::Tillgodo => global
+                                        .book_accounts
+                                        .get(&self.transaction.debited_account)
+                                        .map(|acc| format!("{}: {}:-", acc.name, acc.balance))
+                                        .unwrap_or("[MISSING]".into()),
+                                    _ => "Tillgodolista".into(),
+                                },
+                            }
                         },
                         input_ev(Ev::Input, |input| Msg::StoreMsg(StoreMsg::SearchDebit(
                             input
@@ -502,11 +524,7 @@ impl StorePage {
                             empty![]
                         },
                         button![
-                            if bank_account_selected {
-                                class![C.debit_selected]
-                            } else {
-                                class![]
-                            },
+                            apply_selection_class_on(SelectedDebit::OtherEPay),
                             class![C.select_debit_button, C.border_on_focus, C.rounded_bl_lg],
                             simple_ev(
                                 Ev::Click,
@@ -517,19 +535,10 @@ impl StorePage {
                             "Swish",
                         ],
                         button![
-                            if cash_account_selected {
-                                class![C.debit_selected]
-                            } else {
-                                class![]
-                            },
+                            apply_selection_class_on(SelectedDebit::IZettleEPay),
                             class![C.select_debit_button, C.border_on_focus, C.rounded_br_lg],
-                            simple_ev(
-                                Ev::Click,
-                                Msg::StoreMsg(StoreMsg::DebitSelect(
-                                    global.master_accounts.cash_account_id
-                                )),
-                            ),
-                            "Kontant",
+                            simple_ev(Ev::Click, Msg::StoreMsg(StoreMsg::DebitSelectIZettle)),
+                            "iZettle",
                         ],
                     ]
                 ],
@@ -548,24 +557,6 @@ impl StorePage {
                     ))),
                     keyboard_ev(Ev::KeyDown, |ev| Msg::StoreMsg(StoreMsg::SearchKeyDown(ev))),
                 ],
-                // IZettle-stuff, very temp
-                div![
-                    class![C.my_4,],
-                    input![
-                        class![C.my_4, C.mr_2, C.h_6, C.w_6, C.border_on_focus,],
-                        attrs! {
-                            At::Type => "checkbox"
-                            At::Value => self.izettle,
-                        },
-                        if global.request_in_progress {
-                            attrs! { At::Disabled => true }
-                        } else {
-                            attrs! {}
-                        },
-                        simple_ev(Ev::Click, Msg::StoreMsg(StoreMsg::ToggleIZettle),),
-                    ],
-                    "Toggle iZettle",
-                ]
             ],
             div![
                 class![C.inventory_view],
@@ -593,6 +584,11 @@ impl StorePage {
                 &self.transaction,
                 self.override_transaction_total,
                 !global.request_in_progress,
+                match selected_debit {
+                    SelectedDebit::IZettleEPay if global.request_in_progress =>
+                        Some("Waiting for payment"),
+                    _ => None,
+                },
                 &global.inventory,
                 |bundle_index, change| Msg::StoreMsg(StoreMsg::SetNewTransactionBundleChange {
                     bundle_index,

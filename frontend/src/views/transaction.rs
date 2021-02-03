@@ -12,6 +12,7 @@ pub fn view_new_transaction(
     transaction: &NewTransaction,
     override_total: bool,
     enable_confirm_button: bool,
+    confirm_button_message: Option<&str>,
     inventory: &HashMap<InventoryItemId, Rc<InventoryItem>>,
     transaction_set_bundle_change_ev: impl FnOnce(usize, i32) -> Msg + Clone + 'static,
     transaction_total_input_ev: impl FnOnce(String) -> Msg + Clone + 'static,
@@ -104,6 +105,11 @@ pub fn view_new_transaction(
                 attrs! { At::Disabled => true },
                 "Slutför Köp",
             ]
+        },
+        if let Some(message) = confirm_button_message {
+            div![class![C.wide_button_message], message,]
+        } else {
+            empty![]
         },
     ]
 }

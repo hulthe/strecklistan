@@ -234,6 +234,10 @@ body {
     background-color: #d69e2e;
 }
 
+.debit_selected:hover {
+    background-color: #e6ad3c;
+}
+
 .tillgodo_drop_down {
     display: block;
     position: absolute;
@@ -396,12 +400,43 @@ body {
     width: 100%;
 }
 
-.wide_button:disabled {
-    opacity: 0.5;
-}
-
 .wide_button:hover {
     background-color: #25bd64;
+}
+
+.wide_button:disabled {
+    background-color: #8ecda9;
+}
+
+@keyframes slide_down {
+  0% {
+    transform: translateY(-2em);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+.wide_button_message {
+    color: white;
+    background-color: #ff7800;
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, .12), 0 2px 4px 0 rgba(0, 0, 0, .08);
+    padding-top: .5rem;
+    padding-bottom: .5rem;
+    font-weight: 700;
+    border-radius: .25rem;
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    font-family: inherit;
+    font-size: 100%;
+    text-align: center;
+    line-height: 1.15;
+    width: 95%;
+    margin-left: auto;
+    margin-right: auto;
+    z-index: -1;
+
+    animation: 1s ease-out 0s 1 slide_down;
 }
 
 .border_on_focus {
