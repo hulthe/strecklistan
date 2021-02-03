@@ -16,6 +16,7 @@ use strecklistan_api::{
     inventory::{
         InventoryBundle, InventoryBundleId, InventoryItemId, InventoryItemStock as InventoryItem,
     },
+    izettle::ClientPollResult,
     member::Member,
     transaction::{NewTransaction, TransactionBundle, TransactionId},
 };
@@ -64,7 +65,10 @@ pub enum StoreMsg {
 
     DebitSelectIZettle,
     PollForPendingIZettleTransaction(i32),
-    IZettleCanceled,
+    CancelIZettle {
+        message_title: String,
+        message_body: Option<String>,
+    },
 
     SearchInput(String),
     SearchKeyDown(web_sys::KeyboardEvent),
@@ -74,7 +78,10 @@ pub enum StoreMsg {
     NewTransactionTotalInput(String),
     AddItemToNewTransaction(InventoryItemId, i32),
     AddBundleToNewTransaction(InventoryBundleId, i32),
-    SetNewTransactionBundleChange { bundle_index: usize, change: i32 },
+    SetNewTransactionBundleChange {
+        bundle_index: usize,
+        change: i32,
+    },
 }
 
 #[derive(Clone)]
@@ -333,19 +340,6 @@ impl StorePage {
             }
 
             StoreMsg::PollForPendingIZettleTransaction(reference) => {
-                use serde::Deserialize;
-                #[derive(Deserialize)]
-                pub struct IZettleErrorResponse {
-                    pub message: String,
-                }
-                #[derive(Deserialize)]
-                pub enum ClientPollResult {
-                    Paid,
-                    NotPaid,
-                    Canceled,
-                    NoTransaction(IZettleErrorResponse),
-                }
-
                 orders.perform_cmd(async move {
                     let result = async {
                         Request::new(&format!("/api/izettle/client/poll/{}", reference))
@@ -368,8 +362,26 @@ impl StorePage {
                         Ok(ClientPollResult::Paid) => {
                             Some(Msg::StoreMsg(StoreMsg::PurchaseSent(0)))
                         }
-                        Ok(ClientPollResult::Canceled) | Ok(ClientPollResult::NoTransaction(_)) => {
-                            Some(Msg::StoreMsg(StoreMsg::IZettleCanceled))
+                        Ok(ClientPollResult::NoTransaction(error)) => {
+                            Some(Msg::StoreMsg(StoreMsg::CancelIZettle {
+                                message_title: "Server Error".to_string(),
+                                message_body: Some(format!(
+                                    "No pending transaction: {}",
+                                    error.message
+                                )),
+                            }))
+                        }
+                        Ok(ClientPollResult::Canceled) => {
+                            Some(Msg::StoreMsg(StoreMsg::CancelIZettle {
+                                message_title: "Payment canceled".to_string(),
+                                message_body: None,
+                            }))
+                        }
+                        Ok(ClientPollResult::Failed(error)) => {
+                            Some(Msg::StoreMsg(StoreMsg::CancelIZettle {
+                                message_title: "Payment failed".to_string(),
+                                message_body: Some(error.message),
+                            }))
                         }
                         Err(e) => {
                             error!("Failed to post purchase", e);
@@ -388,14 +400,17 @@ impl StorePage {
                 self.izettle = true;
             }
 
-            StoreMsg::IZettleCanceled => {
+            StoreMsg::CancelIZettle {
+                message_title,
+                message_body,
+            } => {
                 global.request_in_progress = false;
                 orders.send_msg(Msg::NotificationMessage(
                     NotificationMessage::ShowNotification {
                         duration_ms: 10000,
                         notification: Notification {
-                            title: "Purchase cancelled".to_string(),
-                            body: None,
+                            title: message_title,
+                            body: message_body,
                         },
                     },
                 ));
