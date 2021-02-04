@@ -1,26 +1,19 @@
 use crate::app::{Msg, StateReady};
+use crate::components::checkout::{Checkout, CheckoutMsg};
 use crate::fuzzy_search::FuzzySearch;
 use crate::generated::css_classes::C;
 use crate::notification_manager::{Notification, NotificationMessage};
 use crate::util::{compare_fuzzy, sort_tillgodolista_search};
-use crate::views::{
-    view_inventory_bundle, view_inventory_item, view_new_transaction, view_tillgodo, ParsedInput,
-    ParsedInputMsg,
-};
+use crate::views::{view_inventory_bundle, view_inventory_item, view_tillgodo};
 use seed::app::cmds::timeout;
 use seed::prelude::*;
 use seed::*;
-use std::collections::HashMap;
 use std::rc::Rc;
 use strecklistan_api::{
     book_account::{BookAccount, BookAccountId},
-    currency::Currency,
-    inventory::{
-        InventoryBundle, InventoryBundleId, InventoryItemId, InventoryItemStock as InventoryItem,
-    },
+    inventory::{InventoryBundle, InventoryItemStock as InventoryItem},
     izettle::ClientPollResult,
     member::Member,
-    transaction::{NewTransaction, TransactionBundle, TransactionId},
 };
 
 #[derive(Clone, Debug)]
@@ -74,24 +67,13 @@ pub enum StoreMsg {
 
     SearchInput(String),
     SearchKeyDown(web_sys::KeyboardEvent),
-    ConfirmPurchase,
-    PurchaseSent(TransactionId),
 
-    NewTransactionTotalInput(ParsedInputMsg),
-    AddItemToNewTransaction(InventoryItemId, i32),
-    AddBundleToNewTransaction(InventoryBundleId, i32),
-    SetNewTransactionBundleChange {
-        bundle_index: usize,
-        change: i32,
-    },
+    CheckoutMsg(CheckoutMsg),
 }
 
 #[derive(Clone)]
 pub struct StorePage {
-    pub transaction: NewTransaction,
-
-    pub transaction_total: ParsedInput<Currency>,
-    pub override_transaction_total: bool,
+    pub checkout: Checkout,
 
     pub inventory_search_string: String,
     pub inventory_search: Vec<(i32, Vec<(usize, usize)>, StoreItem)>,
@@ -105,8 +87,7 @@ pub struct StorePage {
 impl StorePage {
     pub fn new(global: &StateReady) -> Self {
         let mut p = StorePage {
-            transaction_total: ParsedInput::new("0", "text", "ogiltig summa"),
-            override_transaction_total: false,
+            checkout: Checkout::new(global),
 
             inventory_search_string: String::new(),
             inventory_search: vec![],
@@ -125,14 +106,6 @@ impl StorePage {
                 })
                 .map(|(acc, creditor)| (0, vec![], acc.clone(), creditor))
                 .collect(),
-
-            transaction: NewTransaction {
-                description: Some("Försäljning".to_string()),
-                bundles: vec![],
-                amount: 0.into(),
-                debited_account: global.master_accounts.bank_account_id,
-                credited_account: global.master_accounts.sales_account_id,
-            },
 
             izettle: false,
         };
@@ -163,7 +136,7 @@ impl StorePage {
             StoreMsg::DebitSelect(acc_id) => {
                 self.izettle = false;
                 self.tillgodolista_search_string = String::new();
-                self.transaction.debited_account = acc_id;
+                self.checkout.set_debited(acc_id);
             }
 
             StoreMsg::SearchInput(input) => {
@@ -173,192 +146,28 @@ impl StorePage {
             StoreMsg::SearchKeyDown(ev) => match ev.key().as_str() {
                 "Enter" => match self.inventory_search.first() {
                     Some((_, _, StoreItem::Item(item))) => {
-                        let msg = StoreMsg::AddItemToNewTransaction(item.id, 1);
+                        let msg = StoreMsg::CheckoutMsg(CheckoutMsg::AddItem {
+                            item_id: item.id,
+                            amount: 1,
+                        });
                         self.update(msg, global, orders);
                     }
                     Some((_, _, StoreItem::Bundle(bundle))) => {
-                        let msg = StoreMsg::AddBundleToNewTransaction(bundle.id, 1);
+                        let msg = StoreMsg::CheckoutMsg(CheckoutMsg::AddBundle {
+                            bundle_id: bundle.id,
+                            amount: 1,
+                        });
                         self.update(msg, global, orders);
                     }
                     None => {}
                 },
                 _ => {}
             },
-            StoreMsg::ConfirmPurchase => {
-                self.transaction.bundles.retain(|bundle| bundle.change != 0);
-                global.request_in_progress = true;
-                let msg = self.transaction.clone();
-
-                if self.izettle {
-                    orders.perform_cmd(async move {
-                        let result = async {
-                            Request::new("/api/izettle/client/transaction")
-                                .method(Method::Post)
-                                .json(&msg)?
-                                .fetch()
-                                .await?
-                                .json()
-                                .await
-                        }
-                        .await;
-                        match result {
-                            Ok(reference) => Some(Msg::StoreMsg(
-                                StoreMsg::PollForPendingIZettleTransaction(reference),
-                            )),
-                            Err(e) => {
-                                error!("Failed to post purchase", e);
-                                None
-                            }
-                        }
-                    });
-                } else {
-                    orders.perform_cmd(async move {
-                        let result = async {
-                            Request::new("/api/transaction")
-                                .method(Method::Post)
-                                .json(&msg)?
-                                .fetch()
-                                .await?
-                                .json()
-                                .await
-                        }
-                        .await;
-                        match result {
-                            Ok(id) => Some(Msg::StoreMsg(StoreMsg::PurchaseSent(id))),
-                            Err(e) => {
-                                error!("Failed to post purchase", e);
-                                None
-                            }
-                        }
-                    });
-                }
-            }
-
-            StoreMsg::PurchaseSent(id) => {
-                orders.send_msg(Msg::NotificationMessage(
-                    NotificationMessage::ShowNotification {
-                        duration_ms: 5000,
-                        notification: Notification {
-                            title: "Purchase complete".to_string(),
-                            body: Some(format!("Total: {}:-", self.transaction.amount)),
-                        },
-                    },
-                ));
-
-                global.request_in_progress = false;
-                log!("ID: ", id);
-                self.transaction.amount = 0.into();
-                self.transaction.bundles = vec![];
-                self.transaction.description = Some("Försäljning".into());
-                orders.send_msg(Msg::ReloadData);
-            }
-
-            StoreMsg::NewTransactionTotalInput(msg) => {
-                match &msg {
-                    ParsedInputMsg::FocusOut => {
-                        if self.transaction_total.get_value().is_none() {
-                            self.override_transaction_total = false;
-                            self.recompute_new_transaction_total();
-                        }
-                    }
-                    ParsedInputMsg::Input(_) => {
-                        self.override_transaction_total = true;
-                    }
-                    _ => {}
-                }
-                self.transaction_total.update(msg);
-
-                if self.override_transaction_total {
-                    let new_total = self.transaction_total.get_value().copied();
-                    log!(format!("new transaction total: {:?}", new_total));
-                    self.transaction.amount = new_total.unwrap_or(0.into());
-                }
-            }
-
-            StoreMsg::AddItemToNewTransaction(item_id, amount) => {
-                let item = global
-                    .inventory
-                    .get(&item_id)
-                    .unwrap_or_else(|| panic!("No inventory item with that id exists"))
-                    .clone();
-
-                let mut item_ids = HashMap::new();
-                item_ids.insert(item.id, 1);
-
-                let bundle = TransactionBundle {
-                    description: None,
-                    // TODO: Handle case where price is null
-                    price: Some(item.price.unwrap_or(0).into()),
-                    change: -amount,
-                    item_ids,
-                };
-
-                if let Some(b) =
-                    self.transaction.bundles.iter_mut().find(|b| {
-                        b.item_ids == bundle.item_ids && b.description == bundle.description
-                    })
-                {
-                    b.change -= amount;
-                } else {
-                    log!("Pushing bundle", bundle);
-                    self.transaction.bundles.push(bundle);
-                }
-
-                self.recompute_new_transaction_total();
-            }
-
-            StoreMsg::AddBundleToNewTransaction(bundle_id, amount) => {
-                let bundle = global
-                    .bundles
-                    .get(&bundle_id)
-                    .unwrap_or_else(|| panic!("No inventory bundle with that id exists"))
-                    .clone();
-
-                let mut item_ids = HashMap::new();
-                for &id in bundle.item_ids.iter() {
-                    *item_ids.entry(id).or_default() += 1;
-                }
-
-                let bundle = TransactionBundle {
-                    description: Some(bundle.name.clone()),
-                    price: Some(bundle.price),
-                    change: -amount,
-                    item_ids,
-                };
-
-                if let Some(b) =
-                    self.transaction.bundles.iter_mut().find(|b| {
-                        b.item_ids == bundle.item_ids && b.description == bundle.description
-                    })
-                {
-                    b.change -= amount;
-                } else {
-                    log!("Pushing bundle", bundle);
-                    self.transaction.bundles.push(bundle);
-                }
-
-                self.recompute_new_transaction_total();
-            }
-
-            StoreMsg::SetNewTransactionBundleChange {
-                bundle_index,
-                change,
-            } => {
-                let bundle = &mut self.transaction.bundles[bundle_index];
-                if !self.override_transaction_total {
-                    let diff = bundle.change - change;
-                    self.transaction.amount +=
-                        (bundle.price.map(|p| p.into()).unwrap_or(0i32) * diff).into();
-                }
-                bundle.change = change;
-            }
-
             StoreMsg::PollForPendingIZettleTransaction(reference) => {
                 orders.perform_cmd(async move {
                     let result = async {
                         Request::new(&format!("/api/izettle/client/poll/{}", reference))
                             .method(Method::Get)
-                            //.json(&msg)?
                             .fetch()
                             .await?
                             .json()
@@ -372,9 +181,9 @@ impl StorePage {
                                 reference,
                             )))
                         }
-                        Ok(ClientPollResult::Paid { transaction_id }) => {
-                            Some(Msg::StoreMsg(StoreMsg::PurchaseSent(transaction_id)))
-                        }
+                        Ok(ClientPollResult::Paid { transaction_id }) => Some(Msg::StoreMsg(
+                            StoreMsg::CheckoutMsg(CheckoutMsg::PurchaseSent { transaction_id }),
+                        )),
                         Ok(ClientPollResult::NoTransaction(error)) => {
                             Some(Msg::StoreMsg(StoreMsg::CancelIZettle {
                                 message_title: "Server Error".to_string(),
@@ -418,6 +227,7 @@ impl StorePage {
                 message_body,
             } => {
                 global.request_in_progress = false;
+                self.checkout.confirm_button_message = None;
                 orders.send_msg(Msg::NotificationMessage(
                     NotificationMessage::ShowNotification {
                         duration_ms: 10000,
@@ -428,19 +238,67 @@ impl StorePage {
                     },
                 ));
             }
-        }
-    }
 
-    fn recompute_new_transaction_total(&mut self) {
-        if !self.override_transaction_total {
-            self.transaction.amount = self
-                .transaction
-                .bundles
-                .iter()
-                .map(|bundle| -bundle.change * bundle.price.map(|p| p.into()).unwrap_or(0i32))
-                .sum::<i32>()
-                .into();
-            self.transaction_total.set_value(self.transaction.amount);
+            StoreMsg::CheckoutMsg(msg) => {
+                let forward_msg = match msg {
+                    // if iZettle integration is enabled we intercept and handle the purchase here
+                    CheckoutMsg::ConfirmPurchase if self.izettle => {
+                        global.request_in_progress = true;
+                        self.checkout.remove_cleared_items();
+                        self.checkout.confirm_button_message = Some("Väntar på betalning");
+                        let transaction = self.checkout.transaction().clone();
+                        orders.perform_cmd(async move {
+                            let result = async {
+                                Request::new("/api/izettle/client/transaction")
+                                    .method(Method::Post)
+                                    .json(&transaction)?
+                                    .fetch()
+                                    .await?
+                                    .json()
+                                    .await
+                            }
+                            .await;
+                            match result {
+                                Ok(reference) => Some(Msg::StoreMsg(
+                                    StoreMsg::PollForPendingIZettleTransaction(reference),
+                                )),
+                                Err(e) => {
+                                    error!("Failed to post purchase", e);
+                                    None
+                                }
+                            }
+                        });
+                        None // don't forward the message
+                    }
+                    // show a notification & reload the app when a purchase completes
+                    msg @ CheckoutMsg::PurchaseSent { .. } => {
+                        orders.send_msg(Msg::NotificationMessage(
+                            NotificationMessage::ShowNotification {
+                                duration_ms: 5000,
+                                notification: Notification {
+                                    title: "Purchase complete".to_string(),
+                                    body: Some(format!(
+                                        "Total: {}:-",
+                                        self.checkout.transaction().amount
+                                    )),
+                                },
+                            },
+                        ));
+                        self.checkout.confirm_button_message = None;
+                        orders.send_msg(Msg::ReloadData);
+                        Some(msg)
+                    }
+                    msg => Some(msg),
+                };
+
+                forward_msg.map(|msg| {
+                    self.checkout.update(
+                        msg,
+                        global,
+                        &mut orders.proxy(Msg::StoreMsg).proxy(StoreMsg::CheckoutMsg),
+                    )
+                });
+            }
         }
     }
 
@@ -483,9 +341,13 @@ impl StorePage {
 
         let selected_debit = if self.izettle {
             SelectedDebit::IZettleEPay
-        } else if self.transaction.debited_account == global.master_accounts.bank_account_id {
+        } else if self.checkout.transaction().debited_account
+            == global.master_accounts.bank_account_id
+        {
             SelectedDebit::OtherEPay
-        } else if self.transaction.debited_account == global.master_accounts.cash_account_id {
+        } else if self.checkout.transaction().debited_account
+            == global.master_accounts.cash_account_id
+        {
             SelectedDebit::Cash
         } else {
             SelectedDebit::Tillgodo
@@ -520,7 +382,7 @@ impl StorePage {
                                 At::Placeholder => match selected_debit {
                                     SelectedDebit::Tillgodo => global
                                         .book_accounts
-                                        .get(&self.transaction.debited_account)
+                                        .get(&self.checkout.transaction().debited_account)
                                         .map(|acc| format!("{}: {}:-", acc.name, acc.balance))
                                         .unwrap_or("[MISSING]".into()),
                                     _ => "Tillgodolista".into(),
@@ -595,38 +457,24 @@ impl StorePage {
                         StoreItem::Item(item) => view_inventory_item(
                             &item,
                             matches.iter().map(|&(_, i)| i),
-                            |id, amount| Msg::StoreMsg(StoreMsg::AddItemToNewTransaction(
-                                id, amount
+                            |item_id, amount| Msg::StoreMsg(StoreMsg::CheckoutMsg(
+                                CheckoutMsg::AddItem { item_id, amount }
                             ))
                         ),
                         StoreItem::Bundle(bundle) => view_inventory_bundle(
                             &bundle,
                             matches.iter().map(|&(_, i)| i),
-                            |id, amount| Msg::StoreMsg(StoreMsg::AddBundleToNewTransaction(
-                                id, amount
+                            |bundle_id, amount| Msg::StoreMsg(StoreMsg::CheckoutMsg(
+                                CheckoutMsg::AddBundle { bundle_id, amount }
                             ))
                         ),
                     })
                     .collect::<Vec<_>>(),
             ],
-            view_new_transaction(
-                &self.transaction,
-                self.override_transaction_total,
-                !global.request_in_progress,
-                match selected_debit {
-                    SelectedDebit::IZettleEPay if global.request_in_progress =>
-                        Some("Waiting for payment"),
-                    _ => None,
-                },
-                &global.inventory,
-                |bundle_index, change| Msg::StoreMsg(StoreMsg::SetNewTransactionBundleChange {
-                    bundle_index,
-                    change,
-                }),
-                &self.transaction_total,
-                |input| Msg::StoreMsg(StoreMsg::NewTransactionTotalInput(input)),
-                Msg::StoreMsg(StoreMsg::ConfirmPurchase),
-            ),
+            self.checkout
+                .view(global)
+                .map_msg(StoreMsg::CheckoutMsg)
+                .map_msg(Msg::StoreMsg),
         ]
     }
 }

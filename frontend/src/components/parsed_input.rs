@@ -8,7 +8,7 @@ pub struct ParsedInput<T> {
     text: String,
     parsed: Option<T>,
     input_kind: &'static str,
-    error_msg: &'static str,
+    error_message: Option<&'static str>,
 }
 
 #[derive(Clone, Debug)]
@@ -22,14 +22,25 @@ impl<T> ParsedInput<T>
 where
     T: FromStr + ToString,
 {
-    pub fn new<S: ToString>(text: S, input_kind: &'static str, error_msg: &'static str) -> Self {
+    pub fn new<S: ToString>(text: S) -> Self {
         let text = text.to_string();
         ParsedInput {
             parsed: text.parse().ok(),
             text,
-            input_kind,
-            error_msg,
+            input_kind: "text",
+            error_message: None,
         }
+    }
+
+    pub fn with_error_message(self, error_message: &'static str) -> Self {
+        ParsedInput {
+            error_message: Some(error_message),
+            ..self
+        }
+    }
+
+    pub fn with_input_kind(self, input_kind: &'static str) -> Self {
+        ParsedInput { input_kind, ..self }
     }
 
     pub fn update(&mut self, msg: ParsedInputMsg) {
@@ -54,9 +65,9 @@ where
                 simple_ev(Ev::Custom("focusin".into()), ParsedInputMsg::FocusIn),
                 simple_ev(Ev::Custom("focusout".into()), ParsedInputMsg::FocusOut),
             ],
-            match self.parsed {
-                Some(_) => empty![],
-                None => div![class![C.parsed_input_error], self.error_msg],
+            match (&self.parsed, self.error_message) {
+                (None, Some(msg)) => div![class![C.parsed_input_error], msg],
+                _ => empty![],
             }
         ]
     }

@@ -1,6 +1,7 @@
 #![deny(unreachable_patterns)]
 
 mod app;
+mod components;
 mod fuzzy_search;
 mod generated;
 mod models;
