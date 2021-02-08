@@ -9,6 +9,13 @@ pub fn view_tillgodo<M: 'static + Clone>(
     member: &Member,
     msg: M,
 ) -> Node<M> {
+    let tillgodo_money_class;
+    if account.balance < 0.into() {
+        tillgodo_money_class = class![C.tillgodo_money, C.tillgodo_money_angry];
+    } else {
+        tillgodo_money_class = class![C.tillgodo_money];
+    }
+
     div![
         class![C.tillgodo_entry],
         div![
@@ -21,7 +28,7 @@ pub fn view_tillgodo<M: 'static + Clone>(
             " ",
             member.last_name.clone(),
         ],
-        div![class![C.tillgodo_money], format!("{}:-", account.balance)],
+        div![tillgodo_money_class, format!("{}:-", account.balance)],
         simple_ev(Ev::Click, msg),
     ]
 }
