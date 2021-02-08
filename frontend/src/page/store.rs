@@ -31,6 +31,13 @@ impl StoreItem {
             StoreItem::Bundle(bundle) => &bundle.name,
         }
     }
+
+    pub fn in_stock(&self) -> bool {
+        match self {
+            StoreItem::Item(item) => item.stock > 0,
+            StoreItem::Bundle(bundle) => true,
+        }
+    }
 }
 
 impl FuzzySearch for StoreItem {
@@ -323,7 +330,14 @@ impl StorePage {
             *matches = m;
         }
         self.inventory_search
-            .sort_by(|(sa, _, ia), (sb, _, ib)| sb.cmp(sa).then(ia.get_name().cmp(&ib.get_name())));
+            .sort_by(|(score_a, _, item_a), (score_b, _, item_b)| {
+                // sort first by comparison score
+                score_b.cmp(score_a)
+                    // then by if it is in stock
+                    .then(item_b.in_stock().cmp(&item_a.in_stock()))
+                    // then alphabetically on name
+                    .then(item_a.get_name().cmp(&item_b.get_name()))
+            });
     }
 
     pub fn view(&self, global: &StateReady) -> Node<Msg> {
