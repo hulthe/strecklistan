@@ -302,6 +302,12 @@ body {
     padding-right: 0.5rem;
 }
 
+.inventory_search_field::placeholder {
+    color: #f0f0f0;
+    opacity: 1;
+    font-style: italic;
+}
+
 .inventory_item {
     width: 16rem;
     margin: 1rem;
