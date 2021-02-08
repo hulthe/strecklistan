@@ -272,7 +272,9 @@ body {
     grid-area: 1 / 1 / 2 / 3;
     border-bottom: dashed black 2px;
 }
+
 .tillgodo_name { grid-area: 2 / 1 / 3 / 3; }
+
 .tillgodo_money {
     grid-area: 1 / 3 / 3 / 4;
     justify-content: center;
@@ -280,6 +282,11 @@ body {
     flex-direction: column;
     background-color: #f0f0f0;
     border-radius: 2em;
+}
+
+.tillgodo_money_angry {
+    background-color: #ff2222;
+    color: #ffffff;
 }
 
 .inventory_search_field {
