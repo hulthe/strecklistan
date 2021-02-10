@@ -148,8 +148,6 @@ impl Checkout {
                     log!("Pushing bundle", bundle);
                     self.transaction.bundles.push(bundle);
                 }
-
-                self.recompute_new_transaction_total();
             }
             CheckoutMsg::AddBundle { bundle_id, amount } => {
                 let bundle = global
@@ -180,8 +178,6 @@ impl Checkout {
                     log!("Pushing bundle", bundle);
                     self.transaction.bundles.push(bundle);
                 }
-
-                self.recompute_new_transaction_total();
             }
             CheckoutMsg::SetBundleChange {
                 bundle_index,
@@ -196,6 +192,8 @@ impl Checkout {
                 bundle.change = change;
             }
         }
+
+        self.recompute_new_transaction_total();
     }
 
     fn recompute_new_transaction_total(&mut self) {
