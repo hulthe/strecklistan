@@ -12,7 +12,7 @@ use std::rc::Rc;
 use strecklistan_api::{
     book_account::{BookAccount, BookAccountId},
     inventory::{InventoryBundle, InventoryItemStock as InventoryItem},
-    izettle::ClientPollResult,
+    izettle::IZettlePayment,
     member::Member,
 };
 
@@ -175,34 +175,31 @@ impl StorePage {
                     }
                     .await;
                     match result {
-                        Ok(ClientPollResult::NotPaid) => {
+                        Ok(IZettlePayment::Pending) => {
                             timeout(1000u32, || ()).await;
                             Some(Msg::StoreMsg(StoreMsg::PollForPendingIZettleTransaction(
                                 reference,
                             )))
                         }
-                        Ok(ClientPollResult::Paid { transaction_id }) => Some(Msg::StoreMsg(
+                        Ok(IZettlePayment::Paid { transaction_id }) => Some(Msg::StoreMsg(
                             StoreMsg::CheckoutMsg(CheckoutMsg::PurchaseSent { transaction_id }),
                         )),
-                        Ok(ClientPollResult::NoTransaction(error)) => {
+                        Ok(IZettlePayment::NoTransaction) => {
                             Some(Msg::StoreMsg(StoreMsg::CancelIZettle {
                                 message_title: "Server Error".to_string(),
-                                message_body: Some(format!(
-                                    "No pending transaction: {}",
-                                    error.message
-                                )),
+                                message_body: Some("No pending transaction".to_string()),
                             }))
                         }
-                        Ok(ClientPollResult::Canceled) => {
+                        Ok(IZettlePayment::Canceled) => {
                             Some(Msg::StoreMsg(StoreMsg::CancelIZettle {
                                 message_title: "Payment canceled".to_string(),
                                 message_body: None,
                             }))
                         }
-                        Ok(ClientPollResult::Failed(error)) => {
+                        Ok(IZettlePayment::Failed { reason }) => {
                             Some(Msg::StoreMsg(StoreMsg::CancelIZettle {
                                 message_title: "Payment failed".to_string(),
-                                message_body: Some(error.message),
+                                message_body: Some(reason),
                             }))
                         }
                         Err(e) => {

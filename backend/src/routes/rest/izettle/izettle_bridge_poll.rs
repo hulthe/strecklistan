@@ -3,10 +3,6 @@ use diesel::{ExpressionMethods, QueryDsl, QueryResult};
 use rocket::{get, State};
 use rocket_contrib::json::Json;
 use serde_derive::Serialize;
-
-use strecklistan_api::models::izettle::IZettleErrorResponse;
-use BridgePollResult::*;
-
 use crate::database::DatabasePool;
 use crate::diesel::RunQueryDsl;
 use crate::models::izettle_transaction::IZettleTransactionPartial;
@@ -16,8 +12,8 @@ use crate::util::StatusJson;
 #[derive(Serialize)]
 #[serde(tag = "type")]
 pub enum BridgePollResult {
-    PaymentOk(IZettleTransactionPartial),
-    NoPendingTransaction(IZettleErrorResponse),
+    PendingPayment(IZettleTransactionPartial),
+    NoPendingTransaction,
 }
 
 #[get("/izettle/bridge/poll")]
@@ -36,12 +32,11 @@ pub async fn poll_for_transaction(
     };
 
     if let Err(Error::NotFound) = transaction_res {
-        return Ok(Json(NoPendingTransaction(IZettleErrorResponse {
-            message: "No pending transaction".to_string(),
-        })));
+        return Ok(Json(BridgePollResult::NoPendingTransaction));
     }
 
-    // TODO: Should sleep for up to 5s before responding
-
-    Ok(Json(PaymentOk(transaction_res?)))
+    // Potential optimization: This function could sleep for up
+    // to a few seconds if there is no pending transaction.
+    // This way the latency between the server and the bridge would be lower.
+    Ok(Json(BridgePollResult::PendingPayment(transaction_res?)))
 }

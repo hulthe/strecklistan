@@ -5,11 +5,9 @@ use diesel::{Connection, ExpressionMethods, JoinOnDsl, PgConnection, QueryDsl};
 use itertools::Itertools;
 use log::info;
 use rocket::{post, State};
+use rocket::http::Status;
 use rocket_contrib::json::Json;
 use serde_derive::{Deserialize, Serialize};
-
-use strecklistan_api::models::izettle::IZettleErrorResponse;
-
 use crate::database::DatabasePool;
 use crate::diesel::RunQueryDsl;
 use crate::models::izettle_transaction::{
@@ -21,13 +19,6 @@ use crate::models::transaction::relational::{
 };
 use crate::util::status_json::StatusJson as SJ;
 
-#[derive(Serialize)]
-#[serde(tag = "type")]
-pub enum BridgePayResult {
-    PaymentOk,
-    Acknowledge,
-    NoPendingTransaction(IZettleErrorResponse),
-}
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum PaymentResponse {
@@ -44,8 +35,7 @@ pub async fn complete_izettle_transaction(
     reference: i32,
     payment_response: Json<PaymentResponse>,
     db_pool: State<'_, DatabasePool>,
-) -> Result<Json<BridgePayResult>, SJ> {
-    use BridgePayResult::*;
+) -> Result<SJ, SJ> {
     let connection = db_pool.inner().get()?;
 
     connection.transaction::<_, SJ, _>(|| {
@@ -77,9 +67,10 @@ pub async fn complete_izettle_transaction(
         let (izettle_transaction_id, mut transaction_rows) = match grouped.into_iter().next() {
             Some(group) => group,
             None => {
-                return Ok(Json(NoPendingTransaction(IZettleErrorResponse {
-                    message: format!("No transaction with id {}", reference),
-                })));
+                return Err(SJ::new(
+                    Status::BadRequest,
+                    format!("No pending transaction with reference {}", reference),
+                ));
             }
         };
 
@@ -166,7 +157,7 @@ pub async fn complete_izettle_transaction(
                     &connection,
                 )?;
 
-                Ok(Json(PaymentOk))
+                Ok(SJ::new(Status::Ok, "Transcation completed"))
             }
             PaymentResponse::TransactionFailed { reason } => {
                 info!("IZettle failed due to: {}", reason);
@@ -179,7 +170,8 @@ pub async fn complete_izettle_transaction(
                     Some(reason.clone()),
                     &connection,
                 )?;
-                Ok(Json(Acknowledge))
+
+                Ok(SJ::new(Status::Ok, "Transcation cancelled with failure"))
             }
             PaymentResponse::TransactionCanceled => {
                 // Mark the transaction as cancelled
@@ -190,7 +182,8 @@ pub async fn complete_izettle_transaction(
                     None,
                     &connection,
                 )?;
-                Ok(Json(Acknowledge))
+
+                Ok(SJ::new(Status::Ok, "Transaction cancelled"))
             }
         }
     })
