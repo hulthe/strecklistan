@@ -11,8 +11,9 @@ pub mod util;
 use crate::database::create_pool;
 use crate::database::DatabasePool;
 use crate::models::user::JWTConfig;
-use crate::routes::{rest, session};
+use crate::routes::{rest, session, index};
 use crate::util::catchers::catchers;
+use rocket_contrib::serve::StaticFiles;
 use chrono::Duration;
 use diesel_migrations::{
     find_migrations_directory, mark_migrations_in_directory, run_pending_migrations, setup_database,
@@ -86,7 +87,7 @@ async fn main() {
         .manage(jwt_config)
         .register(catchers())
         .mount(
-            "/",
+            "/api/",
             routes![
                 session::no_user,
                 session::login,
@@ -110,12 +111,16 @@ async fn main() {
                 rest::izettle::izettle_transaction::begin_izettle_transaction,
                 rest::izettle::izettle_transaction_poll::poll_for_izettle,
             ],
-        );
+        )
+        .mount("/pkg", StaticFiles::from("www/pkg"))
+        .mount("/static", StaticFiles::from("www/static"))
+        .mount("/", routes![index::wildcard, index::root]);
+
     let config = rocket.config().await;
 
     // Mount dev-only routes
     if config.environment.is_dev() {
-        rocket = rocket.mount("/", routes![session::register]);
+        rocket = rocket.mount("/dev/", routes![session::register]);
     }
 
     rocket.launch().await.unwrap();
