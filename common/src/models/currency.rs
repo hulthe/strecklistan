@@ -8,7 +8,7 @@ use serde_derive::{Deserialize, Serialize};
 
 #[cfg_attr(feature = "serde_impl", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "debug", derive(Debug))]
-#[derive(Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Default)]
 pub struct Currency(i32);
 
 impl Currency {
