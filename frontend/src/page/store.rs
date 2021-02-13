@@ -1,18 +1,17 @@
 use crate::app::{Msg, StateReady};
 use crate::components::checkout::{Checkout, CheckoutMsg};
+use crate::components::izettle_pay::{IZettlePay, IZettlePayErr, IZettlePayMsg};
 use crate::fuzzy_search::FuzzySearch;
 use crate::generated::css_classes::C;
 use crate::notification_manager::{Notification, NotificationMessage};
 use crate::util::{compare_fuzzy, sort_tillgodolista_search};
 use crate::views::{view_inventory_bundle, view_inventory_item, view_tillgodo};
-use seed::app::cmds::timeout;
 use seed::prelude::*;
 use seed::*;
 use std::rc::Rc;
 use strecklistan_api::{
     book_account::{BookAccount, BookAccountId},
     inventory::{InventoryBundle, InventoryItemStock as InventoryItem},
-    izettle::IZettlePayment,
     member::Member,
 };
 
@@ -66,7 +65,7 @@ pub enum StoreMsg {
     DebitSelect(BookAccountId),
 
     DebitSelectIZettle,
-    PollForPendingIZettleTransaction(i32),
+    IZettleMsg(IZettlePayMsg),
     CancelIZettle {
         message_title: String,
         message_body: Option<String>,
@@ -88,6 +87,7 @@ pub struct StorePage {
     pub tillgodolista_search_string: String,
     pub tillgodolista_search: Vec<(i32, Vec<(usize, usize)>, Rc<BookAccount>, Rc<Member>)>,
 
+    pub izettle_pay: IZettlePay,
     pub izettle: bool,
 }
 
@@ -114,6 +114,7 @@ impl StorePage {
                 .map(|(acc, creditor)| (0, vec![], acc.clone(), creditor))
                 .collect(),
 
+            izettle_pay: IZettlePay::new(global),
             izettle: false,
         };
         p.rebuild_store_list(global);
@@ -126,6 +127,7 @@ impl StorePage {
         global: &mut StateReady,
         orders: &mut impl Orders<Msg>,
     ) {
+        let mut orders_local = orders.proxy(Msg::StoreMsg);
         match msg {
             StoreMsg::SearchDebit(input) => {
                 sort_tillgodolista_search(&input, &mut self.tillgodolista_search);
@@ -170,51 +172,40 @@ impl StorePage {
                 },
                 _ => {}
             },
-            StoreMsg::PollForPendingIZettleTransaction(reference) => {
-                orders.perform_cmd(async move {
-                    let result = async {
-                        Request::new(&format!("/api/izettle/client/poll/{}", reference))
-                            .method(Method::Get)
-                            .fetch()
-                            .await?
-                            .json()
-                            .await
+            StoreMsg::IZettleMsg(msg) => {
+                let reaction = match &msg {
+                    &IZettlePayMsg::PaymentCompleted { transaction_id } => {
+                        Some(StoreMsg::CheckoutMsg(CheckoutMsg::PurchaseSent {
+                            transaction_id,
+                        }))
                     }
-                    .await;
-                    match result {
-                        Ok(IZettlePayment::Pending) => {
-                            timeout(1000u32, || ()).await;
-                            Some(Msg::StoreMsg(StoreMsg::PollForPendingIZettleTransaction(
-                                reference,
-                            )))
-                        }
-                        Ok(IZettlePayment::Paid { transaction_id }) => Some(Msg::StoreMsg(
-                            StoreMsg::CheckoutMsg(CheckoutMsg::PurchaseSent { transaction_id }),
-                        )),
-                        Ok(IZettlePayment::NoTransaction) => {
-                            Some(Msg::StoreMsg(StoreMsg::CancelIZettle {
-                                message_title: "Server Error".to_string(),
-                                message_body: Some("No pending transaction".to_string()),
-                            }))
-                        }
-                        Ok(IZettlePayment::Canceled) => {
-                            Some(Msg::StoreMsg(StoreMsg::CancelIZettle {
-                                message_title: "Payment canceled".to_string(),
-                                message_body: None,
-                            }))
-                        }
-                        Ok(IZettlePayment::Failed { reason }) => {
-                            Some(Msg::StoreMsg(StoreMsg::CancelIZettle {
-                                message_title: "Payment failed".to_string(),
-                                message_body: Some(reason),
-                            }))
-                        }
-                        Err(e) => {
-                            error!("Failed to post purchase", e);
-                            None
-                        }
-                    }
-                });
+                    IZettlePayMsg::PaymentCancelled => Some(StoreMsg::CancelIZettle {
+                        message_title: "Payment cancelled".to_string(),
+                        message_body: None,
+                    }),
+                    IZettlePayMsg::PaymentError {
+                        error: IZettlePayErr::PaymentFailed { reason },
+                        ..
+                    } => Some(StoreMsg::CancelIZettle {
+                        message_title: "Payment failed".to_string(),
+                        message_body: Some(reason.clone()),
+                    }),
+                    IZettlePayMsg::PaymentError {
+                        error: IZettlePayErr::NoTransaction,
+                        ..
+                    } => Some(StoreMsg::CancelIZettle {
+                        message_title: "Server error".to_string(),
+                        message_body: Some("No pending transaction".to_string()),
+                    }),
+                    IZettlePayMsg::PollPendingPayment(_) => None,
+                };
+
+                if let Some(msg) = reaction {
+                    orders_local.send_msg(msg);
+                }
+
+                self.izettle_pay
+                    .update(msg, global, orders_local.proxy(StoreMsg::IZettleMsg));
             }
 
             StoreMsg::DebitSelectIZettle => {
@@ -251,27 +242,8 @@ impl StorePage {
                         self.checkout.remove_cleared_items();
                         self.checkout.confirm_button_message = Some("Väntar på betalning");
                         let transaction = self.checkout.transaction().clone();
-                        orders.perform_cmd(async move {
-                            let result = async {
-                                Request::new("/api/izettle/client/transaction")
-                                    .method(Method::Post)
-                                    .json(&transaction)?
-                                    .fetch()
-                                    .await?
-                                    .json()
-                                    .await
-                            }
-                            .await;
-                            match result {
-                                Ok(reference) => Some(Msg::StoreMsg(
-                                    StoreMsg::PollForPendingIZettleTransaction(reference),
-                                )),
-                                Err(e) => {
-                                    error!("Failed to post purchase", e);
-                                    None
-                                }
-                            }
-                        });
+                        self.izettle_pay
+                            .pay(transaction, orders_local.proxy(StoreMsg::IZettleMsg));
                         None // don't forward the message
                     }
                     // show a notification & reload the app when a purchase completes
