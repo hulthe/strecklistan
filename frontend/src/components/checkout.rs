@@ -1,6 +1,7 @@
 use crate::app::StateReady;
 use crate::components::parsed_input::{ParsedInput, ParsedInputMsg};
 use crate::generated::css_classes::C;
+use crate::strings;
 use seed::prelude::*;
 use seed::*;
 use std::collections::HashMap;
@@ -46,14 +47,14 @@ impl Checkout {
     pub fn new(global: &StateReady) -> Self {
         Checkout {
             transaction: NewTransaction {
-                description: Some("Försäljning".to_string()),
+                description: Some(strings::TRANSACTION_SALE.to_string()),
                 bundles: vec![],
                 amount: 0.into(),
                 debited_account: global.master_accounts.bank_account_id,
                 credited_account: global.master_accounts.sales_account_id,
             },
             transaction_total_input: ParsedInput::new("0")
-                .with_error_message("ogiltig summa")
+                .with_error_message(strings::INVALID_MONEY_MESSAGE_SHORT)
                 .with_input_kind("text"),
             override_transaction_total: false,
             confirm_button_message: None,
@@ -97,7 +98,7 @@ impl Checkout {
                 log!("Posted transaction ID: ", transaction_id);
                 self.transaction.amount = 0.into();
                 self.transaction.bundles = vec![];
-                self.transaction.description = Some("Försäljning".into());
+                self.transaction.description = Some(strings::TRANSACTION_SALE.into());
             }
             CheckoutMsg::TotalInputMsg(msg) => {
                 match &msg {
@@ -314,7 +315,7 @@ impl Checkout {
                 ]
             },
             if let Some(message) = &self.confirm_button_message {
-                div![class![C.wide_button_message], message,]
+                div![class![C.wide_button_message], message]
             } else {
                 empty![]
             },

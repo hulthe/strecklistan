@@ -4,6 +4,7 @@ use crate::components::izettle_pay::{IZettlePay, IZettlePayErr, IZettlePayMsg};
 use crate::fuzzy_search::FuzzySearch;
 use crate::generated::css_classes::C;
 use crate::notification_manager::{Notification, NotificationMessage};
+use crate::strings;
 use crate::util::{compare_fuzzy, sort_tillgodolista_search};
 use crate::views::{view_inventory_bundle, view_inventory_item, view_tillgodo};
 use seed::prelude::*;
@@ -180,23 +181,27 @@ impl StorePage {
                         }))
                     }
                     IZettlePayMsg::PaymentCancelled => Some(StoreMsg::CancelIZettle {
-                        message_title: "Payment cancelled".to_string(),
+                        message_title: strings::PAYMENT_CANCELLED.to_string(),
                         message_body: None,
                     }),
-                    IZettlePayMsg::PaymentError {
-                        error: IZettlePayErr::PaymentFailed { reason },
-                        ..
-                    } => Some(StoreMsg::CancelIZettle {
-                        message_title: "Payment failed".to_string(),
-                        message_body: Some(reason.clone()),
-                    }),
-                    IZettlePayMsg::PaymentError {
-                        error: IZettlePayErr::NoTransaction,
-                        ..
-                    } => Some(StoreMsg::CancelIZettle {
-                        message_title: "Server error".to_string(),
-                        message_body: Some("No pending transaction".to_string()),
-                    }),
+                    IZettlePayMsg::Error(IZettlePayErr::PaymentFailed { reason, .. }) => {
+                        Some(StoreMsg::CancelIZettle {
+                            message_title: strings::PAYMENT_FAILED.to_string(),
+                            message_body: Some(reason.clone()),
+                        })
+                    }
+                    IZettlePayMsg::Error(IZettlePayErr::NoTransaction { .. }) => {
+                        Some(StoreMsg::CancelIZettle {
+                            message_title: strings::SERVER_ERROR.to_string(),
+                            message_body: Some(strings::NO_PENDING_TRANSACTION.to_string()),
+                        })
+                    }
+                    IZettlePayMsg::Error(IZettlePayErr::NetworkError { reason }) => {
+                        Some(StoreMsg::CancelIZettle {
+                            message_title: strings::SERVER_ERROR.to_string(),
+                            message_body: Some(reason.clone()),
+                        })
+                    }
                     IZettlePayMsg::PollPendingPayment(_) => None,
                 };
 
@@ -240,7 +245,7 @@ impl StorePage {
                     CheckoutMsg::ConfirmPurchase if self.izettle => {
                         global.request_in_progress = true;
                         self.checkout.remove_cleared_items();
-                        self.checkout.confirm_button_message = Some("Väntar på betalning");
+                        self.checkout.confirm_button_message = Some(strings::WAITING_FOR_PAYMENT);
                         let transaction = self.checkout.transaction().clone();
                         self.izettle_pay
                             .pay(transaction, orders_local.proxy(StoreMsg::IZettleMsg));
@@ -252,7 +257,7 @@ impl StorePage {
                             NotificationMessage::ShowNotification {
                                 duration_ms: 5000,
                                 notification: Notification {
-                                    title: "Purchase complete".to_string(),
+                                    title: strings::PURCHASE_COMPLETE.to_string(),
                                     body: Some(format!(
                                         "Total: {}:-",
                                         self.checkout.transaction().amount
@@ -399,21 +404,21 @@ impl StorePage {
                             empty![]
                         },
                         button![
-                            apply_selection_class_on(SelectedDebit::OtherEPay),
+                            apply_selection_class_on(SelectedDebit::IZettleEPay),
                             class![C.select_debit_button, C.border_on_focus, C.rounded_bl_lg],
+                            simple_ev(Ev::Click, Msg::StoreMsg(StoreMsg::DebitSelectIZettle)),
+                            strings::IZETTLE,
+                        ],
+                        button![
+                            apply_selection_class_on(SelectedDebit::OtherEPay),
+                            class![C.select_debit_button, C.border_on_focus, C.rounded_br_lg],
                             simple_ev(
                                 Ev::Click,
                                 Msg::StoreMsg(StoreMsg::DebitSelect(
                                     global.master_accounts.bank_account_id
                                 )),
                             ),
-                            "Swish",
-                        ],
-                        button![
-                            apply_selection_class_on(SelectedDebit::IZettleEPay),
-                            class![C.select_debit_button, C.border_on_focus, C.rounded_br_lg],
-                            simple_ev(Ev::Click, Msg::StoreMsg(StoreMsg::DebitSelectIZettle)),
-                            "iZettle",
+                            strings::OTHER_EPAY,
                         ],
                     ]
                 ],
