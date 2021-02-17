@@ -3,10 +3,10 @@ use crate::models::inventory::{InventoryBundle as InventoryBundleRel, InventoryB
 use crate::util::status_json::StatusJson as SJ;
 use diesel::prelude::*;
 use itertools::Itertools;
-use strecklistan_api::inventory::InventoryBundle as InventoryBundleObj;
-use strecklistan_api::inventory::{InventoryItemStock, InventoryItemTag};
 use rocket::{get, State};
 use rocket_contrib::json::Json;
+use strecklistan_api::inventory::InventoryBundle as InventoryBundleObj;
+use strecklistan_api::inventory::{InventoryItemStock, InventoryItemTag};
 
 #[get("/inventory/items")]
 pub fn get_inventory(db_pool: State<DatabasePool>) -> Result<Json<Vec<InventoryItemStock>>, SJ> {

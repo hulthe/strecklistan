@@ -1,10 +1,10 @@
 use crate::database::DatabasePool;
 use crate::util::status_json::StatusJson as SJ;
 use diesel::prelude::*;
-use strecklistan_api::book_account::{BookAccountId, BookAccountType};
-use strecklistan_api::member::{Member, MemberId, NewMember};
 use rocket::{get, post, State};
 use rocket_contrib::json::Json;
+use strecklistan_api::book_account::{BookAccountId, BookAccountType};
+use strecklistan_api::member::{Member, MemberId, NewMember};
 
 #[get("/members")]
 pub fn get_members(db_pool: State<DatabasePool>) -> Result<Json<Vec<Member>>, SJ> {

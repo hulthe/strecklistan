@@ -80,6 +80,7 @@ lazy_static! {
 pub enum CurrencyParseError {
     FracGreaterThan100,
     MatchFailed,
+    IntegerOverflow,
 }
 
 impl FromStr for Currency {
@@ -90,11 +91,21 @@ impl FromStr for Currency {
 
         if let Some(captures) = CURRENCY_RE.captures(s) {
             let neg = captures.name("neg").is_some();
-            let whole: i32 = captures.name("whole").unwrap().as_str().parse().unwrap();
+            let whole: i32 = captures
+                .name("whole")
+                .expect("regex group did not exist")
+                .as_str()
+                .parse()
+                // Integer overflow should be the only possible error here
+                .map_err(|_| CurrencyParseError::IntegerOverflow)?;
 
             let frac_s = captures.name("frac").map(|f| f.as_str()).unwrap_or("00");
 
-            let mut frac: i32 = frac_s.parse().unwrap_or(0);
+            let mut frac: i32 = frac_s
+                .parse()
+                .map_err(|_| CurrencyParseError::IntegerOverflow)?;
+
+            // If the fraction was only one digit it must have been a 10th, not a 100th
             if frac_s.len() == 1 {
                 frac *= 10;
             }
@@ -103,11 +114,13 @@ impl FromStr for Currency {
                 return Err(CurrencyParseError::FracGreaterThan100);
             }
 
-            if neg {
-                Ok(Currency(-(whole * 100 + frac)))
-            } else {
-                Ok(Currency(whole * 100 + frac))
-            }
+            let num = whole
+                .checked_mul(100)
+                .and_then(|num| num.checked_add(frac))
+                .and_then(|num| if neg { num.checked_mul(-1) } else { Some(num) })
+                .ok_or(CurrencyParseError::IntegerOverflow)?;
+
+            Ok(Currency(num))
         } else {
             Err(CurrencyParseError::MatchFailed)
         }
@@ -132,11 +145,26 @@ mod test {
 
     #[test]
     fn test_currency_parsing() {
-        assert_eq!("123.123".parse::<Currency>(), Err(CurrencyParseError::FracGreaterThan100));
-        assert_eq!("123.-3".parse::<Currency>(), Err(CurrencyParseError::MatchFailed));
-        assert_eq!("-123.-23".parse::<Currency>(), Err(CurrencyParseError::MatchFailed));
-        assert_eq!("123.-123".parse::<Currency>(), Err(CurrencyParseError::MatchFailed));
-        assert_eq!("0.0.0".parse::<Currency>(), Err(CurrencyParseError::MatchFailed));
+        assert_eq!(
+            "123.123".parse::<Currency>(),
+            Err(CurrencyParseError::FracGreaterThan100)
+        );
+        assert_eq!(
+            "123.-3".parse::<Currency>(),
+            Err(CurrencyParseError::MatchFailed)
+        );
+        assert_eq!(
+            "-123.-23".parse::<Currency>(),
+            Err(CurrencyParseError::MatchFailed)
+        );
+        assert_eq!(
+            "123.-123".parse::<Currency>(),
+            Err(CurrencyParseError::MatchFailed)
+        );
+        assert_eq!(
+            "0.0.0".parse::<Currency>(),
+            Err(CurrencyParseError::MatchFailed)
+        );
 
         for i in (-9999..9999).step_by(9) {
             let f = format!("{}", Currency(i));

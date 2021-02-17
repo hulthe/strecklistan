@@ -1,12 +1,17 @@
+use std::collections::HashMap;
+
+use diesel::prelude::*;
+use rocket::{get, post, State};
+use rocket_contrib::json::Json;
+
+use strecklistan_api::book_account::{
+    BookAccount, BookAccountType, MasterAccounts, NewBookAccount,
+};
+
 use crate::database::DatabasePool;
 use crate::models::book_account as relational;
 use crate::models::transaction::relational::Transaction;
 use crate::util::status_json::StatusJson as SJ;
-use diesel::prelude::*;
-use strecklistan_api::book_account::{BookAccount, BookAccountType, MasterAccounts, NewBookAccount};
-use rocket::{get, post, State};
-use rocket_contrib::json::Json;
-use std::collections::HashMap;
 
 #[get("/book_accounts")]
 pub fn get_accounts(db_pool: State<DatabasePool>) -> Result<Json<Vec<BookAccount>>, SJ> {

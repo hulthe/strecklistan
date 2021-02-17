@@ -1,11 +1,11 @@
 [package]
 name = "strecklistan_backend"
-version = "0.7.0"
+version = "0.8.0"
 authors = ["Joakim Hulthe <joakim@hulthe.net>"]
 license = "MPL-2.0"
 description = "The backend of strecklistan: a simple web-shop"
 repository = "https://github.com/hulthe/strecklistan"
-readme = "./README.rst"
+readme = "../README.rst"
 edition = "2018"
 workspace = ".."
 
@@ -29,6 +29,10 @@ hex = "0.3.2"
 frank_jwt = "3.1"
 itertools = "0.8.0"
 log = "0.4.8"
+futures = "0.3"
+uuid = { version = "0.8", features = ["v4", "serde"] }
+tokio = { version = "0.2", features = ["time"] }
+
 
 [dependencies.strecklistan_api]
 path = "../common"

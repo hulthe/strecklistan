@@ -1,5 +1,9 @@
 use crate::app::{Msg, StateReady};
+use crate::components::izettle_pay::{IZettlePay, IZettlePayErr, IZettlePayMsg};
+use crate::components::parsed_input::{ParsedInput, ParsedInputMsg};
 use crate::generated::css_classes::C;
+use crate::notification_manager::{Notification, NotificationMessage};
+use crate::strings;
 use crate::util::sort_tillgodolista_search;
 use crate::views::view_tillgodo;
 use seed::prelude::*;
@@ -12,15 +16,38 @@ use strecklistan_api::{
     transaction::{NewTransaction, TransactionId},
 };
 
+#[derive(Clone)]
+pub struct DepositionPage {
+    debit: DebitOption,
+    izettle_pay: IZettlePay,
+    credit_account: Option<BookAccountId>,
+    search_string: String,
+    accs_search: Vec<(i32, Vec<(usize, usize)>, Rc<BookAccount>, Rc<Member>)>,
+    amount_input: ParsedInput<Currency>,
+    new_member: Option<(String, String, String, Option<String>)>,
+}
+
 #[derive(Clone, Debug)]
 pub enum DepositionMsg {
     SearchDebit(String),
+
     CreditKeyDown(web_sys::KeyboardEvent),
     CreditSelect(BookAccountId),
-    SetUseCash(bool),
-    SetAmount(String),
+    SelectDebit(DebitOption),
+
+    AmountInputMsg(ParsedInputMsg),
+
     Deposit,
-    DepositSent(TransactionId),
+    DepositSent {
+        transaction_id: TransactionId,
+    },
+    DepositFailed {
+        message_title: String,
+        message_body: Option<String>,
+    },
+
+    IZettlePay(IZettlePayMsg),
+
     ShowNewMemberMenu,
     NewMember(NewMemberMsg),
     NewMemberCreated((MemberId, BookAccountId)),
@@ -36,20 +63,19 @@ pub enum NewMemberMsg {
     HideMenu,
 }
 
-#[derive(Clone)]
-pub struct DepositionPage {
-    use_cash: bool,
-    credit_account: Option<BookAccountId>,
-    search_string: String,
-    accs_search: Vec<(i32, Vec<(usize, usize)>, Rc<BookAccount>, Rc<Member>)>,
-    amount: Currency,
-    new_member: Option<(String, String, String, Option<String>)>,
+#[derive(Clone, Debug)]
+pub enum DebitOption {
+    IZettleEPay,
+    OtherEPay,
+    #[allow(dead_code)]
+    Cash,
 }
 
 impl DepositionPage {
     pub fn new(global: &StateReady) -> Self {
         DepositionPage {
-            use_cash: false,
+            debit: DebitOption::IZettleEPay,
+            izettle_pay: IZettlePay::new(global),
             credit_account: None,
             search_string: String::new(),
             accs_search: global
@@ -65,7 +91,8 @@ impl DepositionPage {
                 })
                 .map(|(acc, creditor)| (0, vec![], acc.clone(), creditor))
                 .collect(),
-            amount: 0.into(),
+            amount_input: ParsedInput::new("0")
+                .with_error_message(strings::INVALID_MONEY_MESSAGE_LONG),
             new_member: None,
         }
     }
@@ -94,59 +121,143 @@ impl DepositionPage {
                 self.search_string = String::new();
                 self.credit_account = Some(acc_id);
             }
-            DepositionMsg::SetUseCash(use_cash) => {
-                self.use_cash = use_cash;
+            DepositionMsg::SelectDebit(debit) => {
+                self.debit = debit;
             }
-            DepositionMsg::SetAmount(input) => {
-                self.amount = input.parse().unwrap_or(0.into());
+            DepositionMsg::AmountInputMsg(msg) => {
+                self.amount_input.update(msg);
             }
             DepositionMsg::Deposit => {
-                if let Some(credit_acc) = self.credit_account {
+                if let Some((credit_acc, &amount)) =
+                    self.credit_account.zip(self.amount_input.get_value())
+                {
                     let transaction = NewTransaction {
-                        description: Some("Insättning".into()),
-                        amount: self.amount,
+                        description: Some(strings::TRANSACTION_DEPOSIT.to_string()),
+                        amount,
                         credited_account: credit_acc,
-                        debited_account: if self.use_cash {
-                            global.master_accounts.cash_account_id
-                        } else {
-                            global.master_accounts.bank_account_id
+                        debited_account: match self.debit {
+                            DebitOption::Cash => global.master_accounts.cash_account_id,
+                            DebitOption::IZettleEPay | DebitOption::OtherEPay => {
+                                global.master_accounts.bank_account_id
+                            }
                         },
                         bundles: vec![],
                     };
 
                     global.request_in_progress = true;
-                    orders_local.perform_cmd(async move {
-                        let result = async {
-                            Request::new("/api/transaction")
-                                .method(Method::Post)
-                                .json(&transaction)?
-                                .fetch()
-                                .await?
-                                .json()
-                                .await
-                        }
-                        .await;
-                        match result {
-                            Ok(id) => Some(DepositionMsg::DepositSent(id)),
-                            Err(e) => {
-                                error!("Failed to post deposit", e);
-                                None
+
+                    if let DebitOption::IZettleEPay = self.debit {
+                        self.izettle_pay
+                            .pay(transaction, orders_local.proxy(DepositionMsg::IZettlePay));
+                    } else {
+                        orders_local.perform_cmd(async move {
+                            let result = async {
+                                Request::new("/api/transaction")
+                                    .method(Method::Post)
+                                    .json(&transaction)?
+                                    .fetch()
+                                    .await?
+                                    .json()
+                                    .await
                             }
-                        }
-                    });
+                            .await;
+                            match result {
+                                Ok(transaction_id) => {
+                                    Some(DepositionMsg::DepositSent { transaction_id })
+                                }
+                                Err(e) => {
+                                    error!("Failed to post transaction", e);
+                                    Some(DepositionMsg::DepositFailed {
+                                        message_title: strings::SERVER_ERROR.to_string(),
+                                        message_body: Some(
+                                            strings::POSTING_TRANSACTION_FAILED.to_string(),
+                                        ),
+                                    })
+                                }
+                            }
+                        });
+                    }
                 }
             }
 
-            DepositionMsg::DepositSent(id) => {
+            DepositionMsg::DepositSent { .. } => {
+                orders.send_msg(Msg::NotificationMessage(
+                    NotificationMessage::ShowNotification {
+                        duration_ms: 5000,
+                        notification: Notification {
+                            title: strings::DEPOSIT_COMPLETE.to_string(),
+                            body: self
+                                .amount_input
+                                .get_value()
+                                .map(|value| format!("{}:-", value)),
+                        },
+                    },
+                ));
+
                 global.request_in_progress = false;
-                log!("ID: ", id);
-                self.amount = 0.into();
+                self.amount_input.set_value(0.into());
                 self.credit_account = None;
                 orders.send_msg(Msg::ReloadData);
             }
+
+            DepositionMsg::DepositFailed {
+                message_title,
+                message_body,
+            } => {
+                global.request_in_progress = false;
+                orders.send_msg(Msg::NotificationMessage(
+                    NotificationMessage::ShowNotification {
+                        duration_ms: 10000,
+                        notification: Notification {
+                            title: message_title,
+                            body: message_body,
+                        },
+                    },
+                ));
+            }
+
+            DepositionMsg::IZettlePay(msg) => {
+                let reaction = match &msg {
+                    &IZettlePayMsg::PaymentCompleted { transaction_id } => {
+                        Some(DepositionMsg::DepositSent { transaction_id })
+                    }
+                    IZettlePayMsg::PaymentCancelled => Some(DepositionMsg::DepositFailed {
+                        message_title: strings::PAYMENT_CANCELLED.to_string(),
+                        message_body: None,
+                    }),
+                    IZettlePayMsg::Error(IZettlePayErr::PaymentFailed { reason, .. }) => {
+                        Some(DepositionMsg::DepositFailed {
+                            message_title: strings::PAYMENT_FAILED.to_string(),
+                            message_body: Some(reason.clone()),
+                        })
+                    }
+                    IZettlePayMsg::Error(IZettlePayErr::NoTransaction { .. }) => {
+                        Some(DepositionMsg::DepositFailed {
+                            message_title: strings::SERVER_ERROR.to_string(),
+                            message_body: Some(strings::NO_PENDING_TRANSACTION.to_string()),
+                        })
+                    }
+                    IZettlePayMsg::Error(IZettlePayErr::NetworkError { reason }) => {
+                        Some(DepositionMsg::DepositFailed {
+                            message_title: strings::SERVER_ERROR.to_string(),
+                            message_body: Some(reason.clone()),
+                        })
+                    }
+                    IZettlePayMsg::PollPendingPayment(_) => None,
+                };
+
+                if let Some(msg) = reaction {
+                    orders_local.send_msg(msg);
+                }
+
+                self.izettle_pay
+                    .update(msg, global, orders_local.proxy(DepositionMsg::IZettlePay));
+            }
+
             DepositionMsg::ShowNewMemberMenu => {
                 self.new_member = Some((String::new(), String::new(), String::new(), None));
             }
+
             DepositionMsg::NewMember(msg) => {
                 if let Some((first_name, last_name, nickname, acc_name)) = &mut self.new_member {
                     match msg {
@@ -219,29 +330,29 @@ impl DepositionPage {
                 button![
                     class![C.border_on_focus, C.wide_button, C.my_2],
                     simple_ev(Ev::Click, NewMemberMsg::HideMenu),
-                    "Avbryt",
+                    strings::ABORT,
                 ],
                 input![
                     class![C.border_on_focus, C.mb_2],
-                    attrs! {At::Placeholder => "Förnamn"},
+                    attrs! {At::Placeholder => strings::FIRST_NAME},
                     attrs! {At::Value => first_name},
                     input_ev(Ev::Input, NewMemberMsg::FirstNameInput),
                 ],
                 input![
                     class![C.border_on_focus, C.mb_2],
-                    attrs! {At::Placeholder => "Efternamn"},
+                    attrs! {At::Placeholder => strings::LAST_NAME},
                     attrs! {At::Value => last_name},
                     input_ev(Ev::Input, NewMemberMsg::LastNameInput),
                 ],
                 input![
                     class![C.border_on_focus, C.mb_2],
-                    attrs! {At::Placeholder => "Smeknamn"},
+                    attrs! {At::Placeholder => strings::NICKNAME},
                     attrs! {At::Value => nickname},
                     input_ev(Ev::Input, NewMemberMsg::NicknameInput),
                 ],
                 input![
                     class![C.border_on_focus, C.mb_2],
-                    attrs! {At::Placeholder => "Kontonamn"},
+                    attrs! {At::Placeholder => strings::ACCOUNT_NAME},
                     attrs! {At::Value => match acc_name {
                         Some(name) => name.to_string(),
                         None => generate_tillgodo_acc_name(first_name, nickname),
@@ -256,7 +367,7 @@ impl DepositionPage {
                         attrs! {}
                     },
                     simple_ev(Ev::Click, NewMemberMsg::Create),
-                    "Bekräfta",
+                    strings::CONFIRM,
                 ],
             ]
             .map_msg(|msg| DepositionMsg::NewMember(msg))
@@ -287,7 +398,7 @@ impl DepositionPage {
                                     .map(|acc| acc.name.as_str())
                                     .unwrap_or("[MISSING]")
                             } else {
-                                "Välj Tillgodokonto"
+                                strings::CHOOSE_TILLGODO_ACC
                             };
                             attrs! {At::Placeholder => s}
                         },
@@ -316,31 +427,41 @@ impl DepositionPage {
                     div![
                         class![C.flex, C.flex_row],
                         button![
-                            if !self.use_cash {
+                            if let DebitOption::IZettleEPay = self.debit {
                                 class![C.debit_selected]
                             } else {
                                 class![]
                             },
                             class![C.select_debit_button, C.border_on_focus, C.rounded_l_lg],
-                            simple_ev(Ev::Click, DepositionMsg::SetUseCash(false)),
-                            "Swish",
+                            simple_ev(
+                                Ev::Click,
+                                DepositionMsg::SelectDebit(DebitOption::IZettleEPay)
+                            ),
+                            strings::IZETTLE,
                         ],
                         button![
-                            if self.use_cash {
+                            if let DebitOption::OtherEPay = self.debit {
                                 class![C.debit_selected]
                             } else {
                                 class![]
                             },
                             class![C.select_debit_button, C.border_on_focus, C.rounded_r_lg],
-                            simple_ev(Ev::Click, DepositionMsg::SetUseCash(true),),
-                            "Kontant",
+                            simple_ev(
+                                Ev::Click,
+                                DepositionMsg::SelectDebit(DebitOption::OtherEPay),
+                            ),
+                            strings::OTHER_EPAY,
                         ],
                     ],
-                    input![
-                        class![C.rounded, C.px_2, C.my_2, C.border_on_focus, C.bg_gray_300,],
-                        attrs! {At::Value => self.amount.to_string()},
-                        input_ev(Ev::Input, DepositionMsg::SetAmount),
-                    ],
+                    self.amount_input
+                        .view(class![
+                            C.rounded,
+                            C.px_2,
+                            C.my_2,
+                            C.border_on_focus,
+                            C.bg_gray_300,
+                        ])
+                        .map_msg(DepositionMsg::AmountInputMsg),
                     if global.request_in_progress {
                         button![
                             class![C.wide_button, C.border_on_focus],
@@ -351,19 +472,33 @@ impl DepositionPage {
                                 div![],
                                 div![],
                             ],
-                            "Sätt in",
+                            strings::DEPOSIT,
                         ]
                     } else {
                         button![
                             class![C.wide_button, C.border_on_focus],
-                            if self.credit_account.is_none() || self.amount == 0.into() {
-                                attrs! {At::Disabled => true}
-                            } else {
-                                attrs! {}
+                            {
+                                let disabled = match self.amount_input.get_value().copied() {
+                                    None => true,
+                                    Some(x) if x == 0.into() => true,
+                                    Some(_) if self.credit_account.is_none() => true,
+                                    Some(_) => false,
+                                };
+
+                                if disabled {
+                                    attrs! { At::Disabled => true }
+                                } else {
+                                    attrs! {}
+                                }
                             },
                             simple_ev(Ev::Click, DepositionMsg::Deposit),
-                            "Sätt in",
+                            strings::DEPOSIT,
                         ]
+                    },
+                    if let Some(_) = &self.izettle_pay.pending() {
+                        div![class![C.wide_button_message], strings::WAITING_FOR_PAYMENT]
+                    } else {
+                        empty![]
                     },
                 ],
             ]
@@ -374,7 +509,8 @@ impl DepositionPage {
 
 fn generate_tillgodo_acc_name(first_name: &str, nickname: &str) -> String {
     format!(
-        "Tillgodo/{}",
+        "{}/{}",
+        strings::TRANSACTION_TILLGODO,
         match nickname {
             "" => first_name,
             nn => nn,

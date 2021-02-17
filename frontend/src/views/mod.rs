@@ -1,8 +1,7 @@
 pub mod filter_menu;
 pub mod inventory;
 pub mod tillgodolista;
-pub mod transaction;
 
+pub use filter_menu::*;
 pub use inventory::*;
 pub use tillgodolista::*;
-pub use transaction::*;

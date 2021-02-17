@@ -1,5 +1,5 @@
-use strecklistan_api::book_account::{BookAccount as BookAccountCommon, BookAccountType};
 use serde_derive::{Deserialize, Serialize};
+use strecklistan_api::book_account::{BookAccount as BookAccountCommon, BookAccountType};
 
 #[derive(Queryable, Serialize, Deserialize, Debug, PartialEq)]
 pub struct BookAccount {

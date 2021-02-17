@@ -1,21 +1,19 @@
 use crate::app::{Msg, StateReady};
+use crate::components::checkout::{Checkout, CheckoutMsg};
+use crate::components::izettle_pay::{IZettlePay, IZettlePayErr, IZettlePayMsg};
 use crate::fuzzy_search::FuzzySearch;
 use crate::generated::css_classes::C;
+use crate::notification_manager::{Notification, NotificationMessage};
+use crate::strings;
 use crate::util::{compare_fuzzy, sort_tillgodolista_search};
-use crate::views::{
-    view_inventory_bundle, view_inventory_item, view_new_transaction, view_tillgodo,
-};
+use crate::views::{view_inventory_bundle, view_inventory_item, view_tillgodo};
 use seed::prelude::*;
 use seed::*;
-use std::collections::HashMap;
 use std::rc::Rc;
 use strecklistan_api::{
     book_account::{BookAccount, BookAccountId},
-    inventory::{
-        InventoryBundle, InventoryBundleId, InventoryItemId, InventoryItemStock as InventoryItem,
-    },
+    inventory::{InventoryBundle, InventoryItemStock as InventoryItem},
     member::Member,
-    transaction::{NewTransaction, TransactionBundle, TransactionId},
 };
 
 #[derive(Clone, Debug)]
@@ -35,7 +33,7 @@ impl StoreItem {
     pub fn in_stock(&self) -> bool {
         match self {
             StoreItem::Item(item) => item.stock > 0,
-            StoreItem::Bundle(bundle) => true,
+            StoreItem::Bundle(_) => true,
         }
     }
 }
@@ -67,34 +65,37 @@ pub enum StoreMsg {
     DebitKeyDown(web_sys::KeyboardEvent),
     DebitSelect(BookAccountId),
 
+    DebitSelectIZettle,
+    IZettleMsg(IZettlePayMsg),
+    CancelIZettle {
+        message_title: String,
+        message_body: Option<String>,
+    },
+
     SearchInput(String),
     SearchKeyDown(web_sys::KeyboardEvent),
-    ConfirmPurchase,
-    PurchaseSent(TransactionId),
 
-    NewTransactionTotalInput(String),
-    AddItemToNewTransaction(InventoryItemId, i32),
-    AddBundleToNewTransaction(InventoryBundleId, i32),
-    SetNewTransactionBundleChange { bundle_index: usize, change: i32 },
+    CheckoutMsg(CheckoutMsg),
 }
 
 #[derive(Clone)]
 pub struct StorePage {
-    pub transaction: NewTransaction,
-
-    pub override_transaction_total: bool,
+    pub checkout: Checkout,
 
     pub inventory_search_string: String,
     pub inventory_search: Vec<(i32, Vec<(usize, usize)>, StoreItem)>,
 
     pub tillgodolista_search_string: String,
     pub tillgodolista_search: Vec<(i32, Vec<(usize, usize)>, Rc<BookAccount>, Rc<Member>)>,
+
+    pub izettle_pay: IZettlePay,
+    pub izettle: bool,
 }
 
 impl StorePage {
     pub fn new(global: &StateReady) -> Self {
         let mut p = StorePage {
-            override_transaction_total: false,
+            checkout: Checkout::new(global),
 
             inventory_search_string: String::new(),
             inventory_search: vec![],
@@ -114,13 +115,8 @@ impl StorePage {
                 .map(|(acc, creditor)| (0, vec![], acc.clone(), creditor))
                 .collect(),
 
-            transaction: NewTransaction {
-                description: Some("Försäljning".to_string()),
-                bundles: vec![],
-                amount: 0.into(),
-                debited_account: global.master_accounts.bank_account_id,
-                credited_account: global.master_accounts.sales_account_id,
-            },
+            izettle_pay: IZettlePay::new(global),
+            izettle: true,
         };
         p.rebuild_store_list(global);
         p
@@ -132,6 +128,7 @@ impl StorePage {
         global: &mut StateReady,
         orders: &mut impl Orders<Msg>,
     ) {
+        let mut orders_local = orders.proxy(Msg::StoreMsg);
         match msg {
             StoreMsg::SearchDebit(input) => {
                 sort_tillgodolista_search(&input, &mut self.tillgodolista_search);
@@ -147,8 +144,9 @@ impl StorePage {
                 _ => {}
             },
             StoreMsg::DebitSelect(acc_id) => {
+                self.izettle = false;
                 self.tillgodolista_search_string = String::new();
-                self.transaction.debited_account = acc_id;
+                self.checkout.set_debited(acc_id);
             }
 
             StoreMsg::SearchInput(input) => {
@@ -158,150 +156,130 @@ impl StorePage {
             StoreMsg::SearchKeyDown(ev) => match ev.key().as_str() {
                 "Enter" => match self.inventory_search.first() {
                     Some((_, _, StoreItem::Item(item))) => {
-                        let msg = StoreMsg::AddItemToNewTransaction(item.id, 1);
+                        let msg = StoreMsg::CheckoutMsg(CheckoutMsg::AddItem {
+                            item_id: item.id,
+                            amount: 1,
+                        });
                         self.update(msg, global, orders);
                     }
                     Some((_, _, StoreItem::Bundle(bundle))) => {
-                        let msg = StoreMsg::AddBundleToNewTransaction(bundle.id, 1);
+                        let msg = StoreMsg::CheckoutMsg(CheckoutMsg::AddBundle {
+                            bundle_id: bundle.id,
+                            amount: 1,
+                        });
                         self.update(msg, global, orders);
                     }
                     None => {}
                 },
                 _ => {}
             },
-            StoreMsg::ConfirmPurchase => {
-                self.transaction.bundles.retain(|bundle| bundle.change != 0);
-                global.request_in_progress = true;
-                let msg = self.transaction.clone();
-                orders.perform_cmd(async move {
-                    let result = async {
-                        Request::new("/api/transaction")
-                            .method(Method::Post)
-                            .json(&msg)?
-                            .fetch()
-                            .await?
-                            .json()
-                            .await
+            StoreMsg::IZettleMsg(msg) => {
+                let reaction = match &msg {
+                    &IZettlePayMsg::PaymentCompleted { transaction_id } => {
+                        Some(StoreMsg::CheckoutMsg(CheckoutMsg::PurchaseSent {
+                            transaction_id,
+                        }))
                     }
-                    .await;
-                    match result {
-                        Ok(id) => Some(Msg::StoreMsg(StoreMsg::PurchaseSent(id))),
-                        Err(e) => {
-                            error!("Failed to post purchase", e);
-                            None
-                        }
+                    IZettlePayMsg::PaymentCancelled => Some(StoreMsg::CancelIZettle {
+                        message_title: strings::PAYMENT_CANCELLED.to_string(),
+                        message_body: None,
+                    }),
+                    IZettlePayMsg::Error(IZettlePayErr::PaymentFailed { reason, .. }) => {
+                        Some(StoreMsg::CancelIZettle {
+                            message_title: strings::PAYMENT_FAILED.to_string(),
+                            message_body: Some(reason.clone()),
+                        })
                     }
+                    IZettlePayMsg::Error(IZettlePayErr::NoTransaction { .. }) => {
+                        Some(StoreMsg::CancelIZettle {
+                            message_title: strings::SERVER_ERROR.to_string(),
+                            message_body: Some(strings::NO_PENDING_TRANSACTION.to_string()),
+                        })
+                    }
+                    IZettlePayMsg::Error(IZettlePayErr::NetworkError { reason }) => {
+                        Some(StoreMsg::CancelIZettle {
+                            message_title: strings::SERVER_ERROR.to_string(),
+                            message_body: Some(reason.clone()),
+                        })
+                    }
+                    IZettlePayMsg::PollPendingPayment(_) => None,
+                };
+
+                if let Some(msg) = reaction {
+                    orders_local.send_msg(msg);
+                }
+
+                self.izettle_pay
+                    .update(msg, global, orders_local.proxy(StoreMsg::IZettleMsg));
+            }
+
+            StoreMsg::DebitSelectIZettle => {
+                self.update(
+                    StoreMsg::DebitSelect(global.master_accounts.bank_account_id),
+                    global,
+                    orders,
+                );
+                self.izettle = true;
+            }
+
+            StoreMsg::CancelIZettle {
+                message_title,
+                message_body,
+            } => {
+                global.request_in_progress = false;
+                self.checkout.confirm_button_message = None;
+                orders.send_msg(Msg::NotificationMessage(
+                    NotificationMessage::ShowNotification {
+                        duration_ms: 10000,
+                        notification: Notification {
+                            title: message_title,
+                            body: message_body,
+                        },
+                    },
+                ));
+            }
+
+            StoreMsg::CheckoutMsg(msg) => {
+                let forward_msg = match msg {
+                    // if iZettle integration is enabled we intercept and handle the purchase here
+                    CheckoutMsg::ConfirmPurchase if self.izettle => {
+                        global.request_in_progress = true;
+                        self.checkout.remove_cleared_items();
+                        self.checkout.confirm_button_message = Some(strings::WAITING_FOR_PAYMENT);
+                        let transaction = self.checkout.transaction().clone();
+                        self.izettle_pay
+                            .pay(transaction, orders_local.proxy(StoreMsg::IZettleMsg));
+                        None // don't forward the message
+                    }
+                    // show a notification & reload the app when a purchase completes
+                    msg @ CheckoutMsg::PurchaseSent { .. } => {
+                        orders.send_msg(Msg::NotificationMessage(
+                            NotificationMessage::ShowNotification {
+                                duration_ms: 5000,
+                                notification: Notification {
+                                    title: strings::PURCHASE_COMPLETE.to_string(),
+                                    body: Some(format!(
+                                        "Total: {}:-",
+                                        self.checkout.transaction().amount
+                                    )),
+                                },
+                            },
+                        ));
+                        self.checkout.confirm_button_message = None;
+                        orders.send_msg(Msg::ReloadData);
+                        Some(msg)
+                    }
+                    msg => Some(msg),
+                };
+
+                forward_msg.map(|msg| {
+                    self.checkout.update(
+                        msg,
+                        global,
+                        &mut orders.proxy(Msg::StoreMsg).proxy(StoreMsg::CheckoutMsg),
+                    )
                 });
             }
-            StoreMsg::PurchaseSent(id) => {
-                global.request_in_progress = false;
-                log!("ID: ", id);
-                self.transaction.amount = 0.into();
-                self.transaction.bundles = vec![];
-                self.transaction.description = Some("Försäljning".into());
-                orders.send_msg(Msg::ReloadData);
-            }
-
-            StoreMsg::NewTransactionTotalInput(input) => {
-                log!("Input", input);
-                if input == "" {
-                    self.override_transaction_total = false;
-                    self.recompute_new_transaction_total();
-                } else {
-                    self.override_transaction_total = true;
-                    self.transaction.amount = input.parse().unwrap_or(0.into());
-                    log!(format!("{}:-", self.transaction.amount));
-                }
-            }
-
-            StoreMsg::AddItemToNewTransaction(item_id, amount) => {
-                let item = global
-                    .inventory
-                    .get(&item_id)
-                    .unwrap_or_else(|| panic!("No inventory item with that id exists"))
-                    .clone();
-
-                let mut item_ids = HashMap::new();
-                item_ids.insert(item.id, 1);
-
-                let bundle = TransactionBundle {
-                    description: None,
-                    // TODO: Handle case where price is null
-                    price: Some(item.price.unwrap_or(0).into()),
-                    change: -amount,
-                    item_ids,
-                };
-
-                if let Some(b) =
-                    self.transaction.bundles.iter_mut().find(|b| {
-                        b.item_ids == bundle.item_ids && b.description == bundle.description
-                    })
-                {
-                    b.change -= amount;
-                } else {
-                    log!("Pushing bundle", bundle);
-                    self.transaction.bundles.push(bundle);
-                }
-
-                self.recompute_new_transaction_total();
-            }
-            StoreMsg::AddBundleToNewTransaction(bundle_id, amount) => {
-                let bundle = global
-                    .bundles
-                    .get(&bundle_id)
-                    .unwrap_or_else(|| panic!("No inventory bundle with that id exists"))
-                    .clone();
-
-                let mut item_ids = HashMap::new();
-                for &id in bundle.item_ids.iter() {
-                    *item_ids.entry(id).or_default() += 1;
-                }
-
-                let bundle = TransactionBundle {
-                    description: Some(bundle.name.clone()),
-                    price: Some(bundle.price),
-                    change: -amount,
-                    item_ids,
-                };
-
-                if let Some(b) =
-                    self.transaction.bundles.iter_mut().find(|b| {
-                        b.item_ids == bundle.item_ids && b.description == bundle.description
-                    })
-                {
-                    b.change -= amount;
-                } else {
-                    log!("Pushing bundle", bundle);
-                    self.transaction.bundles.push(bundle);
-                }
-
-                self.recompute_new_transaction_total();
-            }
-
-            StoreMsg::SetNewTransactionBundleChange {
-                bundle_index,
-                change,
-            } => {
-                let bundle = &mut self.transaction.bundles[bundle_index];
-                if !self.override_transaction_total {
-                    let diff = bundle.change - change;
-                    self.transaction.amount +=
-                        (bundle.price.map(|p| p.into()).unwrap_or(0i32) * diff).into();
-                }
-                bundle.change = change;
-            }
-        }
-    }
-
-    fn recompute_new_transaction_total(&mut self) {
-        if !self.override_transaction_total {
-            self.transaction.amount = self
-                .transaction
-                .bundles
-                .iter()
-                .map(|bundle| -bundle.change * bundle.price.map(|p| p.into()).unwrap_or(0i32))
-                .sum::<i32>()
-                .into();
         }
     }
 
@@ -332,7 +310,8 @@ impl StorePage {
         self.inventory_search
             .sort_by(|(score_a, _, item_a), (score_b, _, item_b)| {
                 // sort first by comparison score
-                score_b.cmp(score_a)
+                score_b
+                    .cmp(score_a)
                     // then by if it is in stock
                     .then(item_b.in_stock().cmp(&item_a.in_stock()))
                     // then alphabetically on name
@@ -341,10 +320,35 @@ impl StorePage {
     }
 
     pub fn view(&self, global: &StateReady) -> Node<Msg> {
-        let selected_bank_account =
-            global.master_accounts.bank_account_id == self.transaction.debited_account;
-        let selected_cash_account =
-            global.master_accounts.cash_account_id == self.transaction.debited_account;
+        #[derive(PartialEq)]
+        enum SelectedDebit {
+            IZettleEPay,
+            OtherEPay,
+            Cash,
+            Tillgodo,
+        }
+
+        let selected_debit = if self.izettle {
+            SelectedDebit::IZettleEPay
+        } else if self.checkout.transaction().debited_account
+            == global.master_accounts.bank_account_id
+        {
+            SelectedDebit::OtherEPay
+        } else if self.checkout.transaction().debited_account
+            == global.master_accounts.cash_account_id
+        {
+            SelectedDebit::Cash
+        } else {
+            SelectedDebit::Tillgodo
+        };
+
+        let apply_selection_class_on = |matching_debit| {
+            if selected_debit == matching_debit {
+                class![C.debit_selected]
+            } else {
+                class![]
+            }
+        };
 
         div![
             class![C.store_page],
@@ -360,23 +364,19 @@ impl StorePage {
                             C.h_12,
                             C.border_on_focus,
                         ],
-                        if !(selected_bank_account || selected_cash_account) {
-                            class![C.debit_selected]
-                        } else {
-                            class![]
-                        },
+                        apply_selection_class_on(SelectedDebit::Tillgodo),
                         attrs! {At::Value => self.tillgodolista_search_string},
                         {
-                            let s = if selected_cash_account || selected_bank_account {
-                                "Tillgodolista".into()
-                            } else {
-                                global
-                                    .book_accounts
-                                    .get(&self.transaction.debited_account)
-                                    .map(|acc| format!("{}: {}:-", acc.name, acc.balance))
-                                    .unwrap_or("[MISSING]".into())
-                            };
-                            attrs! {At::Placeholder => s}
+                            attrs! {
+                                At::Placeholder => match selected_debit {
+                                    SelectedDebit::Tillgodo => global
+                                        .book_accounts
+                                        .get(&self.checkout.transaction().debited_account)
+                                        .map(|acc| format!("{}: {}:-", acc.name, acc.balance))
+                                        .unwrap_or("[MISSING]".into()),
+                                    _ => "Tillgodolista".into(),
+                                },
+                            }
                         },
                         input_ev(Ev::Input, |input| Msg::StoreMsg(StoreMsg::SearchDebit(
                             input
@@ -404,34 +404,21 @@ impl StorePage {
                             empty![]
                         },
                         button![
-                            if selected_bank_account {
-                                class![C.debit_selected]
-                            } else {
-                                class![]
-                            },
+                            apply_selection_class_on(SelectedDebit::IZettleEPay),
                             class![C.select_debit_button, C.border_on_focus, C.rounded_bl_lg],
+                            simple_ev(Ev::Click, Msg::StoreMsg(StoreMsg::DebitSelectIZettle)),
+                            strings::IZETTLE,
+                        ],
+                        button![
+                            apply_selection_class_on(SelectedDebit::OtherEPay),
+                            class![C.select_debit_button, C.border_on_focus, C.rounded_br_lg],
                             simple_ev(
                                 Ev::Click,
                                 Msg::StoreMsg(StoreMsg::DebitSelect(
                                     global.master_accounts.bank_account_id
                                 )),
                             ),
-                            "Swish",
-                        ],
-                        button![
-                            if selected_cash_account {
-                                class![C.debit_selected]
-                            } else {
-                                class![]
-                            },
-                            class![C.select_debit_button, C.border_on_focus, C.rounded_br_lg],
-                            simple_ev(
-                                Ev::Click,
-                                Msg::StoreMsg(StoreMsg::DebitSelect(
-                                    global.master_accounts.cash_account_id
-                                )),
-                            ),
-                            "Kontant",
+                            strings::OTHER_EPAY,
                         ],
                     ]
                 ],
@@ -459,32 +446,24 @@ impl StorePage {
                         StoreItem::Item(item) => view_inventory_item(
                             &item,
                             matches.iter().map(|&(_, i)| i),
-                            |id, amount| Msg::StoreMsg(StoreMsg::AddItemToNewTransaction(
-                                id, amount
+                            |item_id, amount| Msg::StoreMsg(StoreMsg::CheckoutMsg(
+                                CheckoutMsg::AddItem { item_id, amount }
                             ))
                         ),
                         StoreItem::Bundle(bundle) => view_inventory_bundle(
                             &bundle,
                             matches.iter().map(|&(_, i)| i),
-                            |id, amount| Msg::StoreMsg(StoreMsg::AddBundleToNewTransaction(
-                                id, amount
+                            |bundle_id, amount| Msg::StoreMsg(StoreMsg::CheckoutMsg(
+                                CheckoutMsg::AddBundle { bundle_id, amount }
                             ))
                         ),
                     })
                     .collect::<Vec<_>>(),
             ],
-            view_new_transaction(
-                &self.transaction,
-                self.override_transaction_total,
-                !global.request_in_progress,
-                &global.inventory,
-                |bundle_index, change| Msg::StoreMsg(StoreMsg::SetNewTransactionBundleChange {
-                    bundle_index,
-                    change,
-                }),
-                |input| Msg::StoreMsg(StoreMsg::NewTransactionTotalInput(input)),
-                Msg::StoreMsg(StoreMsg::ConfirmPurchase),
-            ),
+            self.checkout
+                .view(global)
+                .map_msg(StoreMsg::CheckoutMsg)
+                .map_msg(Msg::StoreMsg),
         ]
     }
 }

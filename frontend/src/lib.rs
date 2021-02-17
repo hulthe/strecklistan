@@ -1,10 +1,13 @@
 #![deny(unreachable_patterns)]
 
 mod app;
+mod components;
 mod fuzzy_search;
 mod generated;
 mod models;
+mod notification_manager;
 mod page;
+mod strings;
 mod util;
 mod views;
 
