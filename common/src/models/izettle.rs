@@ -16,7 +16,7 @@ pub enum IZettlePayment {
     Pending,
 
     /// The payment was intentionally aborted
-    Canceled,
+    Cancelled,
 
     /// The payment failed for some reason
     Failed { reason: String },

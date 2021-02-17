@@ -8,7 +8,7 @@ use strecklistan_api::izettle::IZettlePayment;
 use crate::database::DatabasePool;
 use crate::diesel::RunQueryDsl;
 use crate::models::izettle_transaction::{
-    IZettlePostTransaction, TRANSACTION_CANCELED, TRANSACTION_FAILED, TRANSACTION_IN_PROGRESS,
+    IZettlePostTransaction, TRANSACTION_CANCELLED, TRANSACTION_FAILED, TRANSACTION_IN_PROGRESS,
     TRANSACTION_PAID,
 };
 use crate::util::status_json::StatusJson as SJ;
@@ -41,15 +41,15 @@ pub async fn poll_for_izettle(
         Ok(IZettlePostTransaction { status, .. }) if status == TRANSACTION_IN_PROGRESS => {
             Ok(Json(IZettlePayment::Pending))
         }
-        Ok(IZettlePostTransaction { status, id, transaction_id, .. }) if status == TRANSACTION_PAID => {
+        Ok(IZettlePostTransaction { status, transaction_id, .. }) if status == TRANSACTION_PAID => {
             let transaction_id = transaction_id.ok_or_else(|| {
-                error!("izettle_post_transaction {} marked as paid, not but transaction_id was None", id);
+                error!("izettle_post_transaction {} marked as paid, not but transaction_id was None", izettle_transaction_id);
                 SJ::new(Status::InternalServerError, "Internal Server Error")
             })?;
             Ok(Json(IZettlePayment::Paid { transaction_id }))
         }
-        Ok(IZettlePostTransaction { status, .. }) if status == TRANSACTION_CANCELED => {
-            Ok(Json(IZettlePayment::Canceled))
+        Ok(IZettlePostTransaction { status, .. }) if status == TRANSACTION_CANCELLED => {
+            Ok(Json(IZettlePayment::Cancelled))
         }
         Ok(IZettlePostTransaction { status, error, .. }) if status == TRANSACTION_FAILED => {
             Ok(Json(IZettlePayment::Failed {

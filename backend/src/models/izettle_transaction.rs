@@ -25,7 +25,6 @@ pub struct IZettleTransaction {
 
 #[derive(Queryable, Serialize, Deserialize, Debug, PartialEq)]
 pub struct IZettlePostTransaction {
-    pub id: i32,
     pub izettle_transaction_id: i32,
     pub transaction_id: Option<i32>,
     pub status: String,
@@ -69,5 +68,5 @@ pub struct NewIZettlePostTransaction {
 
 pub const TRANSACTION_IN_PROGRESS: &str = "in_progress";
 pub const TRANSACTION_PAID: &str = "paid";
-pub const TRANSACTION_CANCELED: &str = "canceled";
+pub const TRANSACTION_CANCELLED: &str = "cancelled";
 pub const TRANSACTION_FAILED: &str = "failed";

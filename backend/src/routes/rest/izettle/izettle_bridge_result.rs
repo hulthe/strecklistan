@@ -11,7 +11,7 @@ use serde_derive::{Deserialize, Serialize};
 use crate::database::DatabasePool;
 use crate::diesel::RunQueryDsl;
 use crate::models::izettle_transaction::{
-    TRANSACTION_CANCELED, TRANSACTION_FAILED, TRANSACTION_PAID,
+    TRANSACTION_CANCELLED, TRANSACTION_FAILED, TRANSACTION_PAID,
 };
 use crate::models::transaction::relational;
 use crate::models::transaction::relational::{
@@ -24,7 +24,7 @@ use crate::util::status_json::StatusJson as SJ;
 pub enum PaymentResponse {
     TransactionPaid,
     TransactionFailed { reason: String },
-    TransactionCanceled,
+    TransactionCancelled,
 }
 
 #[post(
@@ -173,11 +173,11 @@ pub async fn complete_izettle_transaction(
 
                 Ok(SJ::new(Status::Ok, "Transcation cancelled with failure"))
             }
-            PaymentResponse::TransactionCanceled => {
+            PaymentResponse::TransactionCancelled => {
                 // Mark the transaction as cancelled
                 update_izettle_post_transaction(
                     izettle_transaction_id,
-                    TRANSACTION_CANCELED.to_string(),
+                    TRANSACTION_CANCELLED.to_string(),
                     None,
                     None,
                     &connection,

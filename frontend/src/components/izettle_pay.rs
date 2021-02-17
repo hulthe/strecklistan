@@ -123,7 +123,7 @@ impl IZettlePay {
                         Ok(IZettlePayment::Paid { transaction_id }) => {
                             Some(IZettlePayMsg::PaymentCompleted { transaction_id })
                         }
-                        Ok(IZettlePayment::Canceled) => Some(IZettlePayMsg::PaymentCancelled),
+                        Ok(IZettlePayment::Cancelled) => Some(IZettlePayMsg::PaymentCancelled),
                         Ok(IZettlePayment::NoTransaction) => {
                             Some(IZettlePayMsg::Error(IZettlePayErr::NoTransaction {
                                 reference,
