@@ -116,7 +116,7 @@ impl StorePage {
                 .collect(),
 
             izettle_pay: IZettlePay::new(global),
-            izettle: false,
+            izettle: true,
         };
         p.rebuild_store_list(global);
         p
