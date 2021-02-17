@@ -49,7 +49,6 @@ COPY --from=build_stage /app/target/release/strecklistan_backend /usr/local/bin/
 # Copy static web files
 COPY --from=build_stage /app/frontend/pkg    /www/pkg
 COPY --from=build_stage /app/frontend/static /www/static
-COPY backend/www/index.html               /www/index.html
 
 # Copy database migrations
 COPY backend/migrations /migrations
