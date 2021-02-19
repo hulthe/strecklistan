@@ -26,7 +26,6 @@ use strecklistan_api::{
     member::{Member, MemberId},
     transaction::Transaction,
 };
-use web_sys;
 
 const PKG_VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
@@ -79,16 +78,6 @@ pub struct Model {
     pub notifications: NotificationManager,
 }
 
-impl Default for Model {
-    fn default() -> Self {
-        Self {
-            page: Page::Root,
-            state: State::Loading(Default::default()),
-            notifications: Default::default(),
-        }
-    }
-}
-
 #[derive(Clone, Debug)]
 pub enum FetchMsg {
     ApiVersion(String),
@@ -109,8 +98,6 @@ pub enum Msg {
 
     ShowError { header: String, dump: String },
 
-    KeyPressed(web_sys::KeyboardEvent),
-
     AnalyticsMsg(AnalyticsMsg),
     DepositionMsg(DepositionMsg),
     TransactionsMsg(TransactionsMsg),
@@ -119,20 +106,6 @@ pub enum Msg {
     NotificationMessage(NotificationMessage),
 
     ReloadData,
-}
-
-pub fn routes(url: Url) -> Option<Msg> {
-    Some(if url.path().is_empty() {
-        Msg::ChangePage(Page::Store)
-    } else {
-        match url.path()[0].as_ref() {
-            "deposit" => Msg::ChangePage(Page::Deposit),
-            "" | "store" => Msg::ChangePage(Page::Store),
-            "transactions" => Msg::ChangePage(Page::TransactionHistory),
-            "analytics" => Msg::ChangePage(Page::Analytics),
-            _ => Msg::ChangePage(Page::NotFound),
-        }
-    })
 }
 
 // Vec<Item> -> HashMap<Item::id, Rc<Item>>
@@ -150,6 +123,30 @@ macro_rules! fwd_child_msg {
             $page.update($msg, state, $orders);
         }
     };
+}
+
+pub fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
+    orders.send_msg(Msg::ReloadData);
+
+    orders
+        .subscribe(|subs::UrlChanged(mut url)| {
+            let page = match url.remaining_path_parts().as_slice() {
+                [] | [""] | ["store"] => (Page::Store),
+                ["transactions"] => (Page::TransactionHistory),
+                ["analytics"] => (Page::Analytics),
+                ["deposit"] => (Page::Deposit),
+                _ => (Page::NotFound),
+            };
+
+            Msg::ChangePage(page)
+        })
+        .notify(subs::UrlChanged(url.clone()));
+
+    Model {
+        page: Page::Root,
+        state: State::Loading(Default::default()),
+        notifications: Default::default(),
+    }
 }
 
 pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
@@ -271,13 +268,6 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
 
         Msg::NotificationMessage(msg) => model.notifications.update(msg, orders),
 
-        Msg::KeyPressed(ev) => {
-            match ev.key().as_str() {
-                //key => log!(key),
-                _key => {}
-            }
-        }
-
         Msg::ReloadData => {
             model.state = State::Loading(Default::default());
             fetch_data(orders);
@@ -290,34 +280,34 @@ pub fn view(model: &Model) -> Vec<Node<Msg>> {
         model.notifications.view(),
         div![
             div![
-                class![C.header],
+                C![C.header],
                 if cfg!(debug_assertions) {
-                    div![class![C.debug_banner], "DEBUG"]
+                    div![C![C.debug_banner], "DEBUG"]
                 } else {
                     empty![]
                 },
                 div![
                     // links
-                    //a!["hem", class![C.header_link], attrs! {At::Href => "/"}],
-                    class![C.header_link_box],
+                    //a!["hem", C![C.header_link], attrs! {At::Href => "/"}],
+                    C![C.header_link_box],
                     a![
                         "försäljning",
-                        class![C.header_link],
+                        C![C.header_link],
                         attrs! {At::Href => "/store"}
                     ],
                     a![
                         "tillgodo",
-                        class![C.header_link],
+                        C![C.header_link],
                         attrs! {At::Href => "/deposit"}
                     ],
                     a![
                         "transaktioner",
-                        class![C.header_link],
+                        C![C.header_link],
                         attrs! {At::Href => "/transactions"}
                     ],
                     a![
                         "analys",
-                        class![C.header_link],
+                        C![C.header_link],
                         attrs! {At::Href => "/analytics"}
                     ],
                 ],
@@ -327,7 +317,7 @@ pub fn view(model: &Model) -> Vec<Node<Msg>> {
             } else {
                 empty![]
             },
-            div![class![C.header_margin], raw!["&nbsp;"]],
+            div![C![C.header_margin], raw!["&nbsp;"]],
             match &model.state {
                 State::Ready {
                     analytics_page,
@@ -341,20 +331,17 @@ pub fn view(model: &Model) -> Vec<Node<Msg>> {
                     Page::Deposit => deposition_page.view(state),
                     Page::TransactionHistory => transactions_page.view(state),
                     Page::Root | Page::NotFound => {
-                        div![class![C.not_found_message, C.unselectable], "404"]
+                        div![C![C.not_found_message, C.unselectable], "404"]
                     }
                 },
 
-                State::Loading(_) => div![
-                    class![C.text_center, C.mt_2],
-                    div![class![C.lds_heart], div![]]
-                ],
+                State::Loading(_) => div![C![C.text_center, C.mt_2], div![C![C.lds_heart], div![]]],
                 State::LoadingFailed(msg, error) => div![
-                    class![C.flex, C.flex_col],
+                    C![C.flex, C.flex_col],
                     p!["An has error occured."],
                     p![msg],
                     textarea![
-                        class![C.code_box],
+                        C![C.code_box],
                         attrs! { At::ReadOnly => true, },
                         attrs! { At::Rows => error.lines().count(), },
                         error,
@@ -419,8 +406,4 @@ fn fetch_events(orders: &mut impl Orders<Msg>, low: i64, high: i64) {
         let data = fetch(url).await?.json().await?;
         Ok(Msg::Fetched(FetchMsg::Events(data)))
     });
-}
-
-pub fn window_events(_model: &Model) -> Vec<EventHandler<Msg>> {
-    vec![keyboard_ev("keydown", |ev| Msg::KeyPressed(ev))]
 }

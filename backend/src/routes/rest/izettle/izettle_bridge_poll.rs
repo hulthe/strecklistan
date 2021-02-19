@@ -2,7 +2,7 @@ use diesel::result::Error;
 use diesel::{ExpressionMethods, QueryDsl, QueryResult};
 use rocket::{get, State};
 use rocket_contrib::json::Json;
-use serde_derive::Serialize;
+use serde::Serialize;
 use crate::database::DatabasePool;
 use crate::diesel::RunQueryDsl;
 use crate::models::izettle_transaction::IZettleTransactionPartial;

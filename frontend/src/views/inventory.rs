@@ -1,5 +1,6 @@
 use crate::app::Msg;
 use crate::generated::css_classes::C;
+use crate::util::simple_ev;
 use itertools::Itertools;
 use seed::prelude::*;
 use seed::*;
@@ -44,7 +45,7 @@ fn build_search_highlight_spans(
             let s = std::str::from_utf8(&s[..]).expect("Invalid utf-8 string");
 
             if highlighted {
-                span![class![C.text_green_200, C.underline], s]
+                span![C![C.text_green_200, C.underline], s]
             } else {
                 span![s]
             }
@@ -58,23 +59,23 @@ pub fn view_inventory_item(
     add_item_ev: impl FnOnce(InventoryItemId, i32) -> Msg,
 ) -> Node<Msg> {
     div![
-        class![C.inventory_item],
+        C![C.inventory_item],
         simple_ev(Ev::Click, add_item_ev(item.id, 1)),
         p![
-            class![C.inventory_item_header],
+            C![C.inventory_item_header],
             build_search_highlight_spans(&item.name, highlight_chars),
         ],
         if let Some(image_url) = item.image_url.as_ref() {
             img![
-                class![C.w_48, C.h_48, C.m_auto, C.my_1],
+                C![C.w_48, C.h_48, C.m_auto, C.my_1],
                 attrs! { At::Src => image_url },
             ]
         } else {
-            div![class![C.h_48, C.my_1]]
+            div![C![C.h_48, C.my_1]]
         },
         p![
-            class![C.inventory_item_footer],
-            class![match item.stock {
+            C![C.inventory_item_footer],
+            C![match item.stock {
                 n if n <= 0 => C.inventory_item_footer_red,
                 n if n <= 10 => C.inventory_item_footer_yellow,
                 _ => C.inventory_item_footer_green,
@@ -90,19 +91,19 @@ pub fn view_inventory_bundle(
     add_bundle_ev: impl FnOnce(InventoryBundleId, i32) -> Msg,
 ) -> Node<Msg> {
     div![
-        class![C.inventory_item],
+        C![C.inventory_item],
         simple_ev(Ev::Click, add_bundle_ev(bundle.id, 1)),
         p![
-            class![C.inventory_item_header],
+            C![C.inventory_item_header],
             build_search_highlight_spans(&bundle.name, highlight_chars),
         ],
         if let Some(image_url) = bundle.image_url.as_ref() {
             img![
-                class![C.w_48, C.h_48, C.m_auto, C.my_1],
+                C![C.w_48, C.h_48, C.m_auto, C.my_1],
                 attrs! { At::Src => image_url },
             ]
         } else {
-            div![class![C.h_48, C.my_1]]
+            div![C![C.h_48, C.my_1]]
         },
     ]
 }

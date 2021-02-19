@@ -1,5 +1,5 @@
 use crate::schema::tables::event_signups;
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 /// Metadata about a signed up attendee of an event
 #[derive(Queryable, Serialize, Deserialize, Debug, PartialEq)]

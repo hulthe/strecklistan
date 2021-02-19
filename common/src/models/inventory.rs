@@ -4,7 +4,7 @@ use crate::currency::Currency;
 use diesel_derives::Queryable;
 
 #[cfg(feature = "serde_impl")]
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "hash")]
 use std::hash::{Hash, Hasher};

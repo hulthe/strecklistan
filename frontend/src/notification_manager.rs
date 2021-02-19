@@ -1,5 +1,6 @@
 use crate::app::Msg;
 use crate::generated::css_classes::C;
+use crate::util::simple_ev;
 use seed::app::cmds::timeout;
 use seed::prelude::*;
 use seed::*;
@@ -31,13 +32,13 @@ pub struct Notification {
 impl NotificationManager {
     pub fn view(&self) -> Node<Msg> {
         div![
-            class![C.notification_list],
+            C![C.notification_list],
             self.notifications.iter().map(|(id, notification)| {
                 div![
-                    class![C.notification],
-                    p![class![C.notification_title], &notification.title],
+                    C![C.notification],
+                    p![C![C.notification_title], &notification.title],
                     if let Some(body) = &notification.body {
-                        p![class![C.notification_body], &body]
+                        p![C![C.notification_body], &body]
                     } else {
                         empty![]
                     },

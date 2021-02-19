@@ -1,5 +1,5 @@
 use crate::generated::css_classes::C;
-use crate::util::CompareToStr;
+use crate::util::{simple_ev, CompareToStr};
 use seed::prelude::*;
 use seed::*;
 use std::cmp::Ordering;
@@ -73,7 +73,7 @@ impl FilterMenu {
     pub fn view(&self) -> Node<FilterMenuMsg> {
         div![
             button![
-                class![C.wide_button],
+                C![C.wide_button],
                 simple_ev(Ev::Click, FilterMenuMsg::AddFilter),
                 "➕",
             ],
@@ -91,9 +91,9 @@ impl FilterMenu {
                         ]
                     };
                     div![
-                        class![C.filter_menu_item],
+                        C![C.filter_menu_item],
                         select![
-                            class![C.filter_menu_item_elem, C.filter_menu_field],
+                            C![C.filter_menu_item_elem, C.filter_menu_field],
                             self.fields
                                 .iter()
                                 .enumerate()
@@ -107,7 +107,7 @@ impl FilterMenu {
                                 .collect::<Vec<_>>()
                         ],
                         select![
-                            class![C.filter_menu_item_elem, C.filter_menu_operator],
+                            C![C.filter_menu_item_elem, C.filter_menu_operator],
                             op_ev(FilterOp::NotEquals, "!="),
                             op_ev(FilterOp::Equals, "=="),
                             op_ev(FilterOp::GrTh, ">"),
@@ -116,7 +116,7 @@ impl FilterMenu {
                             op_ev(FilterOp::LeEq, "<="),
                         ],
                         input![
-                            class![C.filter_menu_item_elem, C.filter_menu_value],
+                            C![C.filter_menu_item_elem, C.filter_menu_value],
                             attrs! { At::Value => value },
                             input_ev(Ev::Input, move |value| FilterMenuMsg::SetValue {
                                 filter_i,
@@ -125,7 +125,7 @@ impl FilterMenu {
                         ],
                         button![
                             simple_ev(Ev::Click, FilterMenuMsg::DeleteFilter { filter_i }),
-                            class![C.filter_menu_delete],
+                            C![C.filter_menu_delete],
                             "✖",
                         ]
                     ]

@@ -2,6 +2,7 @@ use crate::app::StateReady;
 use crate::components::parsed_input::{ParsedInput, ParsedInputMsg};
 use crate::generated::css_classes::C;
 use crate::strings;
+use crate::util::simple_ev;
 use seed::prelude::*;
 use seed::*;
 use std::collections::HashMap;
@@ -225,7 +226,7 @@ impl Checkout {
 
     pub fn view(&self, global: &StateReady) -> Node<CheckoutMsg> {
         div![
-            class![C.new_transaction_view],
+            C![C.new_transaction_view],
             self.transaction
                 .bundles
                 .iter()
@@ -252,12 +253,12 @@ impl Checkout {
 
                     p![
                         if bundle.change == 0 {
-                            class![C.line_through, C.transaction_entry]
+                            C![C.line_through, C.transaction_entry]
                         } else {
-                            class![C.transaction_entry]
+                            C![C.transaction_entry]
                         },
                         input![
-                            class![C.new_transaction_bundle_amount_field, C.border_on_focus],
+                            C![C.new_transaction_bundle_amount_field, C.border_on_focus],
                             attrs! { At::Value => -bundle.change },
                             attrs! { At::Type => "number" },
                             input_ev(Ev::Input, move |input| {
@@ -267,11 +268,8 @@ impl Checkout {
                                 }
                             }),
                         ],
-                        span![class![C.transaction_entry_item_name], format!("x {}", name),],
-                        span![
-                            class![C.transaction_entry_item_price],
-                            format!("{}:-", price),
-                        ],
+                        span![C![C.transaction_entry_item_name], format!("x {}", name),],
+                        span![C![C.transaction_entry_item_price], format!("{}:-", price),],
                     ]
                 })
                 .collect::<Vec<_>>(),
@@ -294,15 +292,15 @@ impl Checkout {
             }],
             if !global.request_in_progress {
                 button![
-                    class![C.wide_button, C.border_on_focus],
+                    C![C.wide_button, C.border_on_focus],
                     simple_ev(Ev::Click, CheckoutMsg::ConfirmPurchase),
                     "Slutför Köp",
                 ]
             } else {
                 button![
-                    class![C.wide_button, C.border_on_focus],
+                    C![C.wide_button, C.border_on_focus],
                     div![
-                        class![C.lds_ripple],
+                        C![C.lds_ripple],
                         style! {
                             St::Position => "absolute",
                             St::MarginTop => "-20px",
@@ -315,7 +313,7 @@ impl Checkout {
                 ]
             },
             if let Some(message) = &self.confirm_button_message {
-                div![class![C.wide_button_message], message]
+                div![C![C.wide_button_message], message]
             } else {
                 empty![]
             },

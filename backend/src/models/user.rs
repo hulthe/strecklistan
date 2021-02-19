@@ -11,10 +11,12 @@ use rocket::outcome::{try_outcome, Outcome};
 use rocket::request::{self, FromRequest, Request};
 use rocket::response::{self, Responder};
 use rocket::State;
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use serde_json::{self, Value as JsonValue};
 
-pub const PWHASH_ITERATIONS: usize = 10000;
+pub const PWHASH_ITERATIONS: u32 = 10000;
+pub const PWHASH_MEMORY: u32 = 8192;
+
 /// This struct defines a user object
 ///
 /// It's used as a request guard: all routes with a User parameter will return
@@ -209,6 +211,6 @@ pub struct Credentials {
 }
 
 pub fn generate_salted_hash<T: AsRef<[u8]>>(password: T) -> Result<String, UnknownCryptoError> {
-    hash_password(&Password::from_slice(password.as_ref())?, PWHASH_ITERATIONS)
+    hash_password(&Password::from_slice(password.as_ref())?, PWHASH_ITERATIONS, PWHASH_MEMORY)
         .map(|pwhash| hex::encode(&pwhash.unprotected_as_bytes()))
 }

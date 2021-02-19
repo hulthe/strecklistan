@@ -10,20 +10,24 @@ workspace = ".."
 
 [dependencies]
 chrono = "0.4"
-diesel = { version = "1.4", optional = true }
-diesel_derives = { version = "1.4", optional = true }
-diesel-derive-enum = { version = "0.4", features = ["postgres"], optional = true }
-serde = { version = "1", optional = true }
-serde_derive = { version = "1", optional = true }
-getset = "0.0.7"
+getset = "0.1"
 regex = "1"
 lazy_static = "1"
+
+diesel = { version = "1.4", optional = true }
+diesel_derives = { version = "1.4", optional = true }
+diesel-derive-enum = { version = "1.1", features = ["postgres"], optional = true }
+
+[dependencies.serde]
+version = "1"
+features = ["derive"]
+optional = true
 
 [features]
 default = ["serde_impl", "debug", "hash"]
 
 diesel_impl = ["diesel", "diesel_derives", "diesel-derive-enum", "diesel-derive-enum/postgres"]
-serde_impl = ["serde", "serde_derive", "chrono/serde"]
+serde_impl = ["serde", "chrono/serde"]
 
 debug = []
 eq = []

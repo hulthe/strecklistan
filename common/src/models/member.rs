@@ -2,7 +2,7 @@
 use diesel_derives::Queryable;
 
 #[cfg(feature = "serde_impl")]
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 pub type MemberId = i32;
 

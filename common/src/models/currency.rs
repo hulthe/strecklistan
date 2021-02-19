@@ -4,7 +4,7 @@ use std::ops::{Add, AddAssign, Neg, Sub, SubAssign};
 use std::str::FromStr;
 
 #[cfg(feature = "serde_impl")]
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 #[cfg_attr(feature = "serde_impl", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "debug", derive(Debug))]

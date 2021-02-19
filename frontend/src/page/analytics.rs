@@ -1,6 +1,6 @@
 use crate::app::{Msg, StateReady};
 use crate::generated::css_classes::C;
-use crate::util::DATE_INPUT_FMT;
+use crate::util::{simple_ev, DATE_INPUT_FMT};
 use chrono::{DateTime, Datelike, Duration, IsoWeek, NaiveDate, Utc, Weekday};
 use seed::{prelude::*, *};
 use std::collections::{BTreeMap, HashMap};
@@ -80,7 +80,7 @@ impl AnalyticsPage {
 
     pub fn view(&self, global: &StateReady) -> Node<Msg> {
         div![
-            class![C.accounting_page],
+            C![C.accounting_page],
             div![
                 input![
                     attrs! {At::Type => "date"},
@@ -94,9 +94,9 @@ impl AnalyticsPage {
                 ],
                 if self.calculation_in_progress {
                     button![
-                        class![C.wide_button],
+                        C![C.wide_button],
                         div![
-                            class![C.lds_ripple],
+                            C![C.lds_ripple],
                             style! {
                                 St::Position => "absolute",
                                 St::MarginTop => "-20px",
@@ -109,7 +109,7 @@ impl AnalyticsPage {
                     ]
                 } else {
                     button![
-                        class![C.wide_button],
+                        C![C.wide_button],
                         simple_ev(Ev::Click, AnalyticsMsg::ComputeCharts),
                         "Beräkna Statistik",
                     ]
@@ -231,24 +231,24 @@ where
 {
     let y_max = points.iter().map(|(_, v)| *v).max().unwrap();
     div![
-        class![C.mx_2],
-        h2![class![C.mt_2], name],
+        C![C.mx_2],
+        h2![C![C.mt_2], name],
         div![
-            class![C.chart_histogram],
+            C![C.chart_histogram],
             points
                 .iter()
                 .map(|(k, v)| {
                     let percentage = if y_max == 0 { 0 } else { v * 100 / y_max };
 
                     div![
-                        class![C.chart_histogram_col],
+                        C![C.chart_histogram_col],
                         div![style!(St::FlexBasis => format!("{}%", 100 - percentage)),],
                         div![
-                            class![C.chart_histogram_col_line, C.chart_col_tooltip],
+                            C![C.chart_histogram_col_line, C.chart_col_tooltip],
                             style!(St::FlexBasis => format!("{}%", percentage)),
-                            span![class![C.chart_col_tooltiptext], format!("{}", v),],
+                            span![C![C.chart_col_tooltiptext], format!("{}", v),],
                         ],
-                        div![class![C.chart_histogram_col_label], format!("{}", k),],
+                        div![C![C.chart_histogram_col_label], format!("{}", k),],
                     ]
                 })
                 .collect::<Vec<_>>()

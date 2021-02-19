@@ -5,7 +5,7 @@ use crate::models::member::MemberId;
 use {diesel_derive_enum::DbEnum, diesel_derives::Queryable};
 
 #[cfg(feature = "serde_impl")]
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "hash")]
 use std::hash::{Hash, Hasher};

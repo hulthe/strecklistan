@@ -7,7 +7,7 @@ use log::info;
 use rocket::{post, State};
 use rocket::http::Status;
 use rocket_contrib::json::Json;
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use crate::database::DatabasePool;
 use crate::diesel::RunQueryDsl;
 use crate::models::izettle_transaction::{

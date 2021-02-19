@@ -5,7 +5,7 @@ use crate::fuzzy_search::FuzzySearch;
 use crate::generated::css_classes::C;
 use crate::notification_manager::{Notification, NotificationMessage};
 use crate::strings;
-use crate::util::{compare_fuzzy, sort_tillgodolista_search};
+use crate::util::{compare_fuzzy, simple_ev, sort_tillgodolista_search};
 use crate::views::{view_inventory_bundle, view_inventory_item, view_tillgodo};
 use seed::prelude::*;
 use seed::*;
@@ -344,20 +344,20 @@ impl StorePage {
 
         let apply_selection_class_on = |matching_debit| {
             if selected_debit == matching_debit {
-                class![C.debit_selected]
+                C![C.debit_selected]
             } else {
-                class![]
+                C![]
             }
         };
 
         div![
-            class![C.store_page],
+            C![C.store_page],
             div![
-                class![C.store_top_box],
+                C![C.store_top_box],
                 div![
-                    class![C.pay_method_select_box, C.margin_hcenter],
+                    C![C.pay_method_select_box, C.margin_hcenter],
                     input![
-                        class![
+                        C![
                             C.tillgodolista_search_field,
                             C.rounded_t_lg,
                             C.px_2,
@@ -384,12 +384,12 @@ impl StorePage {
                         keyboard_ev(Ev::KeyDown, |ev| Msg::StoreMsg(StoreMsg::DebitKeyDown(ev))),
                     ],
                     div![
-                        class![C.flex, C.flex_row],
+                        C![C.flex, C.flex_row],
                         if !self.tillgodolista_search_string.is_empty() {
                             div![
-                                class![C.tillgodo_drop_down],
+                                C![C.tillgodo_drop_down],
                                 div![
-                                    class![C.tillgodo_list],
+                                    C![C.tillgodo_list],
                                     self.tillgodolista_search
                                         .iter()
                                         .map(|(_, _, acc, mem)| view_tillgodo(
@@ -405,13 +405,13 @@ impl StorePage {
                         },
                         button![
                             apply_selection_class_on(SelectedDebit::IZettleEPay),
-                            class![C.select_debit_button, C.border_on_focus, C.rounded_bl_lg],
+                            C![C.select_debit_button, C.border_on_focus, C.rounded_bl_lg],
                             simple_ev(Ev::Click, Msg::StoreMsg(StoreMsg::DebitSelectIZettle)),
                             strings::IZETTLE,
                         ],
                         button![
                             apply_selection_class_on(SelectedDebit::OtherEPay),
-                            class![C.select_debit_button, C.border_on_focus, C.rounded_br_lg],
+                            C![C.select_debit_button, C.border_on_focus, C.rounded_br_lg],
                             simple_ev(
                                 Ev::Click,
                                 Msg::StoreMsg(StoreMsg::DebitSelect(
@@ -423,7 +423,7 @@ impl StorePage {
                     ]
                 ],
                 input![
-                    class![
+                    C![
                         C.inventory_search_field,
                         C.rounded,
                         C.px_2,
@@ -439,7 +439,7 @@ impl StorePage {
                 ],
             ],
             div![
-                class![C.inventory_view],
+                C![C.inventory_view],
                 self.inventory_search
                     .iter()
                     .map(|(_, matches, element)| match element {

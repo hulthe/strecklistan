@@ -1,6 +1,7 @@
 use crate::app::{Msg, StateReady};
 use crate::generated::css_classes::C;
 use crate::util::export::{download_file, make_csv_transaction_list, CSVStyleTransaction};
+use crate::util::simple_ev;
 use crate::views::filter_menu::{FilterMenu, FilterMenuMsg};
 use seed::prelude::*;
 use seed::*;
@@ -170,10 +171,10 @@ impl TransactionsPage {
     pub fn view(&self, global: &StateReady) -> Node<Msg> {
         let show_acc_entry = |name: &str, balance: Currency| {
             div![
-                class![C.balance_entry],
+                C![C.balance_entry],
                 span![name],
                 span![": "],
-                span![class![C.flex_grow, C.flex_shrink, C.w_8]],
+                span![C![C.flex_grow, C.flex_shrink, C.w_8]],
                 span![format!("{}:-", balance)],
             ]
         };
@@ -200,20 +201,20 @@ impl TransactionsPage {
             .collect();
 
         div![
-            class![C.transactions_page],
+            C![C.transactions_page],
             div![
-                class![C.left_panel, C.px_4],
+                C![C.left_panel, C.px_4],
                 if self.show_left_panel {
-                    class![C.left_panel_showing]
+                    C![C.left_panel_showing]
                 } else {
-                    class![]
+                    C![]
                 },
                 div![
-                    class![C.flex, C.flex_row, C.text_3xl, C.font_bold],
-                    h2![class![C.mx_auto, C.my_2], "Balansräkning"],
+                    C![C.flex, C.flex_row, C.text_3xl, C.font_bold],
+                    h2![C![C.mx_auto, C.my_2], "Balansräkning"],
                 ],
                 div![
-                    class![C.balance_sheet, C.margin_hcenter],
+                    C![C.balance_sheet, C.margin_hcenter],
                     show_acc(&global.master_accounts.bank_account_id),
                     show_acc(&global.master_accounts.cash_account_id),
                     show_acc(&global.master_accounts.sales_account_id),
@@ -231,25 +232,25 @@ impl TransactionsPage {
                             .fold(0.into(), |a: Currency, b| a + b)
                     ),
                 ],
-                hr![class![C.my_2]],
+                hr![C![C.my_2]],
                 div![
-                    class![C.flex, C.flex_row, C.text_3xl, C.font_bold],
-                    h2![class![C.mx_auto, C.my_2], "Filtrera (WIP)"],
+                    C![C.flex, C.flex_row, C.text_3xl, C.font_bold],
+                    h2![C![C.mx_auto, C.my_2], "Filtrera (WIP)"],
                 ],
                 self.filter_menu
                     .view()
                     .map_msg(|msg| TransactionsMsg::FilterMenuMsg(msg)),
                 div![
-                    class![C.flex, C.flex_row, C.text_3xl, C.font_bold],
-                    h2![class![C.mx_auto, C.my_2], "Exportera Data"],
+                    C![C.flex, C.flex_row, C.text_3xl, C.font_bold],
+                    h2![C![C.mx_auto, C.my_2], "Exportera Data"],
                 ],
                 button![
-                    class![C.wide_button],
+                    C![C.wide_button],
                     "JSON",
                     simple_ev(Ev::Click, TransactionsMsg::ExportData(ExportFormat::JSON)),
                 ],
                 button![
-                    class![C.wide_button, C.mt_2],
+                    C![C.wide_button, C.mt_2],
                     "CSV (En rad per vara)",
                     simple_ev(
                         Ev::Click,
@@ -261,7 +262,7 @@ impl TransactionsPage {
                 // TODO: implement this
                 /*
                 button![
-                    class![C.wide_button, C.mt_2],
+                    C![C.wide_button, C.mt_2],
                     "CSV (En rad per transaktion)",
                     simple_ev(Ev::Click, TransactionsMsg::ExportData(
                             ExportFormat::CSV(CSVStyleTransaction::PerTransaction))),
@@ -269,7 +270,7 @@ impl TransactionsPage {
                 */
             ],
             button![
-                class![C.left_panel_button],
+                C![C.left_panel_button],
                 simple_ev(
                     Ev::Click,
                     TransactionsMsg::SetShowLeftPanel(!self.show_left_panel),
@@ -277,16 +278,16 @@ impl TransactionsPage {
                 "⚙"
             ],
             div![if self.show_left_panel {
-                class![C.left_panel_sub_spacer]
+                C![C.left_panel_sub_spacer]
             } else {
-                class![C.left_panel_sub_spacer, C.left_panel_sub_spacer_hidden]
+                C![C.left_panel_sub_spacer, C.left_panel_sub_spacer_hidden]
             },],
             div![
-                class![C.transactions_list],
+                C![C.transactions_list],
                 div![
-                    class![C.transactions_page_button_box],
+                    C![C.transactions_page_button_box],
                     button![
-                        class![C.transactions_page_show_delete],
+                        C![C.transactions_page_show_delete],
                         "Radera transaktioner?",
                         simple_ev(Ev::Click, TransactionsMsg::SetShowDelete(!self.show_delete)),
                     ],
@@ -294,7 +295,7 @@ impl TransactionsPage {
                 transaction_list,
                 if self.view_limit < self.filtered_transactions.len() {
                     button![
-                        class![C.wide_button],
+                        C![C.wide_button],
                         "Visa fler",
                         simple_ev(Ev::Click, TransactionsMsg::IncreaseViewLimit),
                     ]
@@ -313,7 +314,7 @@ fn view_transaction(
     show_delete: bool,
 ) -> Node<TransactionsMsg> {
     div![
-        class![C.transaction_view],
+        C![C.transaction_view],
         p![
             span![format!("#{} ", transaction.id)],
             span![transaction
@@ -323,7 +324,7 @@ fn view_transaction(
                 .unwrap_or("Transaktion")],
             if show_delete {
                 button![
-                    class![C.transaction_view_delete_button],
+                    C![C.transaction_view_delete_button],
                     simple_ev(
                         Ev::Click,
                         TransactionsMsg::DeleteTransaction(transaction.id)
@@ -342,10 +343,10 @@ fn view_transaction(
                 .format("%Y-%m-%d %H:%M:%S %Z"),
         )],
         p![
-            class![C.mt_2],
+            C![C.mt_2],
             span!["Debet: "],
             span![
-                class![C.font_bold],
+                C![C.font_bold],
                 global
                     .book_accounts
                     .get(&transaction.debited_account)
@@ -354,10 +355,10 @@ fn view_transaction(
             ],
         ],
         p![
-            class![C.mt_2, C.mb_2],
+            C![C.mt_2, C.mb_2],
             span!["Kredit: "],
             span![
-                class![C.font_bold],
+                C![C.font_bold],
                 global
                     .book_accounts
                     .get(&transaction.credited_account)
@@ -387,22 +388,19 @@ fn view_transaction(
                     .unwrap_or(item_name.unwrap_or("[NAMN SAKNAS]"));
                 let price = bundle.price.unwrap_or(item_price.into());
                 p![
-                    class![C.transaction_entry],
+                    C![C.transaction_entry],
                     span![
-                        class![C.transaction_entry_item_name],
+                        C![C.transaction_entry_item_name],
                         format!("{}x {}", -bundle.change, name),
                     ],
-                    span![
-                        class![C.transaction_entry_item_price],
-                        format!("{}:-", price),
-                    ],
+                    span![C![C.transaction_entry_item_price], format!("{}:-", price),],
                 ]
             })
             .collect::<Vec<_>>(),
         p![
             span!["Totalt: "],
             span![
-                class![C.transaction_entry_item_price],
+                C![C.transaction_entry_item_price],
                 format!("{}:-", transaction.amount),
             ],
         ],

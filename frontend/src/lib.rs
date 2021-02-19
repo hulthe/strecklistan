@@ -11,28 +11,13 @@ mod strings;
 mod util;
 mod views;
 
-use app::{Model, Msg};
-use seed::{self, prelude::*};
+use seed::{prelude::*, App};
 
 #[wasm_bindgen(start)]
-pub fn run() -> Result<(), JsValue> {
+pub fn start() {
     set_panic_hook();
 
-    seed::App::builder(app::update, app::view)
-        .after_mount(after_mount)
-        .window_events(app::window_events)
-        .routes(app::routes)
-        .build_and_start();
-
-    Ok(())
-}
-
-fn after_mount(url: Url, orders: &mut impl Orders<Msg>) -> AfterMount<Model> {
-    if let Some(msg) = app::routes(url) {
-        orders.send_msg(msg);
-    }
-    app::fetch_data(orders);
-    AfterMount::new(app::Model::default())
+    App::start("app", app::init, app::update, app::view);
 }
 
 // see cargo.toml for more info

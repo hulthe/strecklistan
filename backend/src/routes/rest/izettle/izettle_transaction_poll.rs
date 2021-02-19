@@ -3,7 +3,7 @@ use rocket::http::Status;
 use rocket::{get, State};
 use log::error;
 use rocket_contrib::json::Json;
-use serde_derive::Serialize;
+use serde::Serialize;
 use strecklistan_api::izettle::IZettlePayment;
 use crate::database::DatabasePool;
 use crate::diesel::RunQueryDsl;

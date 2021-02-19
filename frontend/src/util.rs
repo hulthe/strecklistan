@@ -1,6 +1,9 @@
 pub mod export;
 
 use crate::fuzzy_search::FuzzySearch;
+use seed::browser::dom::event_handler::ev;
+use seed::dom_entity_names::Ev;
+use seed::virtual_dom::event_handler_manager::event_handler::EventHandler;
 use semver::Version;
 use std::rc::Rc;
 use strecklistan_api::book_account::BookAccount;
@@ -53,6 +56,10 @@ pub fn compare_semver(client_version: Version, api_version: Version) -> bool {
             },
         ) => (ma1 == ma2) && (mi2 >= mi1),
     }
+}
+
+pub fn simple_ev<Ms: Clone + 'static>(trigger: impl Into<Ev>, message: Ms) -> EventHandler<Ms> {
+    ev(trigger, move |_| message)
 }
 
 /// Compare a base string to a user-input search

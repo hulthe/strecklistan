@@ -5,7 +5,7 @@ pub use strecklistan_api::transaction as object;
 pub mod relational {
     use crate::schema::tables::{transaction_bundles, transaction_items, transactions};
     use chrono::{DateTime, Utc};
-    use serde_derive::{Deserialize, Serialize};
+    use serde::{Deserialize, Serialize};
 
     #[derive(Insertable, Serialize, Deserialize, Debug, PartialEq)]
     #[table_name = "transactions"]

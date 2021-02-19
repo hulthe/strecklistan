@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 pub use strecklistan_api::transaction as object;
 
 use crate::schema::tables::{

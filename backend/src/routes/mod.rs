@@ -1,4 +1,4 @@
 #[macro_use]
 pub mod rest;
 pub mod index;
-pub mod session;
+//pub mod session;

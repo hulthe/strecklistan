@@ -11,7 +11,7 @@ pub mod util;
 use crate::database::create_pool;
 use crate::database::DatabasePool;
 use crate::models::user::JWTConfig;
-use crate::routes::{rest, session, index};
+use crate::routes::{rest, index};
 use crate::util::catchers::catchers;
 use rocket_contrib::serve::StaticFiles;
 use chrono::Duration;
@@ -82,16 +82,13 @@ async fn main() {
         token_lifetime: Duration::weeks(2),
     };
 
-    let mut rocket = rocket::ignite()
+    let rocket = rocket::ignite()
         .manage(db_pool)
         .manage(jwt_config)
         .register(catchers())
         .mount(
             "/api/",
             routes![
-                session::no_user,
-                session::login,
-                session::user_info,
                 rest::event::get_event,
                 rest::event::get_event_range,
                 rest::inventory::get_inventory,
@@ -115,13 +112,6 @@ async fn main() {
         .mount("/pkg", StaticFiles::from("www/pkg"))
         .mount("/static", StaticFiles::from("www/static"))
         .mount("/", routes![index::wildcard, index::root]);
-
-    let config = rocket.config().await;
-
-    // Mount dev-only routes
-    if config.environment.is_dev() {
-        rocket = rocket.mount("/dev/", routes![session::register]);
-    }
 
     rocket.launch().await.unwrap();
 }

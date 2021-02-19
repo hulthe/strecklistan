@@ -1,4 +1,4 @@
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Queryable, Serialize, Deserialize, Debug, PartialEq)]
 pub struct InventoryBundle {

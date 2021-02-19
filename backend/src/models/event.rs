@@ -3,7 +3,7 @@ use crate::util::StatusJson;
 use chrono::{DateTime, Utc};
 use rocket::http::Status;
 use rocket::FromForm;
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(FromForm)]
 pub struct EventRange {

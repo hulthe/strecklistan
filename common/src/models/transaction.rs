@@ -5,7 +5,7 @@ use chrono::{DateTime, Utc};
 use std::collections::HashMap;
 
 #[cfg(feature = "serde_impl")]
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 pub type TransactionId = i32;
 

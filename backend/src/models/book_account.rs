@@ -1,4 +1,4 @@
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use strecklistan_api::book_account::{BookAccount as BookAccountCommon, BookAccountType};
 
 #[derive(Queryable, Serialize, Deserialize, Debug, PartialEq)]

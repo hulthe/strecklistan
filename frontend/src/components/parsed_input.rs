@@ -1,6 +1,7 @@
 use crate::generated::css_classes::C;
+use crate::util::simple_ev;
 use seed::prelude::*;
-use seed::{attrs, class, div, empty, input, Attrs};
+use seed::{attrs, div, empty, input, Attrs, C};
 use std::str::FromStr;
 
 #[derive(Clone, Debug)]
@@ -55,10 +56,10 @@ where
 
     pub fn view(&self, attrs: Attrs) -> Node<ParsedInputMsg> {
         div![
-            class![C.parsed_input],
+            C![C.parsed_input],
             input![
                 attrs,
-                class![C.parsed_input_text],
+                C![C.parsed_input_text],
                 attrs! { At::Value => &self.text },
                 attrs! { At::Type => self.input_kind },
                 input_ev(Ev::Input, ParsedInputMsg::Input),
@@ -66,7 +67,7 @@ where
                 simple_ev(Ev::Custom("focusout".into()), ParsedInputMsg::FocusOut),
             ],
             match (&self.parsed, self.error_message) {
-                (None, Some(msg)) => div![class![C.parsed_input_error], msg],
+                (None, Some(msg)) => div![C![C.parsed_input_error], msg],
                 _ => empty![],
             }
         ]

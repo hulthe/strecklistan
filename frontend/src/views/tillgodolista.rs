@@ -1,4 +1,5 @@
 use crate::generated::css_classes::C;
+use crate::util::simple_ev;
 use seed::prelude::*;
 use seed::*;
 use strecklistan_api::book_account::BookAccount;
@@ -11,19 +12,19 @@ pub fn view_tillgodo<M: 'static + Clone>(
 ) -> Node<M> {
     let tillgodo_money_class;
     if account.balance < 0.into() {
-        tillgodo_money_class = class![C.tillgodo_money, C.tillgodo_money_angry];
+        tillgodo_money_class = C![C.tillgodo_money, C.tillgodo_money_angry];
     } else {
-        tillgodo_money_class = class![C.tillgodo_money];
+        tillgodo_money_class = C![C.tillgodo_money];
     }
 
     div![
-        class![C.tillgodo_entry],
+        C![C.tillgodo_entry],
         div![
-            class![C.tillgodo_nick],
+            C![C.tillgodo_nick],
             member.nickname.as_ref().map(|s| s.as_str()).unwrap_or(""),
         ],
         div![
-            class![C.tillgodo_name],
+            C![C.tillgodo_name],
             member.first_name.clone(),
             " ",
             member.last_name.clone(),
