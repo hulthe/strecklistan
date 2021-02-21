@@ -31,6 +31,8 @@ log = "0.4.14"
 futures = "0.3"
 uuid = { version = "0.8", features = ["v4", "serde"] }
 tokio = { version = "0.2", features = ["time"] }
+lazy_static="1"
+sha2 = "0.9.3"
 
 
 [dependencies.strecklistan_api]

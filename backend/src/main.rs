@@ -11,9 +11,8 @@ pub mod util;
 use crate::database::create_pool;
 use crate::database::DatabasePool;
 use crate::models::user::JWTConfig;
-use crate::routes::{rest, index};
-use crate::util::catchers::catchers;
-use rocket_contrib::serve::StaticFiles;
+use crate::routes::{index, rest};
+use crate::util::{catchers, StaticCachedFiles};
 use chrono::Duration;
 use diesel_migrations::{
     find_migrations_directory, mark_migrations_in_directory, run_pending_migrations, setup_database,
@@ -21,6 +20,7 @@ use diesel_migrations::{
 use dotenv::dotenv;
 use frank_jwt::Algorithm;
 use rocket::routes;
+use rocket_contrib::serve::StaticFiles;
 use std::env;
 
 fn handle_migrations(db_pool: &DatabasePool) {
@@ -82,7 +82,21 @@ async fn main() {
         token_lifetime: Duration::weeks(2),
     };
 
-    let rocket = rocket::ignite()
+    let enable_static_file_cache: bool = env::var("ENABLE_STATIC_FILE_CACHE")
+        .map(|s| {
+            s.parse()
+                .expect("Invalid ENABLE_STATIC_FILE_CACHE. Expected true or false.")
+        })
+        .unwrap_or(false);
+
+    let max_age = env::var("STATIC_FILES_MAX_AGE")
+        .map(|s| {
+            s.parse()
+                .expect("Invalid STATIC_FILES_MAX_AGE. Expected a number.")
+        })
+        .unwrap_or(0);
+
+    let mut rocket = rocket::ignite()
         .manage(db_pool)
         .manage(jwt_config)
         .register(catchers())
@@ -109,9 +123,17 @@ async fn main() {
                 rest::izettle::izettle_transaction_poll::poll_for_izettle,
             ],
         )
-        .mount("/pkg", StaticFiles::from("www/pkg"))
-        .mount("/static", StaticFiles::from("www/static"))
         .mount("/", routes![index::wildcard, index::root]);
+
+    let static_routes = &[("/pkg", "www/pkg"), ("/static", "www/static")];
+
+    for (route, path) in static_routes {
+        rocket = if enable_static_file_cache {
+            rocket.mount(route, StaticCachedFiles::from(path).max_age(max_age))
+        } else {
+            rocket.mount(route, StaticFiles::from(path))
+        };
+    }
 
     rocket.launch().await.unwrap();
 }
