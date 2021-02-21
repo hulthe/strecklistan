@@ -22,10 +22,7 @@ RUN cargo make build_release
 ########################
 FROM debian:stable-slim
 
-# Default to staging environment
-# Override with "production" when deploying for real
-ENV ROCKET_ENV="staging"
-
+# Rocket web server configuration
 ENV ROCKET_ADDRESS="0.0.0.0"
 ENV ROCKET_PORT="8000"
 
@@ -34,6 +31,10 @@ ENV RUN_MIGRATIONS="true"
 
 # Basic default configuration for database, suitable for dev.
 ENV DATABASE_URL="postgres://postgres@database/strecklistan"
+
+# Enable cache-control
+ENV ENABLE_STATIC_FILE_CACHE="true"
+ENV STATIC_FILES_MAX_AGE="0"
 
 # Install dependencies
 RUN apt-get update \
