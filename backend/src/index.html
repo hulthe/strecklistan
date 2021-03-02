@@ -1,34 +1,43 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+		<meta name="description" content="">
 
-    <meta name="description" content="">
+		<!-- icon -->
+		<link rel="icon" type="image/png" href="/static/icon.png">
 
-    <link rel="icon" type="image/png" href="/static/icon.png">
-    <link rel="stylesheet" href="/static/styles.css">
-    <link rel="stylesheet" href="/static/left_panel.css">
-    <link rel="stylesheet" href="/static/heart_spinner.css">
-    <link rel="stylesheet" href="/static/ripple_spinner.css">
-    <link rel="stylesheet" href="/static/filter_menu.css">
-    <link rel="stylesheet" href="/static/charts.css">
-    <link rel="stylesheet" href="/static/notifications.css">
-    <link rel="stylesheet" href="/static/tailwind.css">
-    <link rel="manifest" href="/static/manifest.json">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Ubuntu|Ubuntu+Mono&display=swap">
+		<!-- stylesheets -->
+		<link rel="stylesheet" href="/static/styles.css">
+		<link rel="stylesheet" href="/static/left_panel.css">
+		<link rel="stylesheet" href="/static/ripple_spinner.css">
+		<link rel="stylesheet" href="/static/filter_menu.css">
+		<link rel="stylesheet" href="/static/charts.css">
+		<link rel="stylesheet" href="/static/notifications.css">
+		<link rel="stylesheet" href="/static/penguin.css">
+		<link rel="stylesheet" href="/static/tailwind.css">
 
-    <title>DrawIT</title>
+		<!-- fonts -->
+		<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Ubuntu|Ubuntu+Mono&display=swap">
 
-    </head>
+		<!-- stylesheets -->
+		<link rel="manifest" href="/static/manifest.json">
 
-    <body>
-        <section id="app"></section>
-        <script type="module">
-            // https://rustwasm.github.io/docs/wasm-bindgen/examples/without-a-bundler.html
-            import init from '/pkg/package.js';
-            init('/pkg/package_bg.wasm');
-        </script>
+		<!-- image preloading -->
+		<link rel="preload" href="/static/penguin1.svg" as="image">
+		<link rel="preload" href="/static/penguin2.svg" as="image">
+		<link rel="preload" href="/static/penguin3.svg" as="image">
 
-    </body>
+		<title>DrawIT</title>
+	</head>
+
+	<body>
+		<section id="app"></section>
+		<script type="module">
+			// https://rustwasm.github.io/docs/wasm-bindgen/examples/without-a-bundler.html
+			import init from '/pkg/package.js';
+			init('/pkg/package_bg.wasm');
+		</script>
+	</body>
 </html>

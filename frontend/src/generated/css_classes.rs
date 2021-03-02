@@ -7,10 +7,10 @@ use css_typegen::css_typegen;
 css_typegen!(
     "frontend/static/styles.css",
     "frontend/static/left_panel.css",
-    "frontend/static/heart_spinner.css",
     "frontend/static/ripple_spinner.css",
     "frontend/static/filter_menu.css",
     "frontend/static/charts.css",
     "frontend/static/notifications.css",
+    "frontend/static/penguin.css",
     "frontend/static/tailwind.css",
 );
