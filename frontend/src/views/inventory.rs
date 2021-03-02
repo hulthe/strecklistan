@@ -59,20 +59,22 @@ pub fn view_inventory_item(
     add_item_ev: impl FnOnce(InventoryItemId, i32) -> Msg,
 ) -> Node<Msg> {
     div![
-        C![C.inventory_item],
+        C![C.inventory_item, C.unselectable],
         simple_ev(Ev::Click, add_item_ev(item.id, 1)),
         p![
             C![C.inventory_item_header],
             build_search_highlight_spans(&item.name, highlight_chars),
         ],
-        if let Some(image_url) = item.image_url.as_ref() {
-            img![
-                C![C.w_48, C.h_48, C.m_auto, C.my_1],
-                attrs! { At::Src => image_url },
-            ]
-        } else {
-            div![C![C.h_48, C.my_1]]
-        },
+        div![
+            C![C.w_48, C.h_48, C.m_auto, C.my_1],
+            if let Some(image_url) = item.image_url.as_ref() {
+                attrs! { At::Style =>
+                    format!("background-image: url({}); background-size: contain", image_url),
+                }
+            } else {
+                attrs! {}
+            }
+        ],
         p![
             C![C.inventory_item_footer],
             C![match item.stock {

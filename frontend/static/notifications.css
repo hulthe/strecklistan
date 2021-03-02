@@ -1,5 +1,5 @@
 .notification_list {
-    position: absolute;
+    position: fixed;
     z-index: 1337;
 }
 

@@ -3,7 +3,9 @@ body {
 }
 
 .header {
-	position: fixed;
+	position: -webkit-sticky; /* Safari */
+	position: sticky;
+	top: 0;
 	width: 100%;
 	background-color: #000;
 	z-index: 69;
@@ -32,11 +34,6 @@ body {
 	color: #fff;
 	text-shadow: 0 0 2px;
 	transition: all 0.2s linear;
-}
-
-.header_margin {
-	font-size: larger;
-	padding: 0.5rem;
 }
 
 .border_on_focus {
@@ -118,7 +115,8 @@ body {
 	flex: 0 0 auto;
 	flex-direction: column;
 	font-size: 24px;
-	width: 24rem;
+	max-width: calc(100% - 2em);
+
 }
 
 .transactions_list {
@@ -168,7 +166,7 @@ body {
 @media only screen and (max-width: 945px) {
 	.store_page {
 		grid-template-columns: 1fr;
-		grid-template-rows: auto auto 1fr; 
+		grid-template-rows: auto auto 1fr;
 		grid-template-areas:
 			"store_top_box"
 			"inventory"
@@ -184,6 +182,8 @@ body {
 	.store_top_box {
 		padding-left: 0;
 		padding-right: 0;
+		box-shadow: 0 0 0.2em;
+		z-index: 1;
 	}
 
 	.inventory_view {
@@ -194,7 +194,9 @@ body {
 
 	.new_transaction_view {
 		border-left: none;
+		box-shadow: 0 0 0.2em;
 		padding-left: 0;
+		z-index: 1;
 	}
 }
 
@@ -300,7 +302,6 @@ body {
 .inventory_search_field {
 	flex-grow: 1;
 	align-self: center;
-	min-width: 22rem;
 	margin: 1rem;
 	background-color: #858b91;
 	color: white;
@@ -322,6 +323,29 @@ body {
 	border: solid #000000 0.15rem;
 	border-radius: 0.5rem;
 	background-color: #ececec;
+	cursor: pointer;
+}
+
+.inventory_item:not(hover) {
+	transform: scale(1);
+	box-shadow: 0.2em 0.2em 1.5em -1em;
+	transition-property: transform, box-shadow;
+	transition-duration: 0.5s;
+}
+
+.inventory_item:hover {
+	transform: scale(1.05);
+	box-shadow: 0.25em 0.25em 2em -1em;
+	transition-property: transform, box-shadow;
+	transition-duration: 0.5s;
+}
+
+.inventory_item:active {
+	transform: scale(0.9) rotate(5deg);
+	box-shadow: 0 0;
+	transition-property: transform, box-shadow;
+	transition-duration: 0.05s;
+	transition-timing-function: linear;
 }
 
 .inventory_item_header {
@@ -473,6 +497,7 @@ body {
 
 .parsed_input_text {
 	border-bottom: solid 2px black;
+	width: 100%;
 }
 
 .parsed_input_error {

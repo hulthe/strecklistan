@@ -131,11 +131,11 @@ pub fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
     orders
         .subscribe(|subs::UrlChanged(mut url)| {
             let page = match url.remaining_path_parts().as_slice() {
-                [] | [""] | ["store"] => (Page::Store),
-                ["transactions"] => (Page::TransactionHistory),
-                ["analytics"] => (Page::Analytics),
-                ["deposit"] => (Page::Deposit),
-                _ => (Page::NotFound),
+                [] | [""] | ["store"] => Page::Store,
+                ["transactions"] => Page::TransactionHistory,
+                ["analytics"] => Page::Analytics,
+                ["deposit"] => Page::Deposit,
+                _ => Page::NotFound,
             };
 
             Msg::ChangePage(page)
@@ -312,12 +312,6 @@ pub fn view(model: &Model) -> Vec<Node<Msg>> {
                     ],
                 ],
             ],
-            if cfg!(debug_assertions) {
-                div![raw!["&nbsp;"]]
-            } else {
-                empty![]
-            },
-            div![C![C.header_margin], raw!["&nbsp;"]],
             match &model.state {
                 State::Ready {
                     analytics_page,
