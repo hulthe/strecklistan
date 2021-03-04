@@ -329,7 +329,7 @@ pub fn view(model: &Model) -> Vec<Node<Msg>> {
                     }
                 },
 
-                State::Loading(_) => div![C![C.text_center, C.mt_2], div![C![C.penguin]]],
+                State::Loading(_) => div![C![C.penguin, C.margin_hcenter]],
                 State::LoadingFailed(msg, error) => div![
                     C![C.flex, C.flex_col],
                     p!["An has error occured."],

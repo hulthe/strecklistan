@@ -1,38 +1,38 @@
 @keyframes example {
 	0%   {
-		transform: rotate3d(0, 1, 0, 90deg);
+		transform: perspective(36em) rotateY(-90deg);
 		background-image: url(/static/penguin1.svg);
 	}
 	24.99% {
-		transform: rotate3d(0, 1, 0, 270deg);
+		transform: perspective(36em) rotateY(90deg);
 		background-image: url(/static/penguin1.svg);
 	}
 	25% {
-		transform: rotate3d(0, 1, 0, 270deg);
+		transform: perspective(36em) rotateY(90deg);
 		background-image: url(/static/penguin2.svg);
 	}
 	49.99% {
-		transform: rotate3d(0, 1, 0, 450deg);
+		transform: perspective(36em) rotateY(270deg);
 		background-image: url(/static/penguin2.svg);
 	}
 	50% {
-		transform: rotate3d(0, 1, 0, 450deg);
+		transform: perspective(36em) rotateY(270deg);
 		background-image: url(/static/penguin3.svg);
 	}
 	74.99% {
-		transform: rotate3d(0, 1, 0, 630deg);
+		transform: perspective(36em) rotateY(450deg);
 		background-image: url(/static/penguin3.svg);
 	}
 	75% {
-		transform: rotate3d(0, 1, 0, 630deg);
+		transform: perspective(36em) rotateY(450deg);
 		background-image: url(/static/penguin2.svg);
 	}
 	99.99% {
-		transform: rotate3d(0, 1, 0, 810deg);
+		transform: perspective(36em) rotateY(630deg);
 		background-image: url(/static/penguin2.svg);
 	}
 	100% {
-		transform: rotate3d(0, 1, 0, 810deg);
+		transform: perspective(36em) rotateY(630deg);
 		background-image: url(/static/penguin1.svg);
 	}
 }
@@ -40,12 +40,12 @@
 .penguin {
 	width: 12em;
 	height: 12em;
-	margin-left: auto;
-	margin-right: auto;
+	margin-top: 1em;
+	margin-bottom: 1em;
 	background-image: url(/static/penguin1.svg);
 	background-size: contain;
 	animation-name: example;
 	animation-duration: 4s;
 	animation-iteration-count: infinite;
-	animation-timing-function: cubic-bezier(0, 0.5, 1, 0.5);
+	animation-timing-function: cubic-bezier(0.1, 0.5, 0.9, 0.5);
 }
