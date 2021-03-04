@@ -331,7 +331,7 @@ pub fn view(model: &Model) -> Vec<Node<Msg>> {
 
                 State::Loading(_) => div![C![C.penguin, C.margin_hcenter]],
                 State::LoadingFailed(msg, error) => div![
-                    C![C.flex, C.flex_col],
+                    C![C.error_page],
                     p!["An has error occured."],
                     p![msg],
                     textarea![

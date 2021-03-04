@@ -174,7 +174,7 @@ impl TransactionsPage {
                 C![C.balance_entry],
                 span![name],
                 span![": "],
-                span![C![C.flex_grow, C.flex_shrink, C.w_8]],
+                span![C![C.flex_span_spacing]],
                 span![format!("{}:-", balance)],
             ]
         };
@@ -203,15 +203,15 @@ impl TransactionsPage {
         div![
             C![C.transactions_page],
             div![
-                C![C.left_panel, C.px_4],
+                C![C.left_panel],
                 if self.show_left_panel {
                     C![C.left_panel_showing]
                 } else {
                     C![]
                 },
                 div![
-                    C![C.flex, C.flex_row, C.text_3xl, C.font_bold],
-                    h2![C![C.mx_auto, C.my_2], "Balansräkning"],
+                    C![C.left_panel_entry],
+                    h2![C![C.left_panel_entry_header], "Balansräkning"],
                 ],
                 div![
                     C![C.balance_sheet, C.margin_hcenter],
@@ -232,32 +232,32 @@ impl TransactionsPage {
                             .fold(0.into(), |a: Currency, b| a + b)
                     ),
                 ],
-                hr![C![C.my_2]],
+                hr![C![C.left_panel_entry]],
                 div![
-                    C![C.flex, C.flex_row, C.text_3xl, C.font_bold],
-                    h2![C![C.mx_auto, C.my_2], "Filtrera (WIP)"],
+                    C![C.left_panel_entry],
+                    h2![C![C.left_panel_entry_header], "Filtrera (WIP)"],
                 ],
                 self.filter_menu
                     .view()
                     .map_msg(|msg| TransactionsMsg::FilterMenuMsg(msg)),
                 div![
-                    C![C.flex, C.flex_row, C.text_3xl, C.font_bold],
-                    h2![C![C.mx_auto, C.my_2], "Exportera Data"],
-                ],
-                button![
-                    C![C.wide_button],
-                    "JSON",
-                    simple_ev(Ev::Click, TransactionsMsg::ExportData(ExportFormat::JSON)),
-                ],
-                button![
-                    C![C.wide_button, C.mt_2],
-                    "CSV (En rad per vara)",
-                    simple_ev(
-                        Ev::Click,
-                        TransactionsMsg::ExportData(ExportFormat::CSV(
-                            CSVStyleTransaction::PerItem
-                        ))
-                    ),
+                    C![C.left_panel_entry],
+                    h2![C![C.left_panel_entry_header], "Exportera Data"],
+                    button![
+                        C![C.wide_button],
+                        "JSON",
+                        simple_ev(Ev::Click, TransactionsMsg::ExportData(ExportFormat::JSON)),
+                    ],
+                    button![
+                        C![C.wide_button],
+                        "CSV (En rad per vara)",
+                        simple_ev(
+                            Ev::Click,
+                            TransactionsMsg::ExportData(ExportFormat::CSV(
+                                CSVStyleTransaction::PerItem
+                            ))
+                        ),
+                    ],
                 ],
                 // TODO: implement this
                 /*
@@ -316,6 +316,7 @@ fn view_transaction(
     div![
         C![C.transaction_view],
         p![
+            C![C.transaction_line],
             span![format!("#{} ", transaction.id)],
             span![transaction
                 .description
@@ -335,15 +336,18 @@ fn view_transaction(
                 empty![]
             }
         ],
-        p![format!(
-            "{}",
-            transaction
-                .time
-                .with_timezone(&global.timezone)
-                .format("%Y-%m-%d %H:%M:%S %Z"),
-        )],
         p![
-            C![C.mt_2],
+            C![C.transaction_line],
+            format!(
+                "{}",
+                transaction
+                    .time
+                    .with_timezone(&global.timezone)
+                    .format("%Y-%m-%d %H:%M:%S %Z"),
+            )
+        ],
+        p![
+            C![C.transaction_line],
             span!["Debet: "],
             span![
                 C![C.font_bold],
@@ -355,7 +359,7 @@ fn view_transaction(
             ],
         ],
         p![
-            C![C.mt_2, C.mb_2],
+            C![C.transaction_line],
             span!["Kredit: "],
             span![
                 C![C.font_bold],

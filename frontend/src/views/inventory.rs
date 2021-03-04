@@ -45,7 +45,7 @@ fn build_search_highlight_spans(
             let s = std::str::from_utf8(&s[..]).expect("Invalid utf-8 string");
 
             if highlighted {
-                span![C![C.text_green_200, C.underline], s]
+                span![C![C.inventory_item_name_highlight], s]
             } else {
                 span![s]
             }
@@ -66,7 +66,7 @@ pub fn view_inventory_item(
             build_search_highlight_spans(&item.name, highlight_chars),
         ],
         div![
-            C![C.w_48, C.h_48, C.m_auto, C.my_1],
+            C![C.inventory_item_image],
             if let Some(image_url) = item.image_url.as_ref() {
                 attrs! { At::Style =>
                     format!("background-image: url({}); background-size: contain", image_url),
@@ -100,12 +100,9 @@ pub fn view_inventory_bundle(
             build_search_highlight_spans(&bundle.name, highlight_chars),
         ],
         if let Some(image_url) = bundle.image_url.as_ref() {
-            img![
-                C![C.w_48, C.h_48, C.m_auto, C.my_1],
-                attrs! { At::Src => image_url },
-            ]
+            img![C![C.inventory_item_image], attrs! { At::Src => image_url },]
         } else {
-            div![C![C.h_48, C.my_1]]
+            div![C![C.inventory_item_no_image]]
         },
     ]
 }

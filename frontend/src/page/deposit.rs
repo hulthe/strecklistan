@@ -328,30 +328,30 @@ impl DepositionPage {
             div![
                 C![C.new_member_view],
                 button![
-                    C![C.border_on_focus, C.wide_button, C.my_2],
+                    C![C.border_on_focus, C.wide_button, C.new_member_view_item],
                     simple_ev(Ev::Click, NewMemberMsg::HideMenu),
                     strings::ABORT,
                 ],
                 input![
-                    C![C.border_on_focus, C.mb_2],
+                    C![C.border_on_focus, C.new_member_view_item],
                     attrs! {At::Placeholder => strings::FIRST_NAME},
                     attrs! {At::Value => first_name},
                     input_ev(Ev::Input, NewMemberMsg::FirstNameInput),
                 ],
                 input![
-                    C![C.border_on_focus, C.mb_2],
+                    C![C.border_on_focus, C.new_member_view_item],
                     attrs! {At::Placeholder => strings::LAST_NAME},
                     attrs! {At::Value => last_name},
                     input_ev(Ev::Input, NewMemberMsg::LastNameInput),
                 ],
                 input![
-                    C![C.border_on_focus, C.mb_2],
+                    C![C.border_on_focus, C.new_member_view_item],
                     attrs! {At::Placeholder => strings::NICKNAME},
                     attrs! {At::Value => nickname},
                     input_ev(Ev::Input, NewMemberMsg::NicknameInput),
                 ],
                 input![
-                    C![C.border_on_focus, C.mb_2],
+                    C![C.border_on_focus, C.new_member_view_item],
                     attrs! {At::Placeholder => strings::ACCOUNT_NAME},
                     attrs! {At::Value => match acc_name {
                         Some(name) => name.to_string(),
@@ -360,7 +360,7 @@ impl DepositionPage {
                     input_ev(Ev::Input, NewMemberMsg::AccNameInput),
                 ],
                 button![
-                    C![C.border_on_focus, C.wide_button],
+                    C![C.border_on_focus, C.wide_button, C.new_member_view_item],
                     if first_name == "" || last_name == "" {
                         attrs! {At::Disabled => true}
                     } else {
@@ -375,15 +375,9 @@ impl DepositionPage {
             div![
                 C![C.deposit_page],
                 div![
-                    C![C.tillgodo_list, C.m_2],
+                    C![C.tillgodo_list],
                     input![
-                        C![
-                            C.tillgodolista_search_field,
-                            C.rounded_lg,
-                            C.px_2,
-                            C.h_12,
-                            C.border_on_focus,
-                        ],
+                        C![C.tillgodolista_search_field, C.rounded, C.border_on_focus],
                         if self.credit_account.is_some() {
                             C![C.debit_selected]
                         } else {
@@ -406,7 +400,7 @@ impl DepositionPage {
                         keyboard_ev(Ev::KeyDown, DepositionMsg::CreditKeyDown),
                     ],
                     button![
-                        C![C.wide_button, C.border_on_focus, C.my_2],
+                        C![C.new_member_button, C.wide_button, C.border_on_focus],
                         simple_ev(Ev::Click, DepositionMsg::ShowNewMemberMenu),
                         "+",
                     ],
@@ -423,16 +417,16 @@ impl DepositionPage {
                         .collect::<Vec<_>>(),
                 ],
                 div![
-                    C![C.pay_method_select_box, C.m_2],
+                    C![C.pay_method_select_box],
                     div![
-                        C![C.flex, C.flex_row],
+                        C![C.select_debit_container],
                         button![
                             if let DebitOption::IZettleEPay = self.debit {
                                 C![C.debit_selected]
                             } else {
                                 C![]
                             },
-                            C![C.select_debit_button, C.border_on_focus, C.rounded_l_lg],
+                            C![C.select_debit_button, C.border_on_focus, C.rounded_l],
                             simple_ev(
                                 Ev::Click,
                                 DepositionMsg::SelectDebit(DebitOption::IZettleEPay)
@@ -445,7 +439,7 @@ impl DepositionPage {
                             } else {
                                 C![]
                             },
-                            C![C.select_debit_button, C.border_on_focus, C.rounded_r_lg],
+                            C![C.select_debit_button, C.border_on_focus, C.rounded_r],
                             simple_ev(
                                 Ev::Click,
                                 DepositionMsg::SelectDebit(DebitOption::OtherEPay),
@@ -454,13 +448,7 @@ impl DepositionPage {
                         ],
                     ],
                     self.amount_input
-                        .view(C![
-                            C.rounded,
-                            C.px_2,
-                            C.my_2,
-                            C.border_on_focus,
-                            C.bg_gray_300,
-                        ])
+                        .view(C![C.deposit_amount_input, C.rounded, C.border_on_focus])
                         .map_msg(DepositionMsg::AmountInputMsg),
                     if global.request_in_progress {
                         button![

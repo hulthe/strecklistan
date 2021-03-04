@@ -12,5 +12,4 @@ css_typegen!(
     "frontend/static/charts.css",
     "frontend/static/notifications.css",
     "frontend/static/penguin.css",
-    "frontend/static/tailwind.css",
 );

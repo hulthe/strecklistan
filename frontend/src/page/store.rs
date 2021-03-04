@@ -357,13 +357,7 @@ impl StorePage {
                 div![
                     C![C.pay_method_select_box, C.margin_hcenter],
                     input![
-                        C![
-                            C.tillgodolista_search_field,
-                            C.rounded_t_lg,
-                            C.px_2,
-                            C.h_12,
-                            C.border_on_focus,
-                        ],
+                        C![C.tillgodolista_search_field, C.rounded_t, C.border_on_focus],
                         apply_selection_class_on(SelectedDebit::Tillgodo),
                         attrs! {At::Value => self.tillgodolista_search_string},
                         {
@@ -384,7 +378,7 @@ impl StorePage {
                         keyboard_ev(Ev::KeyDown, |ev| Msg::StoreMsg(StoreMsg::DebitKeyDown(ev))),
                     ],
                     div![
-                        C![C.flex, C.flex_row],
+                        C![C.select_debit_container],
                         if !self.tillgodolista_search_string.is_empty() {
                             div![
                                 C![C.tillgodo_drop_down],
@@ -405,13 +399,13 @@ impl StorePage {
                         },
                         button![
                             apply_selection_class_on(SelectedDebit::IZettleEPay),
-                            C![C.select_debit_button, C.border_on_focus, C.rounded_bl_lg],
+                            C![C.select_debit_button, C.border_on_focus, C.rounded_bl],
                             simple_ev(Ev::Click, Msg::StoreMsg(StoreMsg::DebitSelectIZettle)),
                             strings::IZETTLE,
                         ],
                         button![
                             apply_selection_class_on(SelectedDebit::OtherEPay),
-                            C![C.select_debit_button, C.border_on_focus, C.rounded_br_lg],
+                            C![C.select_debit_button, C.border_on_focus, C.rounded_br],
                             simple_ev(
                                 Ev::Click,
                                 Msg::StoreMsg(StoreMsg::DebitSelect(
@@ -423,13 +417,7 @@ impl StorePage {
                     ]
                 ],
                 input![
-                    C![
-                        C.inventory_search_field,
-                        C.rounded,
-                        C.px_2,
-                        C.h_12,
-                        C.border_on_focus,
-                    ],
+                    C![C.inventory_search_field, C.rounded, C.border_on_focus],
                     attrs! {At::Value => self.inventory_search_string},
                     attrs! {At::Placeholder => "sök varor"},
                     input_ev(Ev::Input, |input| Msg::StoreMsg(StoreMsg::SearchInput(

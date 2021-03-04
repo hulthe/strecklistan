@@ -231,8 +231,7 @@ where
 {
     let y_max = points.iter().map(|(_, v)| *v).max().unwrap();
     div![
-        C![C.mx_2],
-        h2![C![C.mt_2], name],
+        h2![name],
         div![
             C![C.chart_histogram],
             points
