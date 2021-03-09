@@ -25,7 +25,6 @@ pub enum ExportFormat {
 
 #[derive(Clone, Debug)]
 pub enum TransactionsMsg {
-    FetchEvent(event::Fetched),
     DeleteTransaction(TransactionId),
     TransactionDeleted(TransactionId),
     SetShowDelete(bool),
@@ -33,6 +32,9 @@ pub enum TransactionsMsg {
     FilterMenuMsg(FilterMenuMsg),
     IncreaseViewLimit,
     ExportData(ExportFormat),
+
+    ResFetched(event::Fetched),
+    ResMarkDirty(event::MarkDirty),
 }
 
 #[derive(Clone)]
@@ -77,7 +79,8 @@ impl TransactionsPage {
             accounts_balance: HashMap::new(),
         };
 
-        orders.subscribe(TransactionsMsg::FetchEvent);
+        orders.subscribe(TransactionsMsg::ResFetched);
+        orders.subscribe(TransactionsMsg::ResMarkDirty);
 
         Res::acquire(rs, orders)
             .map(|res| page.filter_transactions(&res))
@@ -132,12 +135,14 @@ impl TransactionsPage {
 
         let mut orders_local = orders.proxy(|msg| Msg::TransactionsMsg(msg));
         match msg {
-            TransactionsMsg::FetchEvent(event::Fetched(resource)) => {
+            TransactionsMsg::ResFetched(event::Fetched(resource)) => {
                 if Res::has_resource(resource) {
                     self.filter_transactions(&res);
                 }
             }
+            TransactionsMsg::ResMarkDirty(_) => {}
             TransactionsMsg::DeleteTransaction(id) => {
+                self.show_delete = false;
                 orders_local.perform_cmd(async move {
                     let result = async {
                         Request::new(format!("/api/transaction/{}", id))
