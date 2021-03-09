@@ -99,9 +99,8 @@ impl DepositionPage {
     pub fn new(rs: &ResourceStore, orders: &mut impl Orders<DepositionMsg>) -> Self {
         orders.subscribe(DepositionMsg::ResFetched);
         orders.subscribe(DepositionMsg::ResMarkDirty);
-        Res::acquire(rs, orders).ok();
 
-        DepositionPage {
+        let mut page = DepositionPage {
             debit: DebitOption::IZettleEPay,
             izettle_pay: IZettlePay::new(),
             credit_account: None,
@@ -111,7 +110,13 @@ impl DepositionPage {
                 .with_error_message(strings::INVALID_MONEY_MESSAGE_LONG),
             new_member: None,
             request_in_progress: false,
+        };
+
+        if let Ok(res) = Res::acquire(rs, orders) {
+            page.rebuild_data(&res);
         }
+
+        page
     }
 
     pub fn update(
