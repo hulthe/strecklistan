@@ -1,15 +1,18 @@
-use crate::app::{Msg, StateReady};
+use crate::app::Msg;
 use crate::generated::css_classes::C;
+use crate::page::loading::Loading;
+use crate::res::{event, MustBeFresh, NotAvailable, ResourceStore};
 use crate::util::export::{download_file, make_csv_transaction_list, CSVStyleTransaction};
 use crate::util::simple_ev;
 use crate::views::filter_menu::{FilterMenu, FilterMenuMsg};
+use chrono::{FixedOffset, Local};
 use seed::prelude::*;
 use seed::*;
+use seed_fetcher::Resources;
 use std::collections::HashMap;
-use std::ops::Deref;
-use strecklistan_api::book_account::BookAccountId;
+use strecklistan_api::book_account::{BookAccount, BookAccountId, MasterAccounts};
 use strecklistan_api::currency::Currency;
-use strecklistan_api::inventory::InventoryItemStock as InventoryItem;
+use strecklistan_api::inventory::{InventoryItemId, InventoryItemStock};
 use strecklistan_api::transaction::{Transaction, TransactionId};
 
 const VIEW_COUNT_CHUNK: usize = 50;
@@ -22,6 +25,7 @@ pub enum ExportFormat {
 
 #[derive(Clone, Debug)]
 pub enum TransactionsMsg {
+    FetchEvent(event::Fetched),
     DeleteTransaction(TransactionId),
     TransactionDeleted(TransactionId),
     SetShowDelete(bool),
@@ -37,41 +41,63 @@ pub struct TransactionsPage {
     show_left_panel: bool,
     view_limit: usize,
     filter_menu: FilterMenu,
+    timezone: FixedOffset,
 
-    // Indexes into global.transaction_history
+    /// Only show transactions in this list
     filtered_transactions: Vec<usize>,
 
-    // The balance of all accounts based on the filtered transactions
+    /// The balance of all accounts based on the filtered transactions
     accounts_balance: HashMap<BookAccountId, Currency>,
 }
 
+#[derive(Resources)]
+struct Res<'a> {
+    #[url = "/api/transactions"]
+    transactions: &'a Vec<Transaction>,
+
+    #[url = "/api/inventory/items"]
+    inventory: &'a HashMap<InventoryItemId, InventoryItemStock>,
+
+    #[url = "/api/book_accounts"]
+    book_accounts: &'a HashMap<BookAccountId, BookAccount>,
+
+    #[url = "/api/book_accounts/masters"]
+    master_accounts: &'a MasterAccounts,
+}
+
 impl TransactionsPage {
-    pub fn new(global: &StateReady) -> Self {
+    pub fn new(rs: &ResourceStore, orders: &mut impl Orders<TransactionsMsg>) -> Self {
         let mut page = TransactionsPage {
             show_delete: false,
             show_left_panel: false,
+            timezone: *Local::now().offset(),
             view_limit: VIEW_COUNT_CHUNK,
             filter_menu: FilterMenu::new(vec!["datum", "klockslag", "summa", "debet", "kredit"]),
             filtered_transactions: vec![],
             accounts_balance: HashMap::new(),
         };
-        page.filter_transactions(global);
+
+        orders.subscribe(TransactionsMsg::FetchEvent);
+
+        Res::acquire(rs, orders)
+            .map(|res| page.filter_transactions(&res))
+            .ok();
         page
     }
 
     /// Rebuild self.filtered_transactions
-    fn filter_transactions(&mut self, global: &StateReady) {
-        self.filtered_transactions = global
-            .transaction_history
+    fn filter_transactions(&mut self, res: &Res) {
+        self.filtered_transactions = res
+            .transactions
             .iter()
             .enumerate()
             .filter(|(_, tr)| {
                 self.filter_menu.filter(&[
-                    &tr.time.with_timezone(&global.timezone).format("%Y-%m-%d"), // datum
-                    &tr.time.with_timezone(&global.timezone).format("%H:%M:%S"), // klockslag
-                    &tr.amount,                                                  // summa
-                    &global.book_accounts.get(&tr.debited_account).unwrap().name, // debet
-                    &global.book_accounts.get(&tr.credited_account).unwrap().name, // kredit
+                    &tr.time.with_timezone(&self.timezone).format("%Y-%m-%d"), // datum
+                    &tr.time.with_timezone(&self.timezone).format("%H:%M:%S"), // klockslag
+                    &tr.amount,                                                // summa
+                    &res.book_accounts.get(&tr.debited_account).unwrap().name, // debet
+                    &res.book_accounts.get(&tr.credited_account).unwrap().name, // kredit
                 ])
             })
             .map(|(i, _)| i)
@@ -81,13 +107,13 @@ impl TransactionsPage {
         for tr in self
             .filtered_transactions
             .iter()
-            .map(|&i| &global.transaction_history[i])
+            .map(|&i| &res.transactions[i])
         {
-            if let Some(acc) = global.book_accounts.get(&tr.debited_account) {
+            if let Some(acc) = res.book_accounts.get(&tr.debited_account) {
                 *self.accounts_balance.entry(tr.debited_account).or_default() +=
                     acc.debit_diff(tr.amount);
             }
-            if let Some(acc) = global.book_accounts.get(&tr.credited_account) {
+            if let Some(acc) = res.book_accounts.get(&tr.credited_account) {
                 *self
                     .accounts_balance
                     .entry(tr.credited_account)
@@ -99,11 +125,18 @@ impl TransactionsPage {
     pub fn update(
         &mut self,
         msg: TransactionsMsg,
-        global: &mut StateReady,
+        rs: &ResourceStore,
         orders: &mut impl Orders<Msg>,
-    ) {
+    ) -> Result<(), NotAvailable> {
+        let res = Res::acquire(rs, orders)?;
+
         let mut orders_local = orders.proxy(|msg| Msg::TransactionsMsg(msg));
         match msg {
+            TransactionsMsg::FetchEvent(event::Fetched(resource)) => {
+                if Res::has_resource(resource) {
+                    self.filter_transactions(&res);
+                }
+            }
             TransactionsMsg::DeleteTransaction(id) => {
                 orders_local.perform_cmd(async move {
                     let result = async {
@@ -126,7 +159,7 @@ impl TransactionsPage {
 
             TransactionsMsg::TransactionDeleted(id) => {
                 log!(format!("Transaction {} deleted", id));
-                orders.send_msg(Msg::ReloadData);
+                rs.mark_as_dirty(Res::transactions_url(), orders);
             }
 
             TransactionsMsg::SetShowDelete(show_delete) => {
@@ -141,17 +174,17 @@ impl TransactionsPage {
                     &mut orders_local.proxy(|msg| TransactionsMsg::FilterMenuMsg(msg)),
                 );
                 self.view_limit = VIEW_COUNT_CHUNK; // reset view limit
-                self.filter_transactions(global);
+                self.filter_transactions(&res);
             }
             TransactionsMsg::IncreaseViewLimit => {
                 self.view_limit += VIEW_COUNT_CHUNK;
-                self.filter_transactions(global);
+                self.filter_transactions(&res);
             }
             TransactionsMsg::ExportData(format) => {
                 let transactions: Vec<_> = self
                     .filtered_transactions
                     .iter()
-                    .map(|&index| global.transaction_history[index].clone())
+                    .map(|&index| res.transactions[index].clone())
                     .collect();
                 match format {
                     ExportFormat::JSON => {
@@ -166,9 +199,16 @@ impl TransactionsPage {
                 }
             }
         }
+
+        Ok(())
     }
 
-    pub fn view(&self, global: &StateReady) -> Node<Msg> {
+    pub fn view(&self, rs: &ResourceStore) -> Node<Msg> {
+        let res = match Res::acquire_now(rs) {
+            Ok(res) => res,
+            Err(_) => return Loading::view(),
+        };
+
         let show_acc_entry = |name: &str, balance: Currency| {
             div![
                 C![C.balance_entry],
@@ -180,8 +220,7 @@ impl TransactionsPage {
         };
         let show_acc = |id: &BookAccountId| {
             show_acc_entry(
-                global
-                    .book_accounts
+                res.book_accounts
                     .get(id)
                     .map(|acc| acc.name.as_str())
                     .unwrap_or("[missing]"),
@@ -196,8 +235,8 @@ impl TransactionsPage {
             .filtered_transactions
             .iter()
             .take(self.view_limit)
-            .map(|&i| &global.transaction_history[i])
-            .map(|tr| view_transaction(global, tr, self.show_delete))
+            .map(|&i| &res.transactions[i])
+            .map(|tr| view_transaction(self.timezone, &res, tr, self.show_delete))
             .collect();
 
         div![
@@ -215,15 +254,15 @@ impl TransactionsPage {
                 ],
                 div![
                     C![C.balance_sheet, C.margin_hcenter],
-                    show_acc(&global.master_accounts.bank_account_id),
-                    show_acc(&global.master_accounts.cash_account_id),
-                    show_acc(&global.master_accounts.sales_account_id),
-                    show_acc(&global.master_accounts.purchases_account_id),
+                    show_acc(&res.master_accounts.bank_account_id),
+                    show_acc(&res.master_accounts.cash_account_id),
+                    show_acc(&res.master_accounts.sales_account_id),
+                    show_acc(&res.master_accounts.purchases_account_id),
                     show_acc_entry(
                         "Tillgodo Totalt",
                         self.accounts_balance
                             .iter()
-                            .filter_map(|(id, balance)| global
+                            .filter_map(|(id, balance)| res
                                 .book_accounts
                                 .get(id)
                                 .map(|acc| (acc, balance)))
@@ -309,7 +348,8 @@ impl TransactionsPage {
 }
 
 fn view_transaction(
-    global: &StateReady,
+    timezone: FixedOffset,
+    res: &Res,
     transaction: &Transaction,
     show_delete: bool,
 ) -> Node<TransactionsMsg> {
@@ -342,7 +382,7 @@ fn view_transaction(
                 "{}",
                 transaction
                     .time
-                    .with_timezone(&global.timezone)
+                    .with_timezone(&timezone)
                     .format("%Y-%m-%d %H:%M:%S %Z"),
             )
         ],
@@ -351,8 +391,7 @@ fn view_transaction(
             span!["Debet: "],
             span![
                 C![C.font_bold],
-                global
-                    .book_accounts
+                res.book_accounts
                     .get(&transaction.debited_account)
                     .map(|acc| acc.name.as_str())
                     .unwrap_or("[MISSING]")
@@ -363,8 +402,7 @@ fn view_transaction(
             span!["Kredit: "],
             span![
                 C![C.font_bold],
-                global
-                    .book_accounts
+                res.book_accounts
                     .get(&transaction.credited_account)
                     .map(|acc| acc.name.as_str())
                     .unwrap_or("[MISSING]")
@@ -374,13 +412,13 @@ fn view_transaction(
             .bundles
             .iter()
             .map(|bundle| {
-                let mut items = bundle.item_ids.keys().map(|id| &global.inventory[id]);
+                let mut items = bundle.item_ids.keys().map(|id| &res.inventory[id]);
 
                 // TODO: Properly display more complicated bundles
 
-                let (item_name, item_price) = match items.next().map(|rc| rc.deref()) {
+                let (item_name, item_price) = match items.next() {
                     None => (None, 0),
-                    Some(InventoryItem { name, price, .. }) => {
+                    Some(InventoryItemStock { name, price, .. }) => {
                         (Some(name.as_str()), price.unwrap_or(0))
                     }
                 };

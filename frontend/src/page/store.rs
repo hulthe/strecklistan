@@ -1,28 +1,47 @@
-use crate::app::{Msg, StateReady};
+use crate::app::Msg;
 use crate::components::checkout::{Checkout, CheckoutMsg};
 use crate::components::izettle_pay::{IZettlePay, IZettlePayErr, IZettlePayMsg};
-use crate::fuzzy_search::FuzzySearch;
+use crate::fuzzy_search::{FuzzyScore, FuzzySearch};
 use crate::generated::css_classes::C;
 use crate::notification_manager::{Notification, NotificationMessage};
+use crate::page::loading::Loading;
+use crate::res::{event, MustBeFresh, NotAvailable, ResourceStore};
 use crate::strings;
-use crate::util::{compare_fuzzy, simple_ev, sort_tillgodolista_search};
+use crate::util::{compare_fuzzy, simple_ev};
 use crate::views::{view_inventory_bundle, view_inventory_item, view_tillgodo};
 use seed::prelude::*;
 use seed::*;
-use std::rc::Rc;
+use seed_fetcher::Resources;
+use std::collections::HashMap;
 use strecklistan_api::{
-    book_account::{BookAccount, BookAccountId},
-    inventory::{InventoryBundle, InventoryItemStock as InventoryItem},
-    member::Member,
+    book_account::{BookAccount, BookAccountId, MasterAccounts},
+    inventory::{
+        InventoryBundle, InventoryBundleId, InventoryItemId, InventoryItemStock as InventoryItem,
+    },
+    member::{Member, MemberId},
 };
 
 #[derive(Clone, Debug)]
-pub enum StoreItem {
-    Item(Rc<InventoryItem>),
-    Bundle(Rc<InventoryBundle>),
+enum StoreItemId {
+    Item(InventoryItemId),
+    Bundle(InventoryBundleId),
 }
 
-impl StoreItem {
+enum StoreItem<'a> {
+    Item(&'a InventoryItem),
+    Bundle(&'a InventoryBundle),
+}
+
+impl StoreItemId {
+    fn acquire<'a>(&self, state: &'a Res) -> StoreItem<'a> {
+        match self {
+            StoreItemId::Item(id) => StoreItem::Item(&state.inventory[id]),
+            StoreItemId::Bundle(id) => StoreItem::Bundle(&state.bundles[id]),
+        }
+    }
+}
+
+impl StoreItem<'_> {
     pub fn get_name(&self) -> &str {
         match self {
             StoreItem::Item(item) => &item.name,
@@ -38,14 +57,14 @@ impl StoreItem {
     }
 }
 
-impl FuzzySearch for StoreItem {
-    fn compare_fuzzy(&self, search: &str) -> (i32, Vec<(usize, usize)>) {
+impl FuzzySearch for StoreItem<'_> {
+    fn compare_fuzzy(&self, search: &str) -> FuzzyScore {
         compare_fuzzy(self.get_name().chars(), search.chars())
     }
 }
 
 impl FuzzySearch for Member {
-    fn compare_fuzzy(&self, search: &str) -> (i32, Vec<(usize, usize)>) {
+    fn compare_fuzzy(&self, search: &str) -> FuzzyScore {
         match &self.nickname {
             Some(nick) => compare_fuzzy(nick.chars(), search.chars()),
             None => compare_fuzzy(
@@ -61,6 +80,9 @@ impl FuzzySearch for Member {
 
 #[derive(Clone, Debug)]
 pub enum StoreMsg {
+    ResFetched(event::Fetched),
+    ResMarkDirty(event::MarkDirty),
+
     SearchDebit(String),
     DebitKeyDown(web_sys::KeyboardEvent),
     DebitSelect(BookAccountId),
@@ -78,67 +100,86 @@ pub enum StoreMsg {
     CheckoutMsg(CheckoutMsg),
 }
 
-#[derive(Clone)]
+//#[derive(Clone)]
 pub struct StorePage {
-    pub checkout: Checkout,
+    checkout: Checkout,
 
-    pub inventory_search_string: String,
-    pub inventory_search: Vec<(i32, Vec<(usize, usize)>, StoreItem)>,
+    inventory_search_string: String,
+    inventory_search: Vec<(FuzzyScore, StoreItemId)>,
 
-    pub tillgodolista_search_string: String,
-    pub tillgodolista_search: Vec<(i32, Vec<(usize, usize)>, Rc<BookAccount>, Rc<Member>)>,
+    tillgodolista_search_string: String,
+    tillgodolista_search: Vec<(FuzzyScore, BookAccountId, MemberId)>,
 
-    pub izettle_pay: IZettlePay,
-    pub izettle: bool,
+    izettle_pay: IZettlePay,
+    izettle: bool,
+}
+
+#[derive(Resources)]
+struct Res<'a> {
+    #[url = "/api/inventory/bundles"]
+    bundles: &'a HashMap<InventoryBundleId, InventoryBundle>,
+
+    #[url = "/api/inventory/items"]
+    inventory: &'a HashMap<InventoryItemId, InventoryItem>,
+
+    #[url = "/api/book_accounts"]
+    book_accounts: &'a HashMap<BookAccountId, BookAccount>,
+
+    #[url = "/api/book_accounts/masters"]
+    master_accounts: &'a MasterAccounts,
+
+    #[url = "/api/members"]
+    members: &'a HashMap<MemberId, Member>,
 }
 
 impl StorePage {
-    pub fn new(global: &StateReady) -> Self {
+    pub fn new(rs: &ResourceStore, orders: &mut impl Orders<StoreMsg>) -> Self {
+        orders.subscribe(StoreMsg::ResFetched);
+        orders.subscribe(StoreMsg::ResMarkDirty);
         let mut p = StorePage {
-            checkout: Checkout::new(global),
+            checkout: Checkout::new(rs, &mut orders.proxy(StoreMsg::CheckoutMsg)),
 
             inventory_search_string: String::new(),
             inventory_search: vec![],
 
             tillgodolista_search_string: String::new(),
-            tillgodolista_search: global
-                .book_accounts
-                .values()
-                .filter_map(|acc| acc.creditor.map(|id| (acc, id)))
-                .filter_map(|(acc, id)| {
-                    global
-                        .members
-                        .get(&id)
-                        .cloned()
-                        .map(|creditor| (acc, creditor))
-                })
-                .map(|(acc, creditor)| (0, vec![], acc.clone(), creditor))
-                .collect(),
+            tillgodolista_search: vec![],
 
-            izettle_pay: IZettlePay::new(global),
+            izettle_pay: IZettlePay::new(),
             izettle: true,
         };
-        p.rebuild_store_list(global);
+        if let Ok(state) = Res::acquire(rs, orders) {
+            p.rebuild_data(&state);
+        }
         p
     }
 
     pub fn update(
         &mut self,
         msg: StoreMsg,
-        global: &mut StateReady,
+        rs: &ResourceStore,
         orders: &mut impl Orders<Msg>,
-    ) {
+    ) -> Result<(), NotAvailable> {
+        let res = Res::acquire(rs, orders)?;
+
         let mut orders_local = orders.proxy(Msg::StoreMsg);
+
         match msg {
+            StoreMsg::ResFetched(event::Fetched(resource)) => {
+                if Res::has_resource(resource) {
+                    self.rebuild_data(&res);
+                }
+            }
+            StoreMsg::ResMarkDirty(_) => {}
             StoreMsg::SearchDebit(input) => {
-                sort_tillgodolista_search(&input, &mut self.tillgodolista_search);
                 self.tillgodolista_search_string = input;
+                self.sort_tillgodolista_search(&res);
             }
             StoreMsg::DebitKeyDown(ev) => match ev.key().as_str() {
                 "Enter" => {
-                    if let Some((_, _, acc, _)) = self.tillgodolista_search.first() {
-                        let msg = StoreMsg::DebitSelect(acc.id);
-                        self.update(msg, global, orders)
+                    if let Some((_, acc_id, _)) = self.tillgodolista_search.first() {
+                        let msg = StoreMsg::DebitSelect(*acc_id);
+                        self.update(msg, rs, orders)?;
                     }
                 }
                 _ => {}
@@ -151,23 +192,23 @@ impl StorePage {
 
             StoreMsg::SearchInput(input) => {
                 self.inventory_search_string = input;
-                self.sort_store_list();
+                self.sort_store_list(&res);
             }
             StoreMsg::SearchKeyDown(ev) => match ev.key().as_str() {
                 "Enter" => match self.inventory_search.first() {
-                    Some((_, _, StoreItem::Item(item))) => {
+                    Some((_, StoreItemId::Item(item_id))) => {
                         let msg = StoreMsg::CheckoutMsg(CheckoutMsg::AddItem {
-                            item_id: item.id,
+                            item_id: *item_id,
                             amount: 1,
                         });
-                        self.update(msg, global, orders);
+                        self.update(msg, rs, orders)?;
                     }
-                    Some((_, _, StoreItem::Bundle(bundle))) => {
+                    Some((_, StoreItemId::Bundle(bundle_id))) => {
                         let msg = StoreMsg::CheckoutMsg(CheckoutMsg::AddBundle {
-                            bundle_id: bundle.id,
+                            bundle_id: *bundle_id,
                             amount: 1,
                         });
-                        self.update(msg, global, orders);
+                        self.update(msg, rs, orders)?;
                     }
                     None => {}
                 },
@@ -210,15 +251,15 @@ impl StorePage {
                 }
 
                 self.izettle_pay
-                    .update(msg, global, orders_local.proxy(StoreMsg::IZettleMsg));
+                    .update(msg, orders_local.proxy(StoreMsg::IZettleMsg));
             }
 
             StoreMsg::DebitSelectIZettle => {
                 self.update(
-                    StoreMsg::DebitSelect(global.master_accounts.bank_account_id),
-                    global,
+                    StoreMsg::DebitSelect(res.master_accounts.bank_account_id),
+                    rs,
                     orders,
-                );
+                )?;
                 self.izettle = true;
             }
 
@@ -226,7 +267,7 @@ impl StorePage {
                 message_title,
                 message_body,
             } => {
-                global.request_in_progress = false;
+                self.checkout.disabled = false;
                 self.checkout.confirm_button_message = None;
                 orders.send_msg(Msg::NotificationMessage(
                     NotificationMessage::ShowNotification {
@@ -243,16 +284,19 @@ impl StorePage {
                 let forward_msg = match msg {
                     // if iZettle integration is enabled we intercept and handle the purchase here
                     CheckoutMsg::ConfirmPurchase if self.izettle => {
-                        global.request_in_progress = true;
-                        self.checkout.remove_cleared_items();
-                        self.checkout.confirm_button_message = Some(strings::WAITING_FOR_PAYMENT);
-                        let transaction = self.checkout.transaction().clone();
-                        self.izettle_pay
-                            .pay(transaction, orders_local.proxy(StoreMsg::IZettleMsg));
+                        if let Some(transaction) = self.checkout.build_transaction(rs) {
+                            self.checkout.disabled = true;
+                            self.checkout.remove_cleared_items();
+                            self.checkout.confirm_button_message =
+                                Some(strings::WAITING_FOR_PAYMENT);
+                            self.izettle_pay
+                                .pay(transaction, orders_local.proxy(StoreMsg::IZettleMsg));
+                        }
                         None // don't forward the message
                     }
-                    // show a notification & reload the app when a purchase completes
+                    // show a notification & reload inventory when a purchase completes
                     msg @ CheckoutMsg::PurchaseSent { .. } => {
+                        rs.mark_as_dirty(Res::inventory_url(), orders);
                         orders.send_msg(Msg::NotificationMessage(
                             NotificationMessage::ShowNotification {
                                 duration_ms: 5000,
@@ -260,66 +304,103 @@ impl StorePage {
                                     title: strings::PURCHASE_COMPLETE.to_string(),
                                     body: Some(format!(
                                         "Total: {}:-",
-                                        self.checkout.transaction().amount
+                                        self.checkout.transaction_amount(),
                                     )),
                                 },
                             },
                         ));
                         self.checkout.confirm_button_message = None;
-                        orders.send_msg(Msg::ReloadData);
                         Some(msg)
                     }
                     msg => Some(msg),
                 };
 
-                forward_msg.map(|msg| {
+                if let Some(msg) = forward_msg {
                     self.checkout.update(
                         msg,
-                        global,
+                        rs,
                         &mut orders.proxy(Msg::StoreMsg).proxy(StoreMsg::CheckoutMsg),
-                    )
-                });
+                    );
+                }
             }
         }
+
+        Ok(())
     }
 
-    fn rebuild_store_list(&mut self, global: &StateReady) {
-        let items = global
+    fn rebuild_data(&mut self, res: &Res) {
+        let items = res
             .inventory
             .values()
             // Don't show items without a default price in the store view
             .filter(|item| item.price.is_some())
-            .map(|item| (0, vec![], StoreItem::Item(item.clone())));
+            .map(|item| (Default::default(), StoreItemId::Item(item.id)));
 
-        let bundles = global
+        let bundles = res
             .bundles
             .values()
-            .map(|bundle| (0, vec![], StoreItem::Bundle(bundle.clone())));
+            .map(|bundle| (Default::default(), StoreItemId::Bundle(bundle.id)));
 
         self.inventory_search = bundles.chain(items).collect();
 
-        self.sort_store_list();
+        self.tillgodolista_search = res
+            .book_accounts
+            .values()
+            .filter_map(|acc| {
+                acc.creditor
+                    .map(|member_id| (Default::default(), acc.id, member_id))
+            })
+            .collect();
+
+        self.sort_tillgodolista_search(res);
+        self.sort_store_list(res);
     }
 
-    fn sort_store_list(&mut self) {
-        for (score, matches, item) in self.inventory_search.iter_mut() {
-            let (s, m) = item.compare_fuzzy(&self.inventory_search_string);
-            *score = s;
-            *matches = m;
+    fn sort_tillgodolista_search(&mut self, res: &Res) {
+        for (score, _acc, member_id) in self.tillgodolista_search.iter_mut() {
+            *score = res.members[member_id].compare_fuzzy(&self.tillgodolista_search_string);
+        }
+
+        self.tillgodolista_search
+            .sort_by(|(scr_a, acc_a_id, _), (scr_b, acc_b_id, _)| {
+                scr_b.cmp(scr_a).then(acc_a_id.cmp(&acc_b_id))
+            });
+    }
+
+    fn sort_store_list(&mut self, state: &Res) {
+        for (score, item) in self.inventory_search.iter_mut() {
+            *score = item
+                .acquire(&state)
+                .compare_fuzzy(&self.inventory_search_string);
         }
         self.inventory_search
-            .sort_by(|(score_a, _, item_a), (score_b, _, item_b)| {
+            .sort_by(|(score_a, item_a), (score_b, item_b)| {
                 // sort first by comparison score
                 score_b
                     .cmp(score_a)
                     // then by if it is in stock
-                    .then(item_b.in_stock().cmp(&item_a.in_stock()))
+                    .then(
+                        item_b
+                            .acquire(state)
+                            .in_stock()
+                            .cmp(&item_a.acquire(state).in_stock()),
+                    )
                     // then alphabetically on name
-                    .then(item_a.get_name().cmp(&item_b.get_name()))
+                    .then(
+                        item_a
+                            .acquire(state)
+                            .get_name()
+                            .cmp(&item_b.acquire(state).get_name()),
+                    )
             });
     }
 
-    pub fn view(&self, global: &StateReady) -> Node<Msg> {
+    pub fn view(&self, rs: &ResourceStore) -> Node<Msg> {
+        let res = match Res::acquire_now(rs) {
+            Ok(res) => res,
+            Err(_) => return Loading::view(),
+        };
+
         #[derive(PartialEq)]
         enum SelectedDebit {
             IZettleEPay,
@@ -330,13 +411,9 @@ impl StorePage {
 
         let selected_debit = if self.izettle {
             SelectedDebit::IZettleEPay
-        } else if self.checkout.transaction().debited_account
-            == global.master_accounts.bank_account_id
-        {
+        } else if self.checkout.debited_account == Some(res.master_accounts.bank_account_id) {
             SelectedDebit::OtherEPay
-        } else if self.checkout.transaction().debited_account
-            == global.master_accounts.cash_account_id
-        {
+        } else if self.checkout.debited_account == Some(res.master_accounts.cash_account_id) {
             SelectedDebit::Cash
         } else {
             SelectedDebit::Tillgodo
@@ -363,9 +440,10 @@ impl StorePage {
                         {
                             attrs! {
                                 At::Placeholder => match selected_debit {
-                                    SelectedDebit::Tillgodo => global
+                                    SelectedDebit::Tillgodo => res
                                         .book_accounts
-                                        .get(&self.checkout.transaction().debited_account)
+                                        .get(&self.checkout.debited_account.unwrap_or(
+                                            res.master_accounts.bank_account_id))
                                         .map(|acc| format!("{}: {}:-", acc.name, acc.balance))
                                         .unwrap_or("[MISSING]".into()),
                                     _ => "Tillgodolista".into(),
@@ -386,9 +464,16 @@ impl StorePage {
                                     C![C.tillgodo_list],
                                     self.tillgodolista_search
                                         .iter()
-                                        .map(|(_, _, acc, mem)| view_tillgodo(
+                                        .flat_map(|(_, acc_id, member_id)| res
+                                            .book_accounts
+                                            .get(acc_id)
+                                            .and_then(|acc| res
+                                                .members
+                                                .get(member_id)
+                                                .map(|mem| (acc, mem))))
+                                        .map(|(acc, member)| view_tillgodo(
                                             acc,
-                                            mem,
+                                            member,
                                             Msg::StoreMsg(StoreMsg::DebitSelect(acc.id)),
                                         ))
                                         .collect::<Vec<_>>(),
@@ -409,7 +494,7 @@ impl StorePage {
                             simple_ev(
                                 Ev::Click,
                                 Msg::StoreMsg(StoreMsg::DebitSelect(
-                                    global.master_accounts.bank_account_id
+                                    res.master_accounts.bank_account_id
                                 )),
                             ),
                             strings::OTHER_EPAY,
@@ -430,17 +515,17 @@ impl StorePage {
                 C![C.inventory_view],
                 self.inventory_search
                     .iter()
-                    .map(|(_, matches, element)| match element {
-                        StoreItem::Item(item) => view_inventory_item(
-                            &item,
-                            matches.iter().map(|&(_, i)| i),
+                    .map(|(fuzzy, element)| match element {
+                        StoreItemId::Item(item_id) => view_inventory_item(
+                            &res.inventory[item_id],
+                            fuzzy.matches.iter().map(|m| m.base_str_index),
                             |item_id, amount| Msg::StoreMsg(StoreMsg::CheckoutMsg(
                                 CheckoutMsg::AddItem { item_id, amount }
                             ))
                         ),
-                        StoreItem::Bundle(bundle) => view_inventory_bundle(
-                            &bundle,
-                            matches.iter().map(|&(_, i)| i),
+                        StoreItemId::Bundle(bundle_id) => view_inventory_bundle(
+                            &res.bundles[bundle_id],
+                            fuzzy.matches.iter().map(|m| m.base_str_index),
                             |bundle_id, amount| Msg::StoreMsg(StoreMsg::CheckoutMsg(
                                 CheckoutMsg::AddBundle { bundle_id, amount }
                             ))
@@ -449,7 +534,7 @@ impl StorePage {
                     .collect::<Vec<_>>(),
             ],
             self.checkout
-                .view(global)
+                .view(rs)
                 .map_msg(StoreMsg::CheckoutMsg)
                 .map_msg(Msg::StoreMsg),
         ]

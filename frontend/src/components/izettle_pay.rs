@@ -1,4 +1,3 @@
-use crate::app::StateReady;
 use crate::strings;
 use seed::app::cmds::timeout;
 use seed::prelude::*;
@@ -44,7 +43,7 @@ pub enum IZettlePayErr {
 }
 
 impl IZettlePay {
-    pub fn new(_global: &StateReady) -> Self {
+    pub fn new() -> Self {
         IZettlePay { pending: None }
     }
 
@@ -80,12 +79,7 @@ impl IZettlePay {
         self.pending
     }
 
-    pub fn update(
-        &mut self,
-        msg: IZettlePayMsg,
-        _global: &mut StateReady,
-        mut orders: impl Orders<IZettlePayMsg>,
-    ) {
+    pub fn update(&mut self, msg: IZettlePayMsg, mut orders: impl Orders<IZettlePayMsg>) {
         match msg {
             IZettlePayMsg::PaymentCancelled | IZettlePayMsg::PaymentCompleted { .. } => {
                 self.pending = None

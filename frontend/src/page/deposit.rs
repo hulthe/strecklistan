@@ -1,30 +1,38 @@
-use crate::app::{Msg, StateReady};
+use crate::app::Msg;
 use crate::components::izettle_pay::{IZettlePay, IZettlePayErr, IZettlePayMsg};
 use crate::components::parsed_input::{ParsedInput, ParsedInputMsg};
+use crate::fuzzy_search::{FuzzyScore, FuzzySearch};
 use crate::generated::css_classes::C;
 use crate::notification_manager::{Notification, NotificationMessage};
+use crate::page::loading::Loading;
+use crate::res::{event, MustBeFresh, NotAvailable, ResourceStore};
 use crate::strings;
-use crate::util::{simple_ev, sort_tillgodolista_search};
+use crate::util::simple_ev;
 use crate::views::view_tillgodo;
 use seed::prelude::*;
 use seed::*;
-use std::rc::Rc;
+use seed_fetcher::Resources;
+use std::collections::HashMap;
 use strecklistan_api::{
-    book_account::{BookAccount, BookAccountId},
-    currency::Currency,
+    book_account::{BookAccount, BookAccountId, MasterAccounts},
+    currency::AbsCurrency,
     member::{Member, MemberId, NewMember},
     transaction::{NewTransaction, TransactionId},
 };
 
 #[derive(Clone)]
 pub struct DepositionPage {
-    debit: DebitOption,
-    izettle_pay: IZettlePay,
-    credit_account: Option<BookAccountId>,
+    accs_search: Vec<(FuzzyScore, BookAccountId)>,
     search_string: String,
-    accs_search: Vec<(i32, Vec<(usize, usize)>, Rc<BookAccount>, Rc<Member>)>,
-    amount_input: ParsedInput<Currency>,
+
+    debit: DebitOption,
+    credit_account: Option<BookAccountId>,
+    amount_input: ParsedInput<AbsCurrency>,
+    izettle_pay: IZettlePay,
+
     new_member: Option<(String, String, String, Option<String>)>,
+
+    request_in_progress: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -51,6 +59,10 @@ pub enum DepositionMsg {
     ShowNewMemberMenu,
     NewMember(NewMemberMsg),
     NewMemberCreated((MemberId, BookAccountId)),
+
+    // -- Resource Messages -- //
+    ResFetched(event::Fetched),
+    ResMarkDirty(event::MarkDirty),
 }
 
 #[derive(Clone, Debug)]
@@ -71,48 +83,64 @@ pub enum DebitOption {
     Cash,
 }
 
+#[derive(Resources)]
+struct Res<'a> {
+    #[url = "/api/book_accounts"]
+    book_accounts: &'a HashMap<BookAccountId, BookAccount>,
+
+    #[url = "/api/book_accounts/masters"]
+    master_accounts: &'a MasterAccounts,
+
+    #[url = "/api/members"]
+    members: &'a HashMap<MemberId, Member>,
+}
+
 impl DepositionPage {
-    pub fn new(global: &StateReady) -> Self {
+    pub fn new(rs: &ResourceStore, orders: &mut impl Orders<DepositionMsg>) -> Self {
+        orders.subscribe(DepositionMsg::ResFetched);
+        orders.subscribe(DepositionMsg::ResMarkDirty);
+        Res::acquire(rs, orders).ok();
+
         DepositionPage {
             debit: DebitOption::IZettleEPay,
-            izettle_pay: IZettlePay::new(global),
+            izettle_pay: IZettlePay::new(),
             credit_account: None,
             search_string: String::new(),
-            accs_search: global
-                .book_accounts
-                .values()
-                .filter_map(|acc| acc.creditor.map(|id| (acc, id)))
-                .filter_map(|(acc, id)| {
-                    global
-                        .members
-                        .get(&id)
-                        .cloned()
-                        .map(|creditor| (acc, creditor))
-                })
-                .map(|(acc, creditor)| (0, vec![], acc.clone(), creditor))
-                .collect(),
+            accs_search: vec![],
             amount_input: ParsedInput::new("0")
                 .with_error_message(strings::INVALID_MONEY_MESSAGE_LONG),
             new_member: None,
+            request_in_progress: false,
         }
     }
 
     pub fn update(
         &mut self,
         msg: DepositionMsg,
-        global: &mut StateReady,
+        rs: &ResourceStore,
         orders: &mut impl Orders<Msg>,
-    ) {
+    ) -> Result<(), NotAvailable> {
+        let res = Res::acquire(rs, orders)?;
+
         let mut orders_local = orders.proxy(|msg| Msg::DepositionMsg(msg));
+
         match msg {
             DepositionMsg::SearchDebit(input) => {
-                sort_tillgodolista_search(&input, &mut self.accs_search);
                 self.search_string = input;
+                for (score, acc_id) in self.accs_search.iter_mut() {
+                    let acc = &res.book_accounts[acc_id];
+                    *score = res.members[&acc.creditor.unwrap()].compare_fuzzy(&self.search_string);
+                }
+
+                self.accs_search
+                    .sort_by(|(scr_a, acc_a_id), (scr_b, acc_b_id)| {
+                        scr_b.cmp(scr_a).then(acc_a_id.cmp(&acc_b_id))
+                    });
             }
             DepositionMsg::CreditKeyDown(ev) => match ev.key().as_str() {
                 "Enter" => {
-                    if let Some((_, _, acc, _)) = self.accs_search.first() {
-                        orders_local.send_msg(DepositionMsg::CreditSelect(acc.id));
+                    if let Some((_, acc_id)) = self.accs_search.first() {
+                        orders_local.send_msg(DepositionMsg::CreditSelect(*acc_id));
                     }
                 }
                 _ => {}
@@ -133,18 +161,18 @@ impl DepositionPage {
                 {
                     let transaction = NewTransaction {
                         description: Some(strings::TRANSACTION_DEPOSIT.to_string()),
-                        amount,
+                        amount: amount.into(),
                         credited_account: credit_acc,
                         debited_account: match self.debit {
-                            DebitOption::Cash => global.master_accounts.cash_account_id,
+                            DebitOption::Cash => res.master_accounts.cash_account_id,
                             DebitOption::IZettleEPay | DebitOption::OtherEPay => {
-                                global.master_accounts.bank_account_id
+                                res.master_accounts.bank_account_id
                             }
                         },
                         bundles: vec![],
                     };
 
-                    global.request_in_progress = true;
+                    self.request_in_progress = true;
 
                     if let DebitOption::IZettleEPay = self.debit {
                         self.izettle_pay
@@ -194,17 +222,18 @@ impl DepositionPage {
                     },
                 ));
 
-                global.request_in_progress = false;
-                self.amount_input.set_value(0.into());
+                self.request_in_progress = false;
+                self.amount_input.set_value(Default::default());
                 self.credit_account = None;
-                orders.send_msg(Msg::ReloadData);
+                rs.mark_as_dirty(Res::book_accounts_url(), orders);
+                rs.mark_as_dirty(Res::members_url(), orders);
             }
 
             DepositionMsg::DepositFailed {
                 message_title,
                 message_body,
             } => {
-                global.request_in_progress = false;
+                self.request_in_progress = false;
                 orders.send_msg(Msg::NotificationMessage(
                     NotificationMessage::ShowNotification {
                         duration_ms: 10000,
@@ -251,7 +280,7 @@ impl DepositionPage {
                 }
 
                 self.izettle_pay
-                    .update(msg, global, orders_local.proxy(DepositionMsg::IZettlePay));
+                    .update(msg, orders_local.proxy(DepositionMsg::IZettlePay));
             }
 
             DepositionMsg::ShowNewMemberMenu => {
@@ -318,12 +347,27 @@ impl DepositionPage {
                 log!("New member ID: ", member_id);
                 log!("New book account ID: ", book_account_id);
                 self.new_member = None;
-                orders.send_msg(Msg::ReloadData);
+                rs.mark_as_dirty(Res::book_accounts_url(), orders);
+                rs.mark_as_dirty(Res::members_url(), orders);
             }
+
+            DepositionMsg::ResFetched(event::Fetched(resource)) => {
+                if Res::has_resource(resource) {
+                    self.rebuild_data(&res);
+                }
+            }
+            DepositionMsg::ResMarkDirty(_) => {}
         }
+
+        Ok(())
     }
 
-    pub fn view(&self, global: &StateReady) -> Node<Msg> {
+    pub fn view(&self, rs: &ResourceStore) -> Node<Msg> {
+        let res = match Res::acquire_now(rs) {
+            Ok(res) => res,
+            Err(_) => return Loading::view(),
+        };
+
         if let Some((first_name, last_name, nickname, acc_name)) = &self.new_member {
             div![
                 C![C.new_member_view],
@@ -386,8 +430,7 @@ impl DepositionPage {
                         attrs! {At::Value => self.search_string},
                         {
                             let s = if let Some(acc_id) = self.credit_account {
-                                global
-                                    .book_accounts
+                                res.book_accounts
                                     .get(&acc_id)
                                     .map(|acc| acc.name.as_str())
                                     .unwrap_or("[MISSING]")
@@ -406,13 +449,19 @@ impl DepositionPage {
                     ],
                     self.accs_search
                         .iter()
-                        .map(|(_, _, acc, mem)| div![
+                        .filter_map(|(_, acc_id)| res.book_accounts.get(acc_id))
+                        .filter_map(|acc| acc.creditor.map(|creditor| (acc, creditor)))
+                        .filter_map(|(acc, creditor)| res
+                            .members
+                            .get(&creditor)
+                            .map(|member| (acc, member)))
+                        .map(|(acc, member)| div![
                             if self.credit_account == Some(acc.id) {
                                 C![C.border_highlight]
                             } else {
                                 C![]
                             },
-                            view_tillgodo(acc, mem, DepositionMsg::CreditSelect(acc.id)),
+                            view_tillgodo(acc, member, DepositionMsg::CreditSelect(acc.id)),
                         ])
                         .collect::<Vec<_>>(),
                 ],
@@ -450,15 +499,17 @@ impl DepositionPage {
                     self.amount_input
                         .view(C![C.deposit_amount_input, C.rounded, C.border_on_focus])
                         .map_msg(DepositionMsg::AmountInputMsg),
-                    if global.request_in_progress {
+                    if self.request_in_progress {
                         button![
                             C![C.wide_button, C.border_on_focus],
                             attrs! {At::Disabled => true},
                             div![
-                                C![C.lds_ripple],
-                                attrs! { At::Style => "position: fixed; margin-top: -20px;" },
-                                div![],
-                                div![],
+                                C![C.penguin, C.penguin_small],
+                                style! {
+                                    St::Position => "absolute",
+                                    St::MarginTop => "-0.25em",
+                                    St::Filter => "invert(100%)",
+                                },
                             ],
                             strings::DEPOSIT,
                         ]
@@ -468,7 +519,7 @@ impl DepositionPage {
                             {
                                 let disabled = match self.amount_input.get_value().copied() {
                                     None => true,
-                                    Some(x) if x == 0.into() => true,
+                                    Some(x) if x == Default::default() => true,
                                     Some(_) if self.credit_account.is_none() => true,
                                     Some(_) => false,
                                 };
@@ -492,6 +543,16 @@ impl DepositionPage {
             ]
         }
         .map_msg(|msg| Msg::DepositionMsg(msg))
+    }
+
+    fn rebuild_data(&mut self, res: &Res) {
+        self.search_string = String::new();
+        self.accs_search = res
+            .book_accounts
+            .values()
+            .filter(|acc| acc.creditor.is_some())
+            .map(|acc| (Default::default(), acc.id))
+            .collect();
     }
 }
 

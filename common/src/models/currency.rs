@@ -1,4 +1,5 @@
 use regex::Regex;
+use std::convert::{TryFrom, TryInto};
 use std::fmt::{self, Display};
 use std::ops::{Add, AddAssign, Neg, Sub, SubAssign};
 use std::str::FromStr;
@@ -136,6 +137,44 @@ impl From<i32> for Currency {
 impl Into<i32> for Currency {
     fn into(self) -> i32 {
         self.0
+    }
+}
+
+#[cfg_attr(feature = "debug", derive(Debug))]
+#[derive(Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Default)]
+pub struct AbsCurrency(Currency);
+
+impl TryFrom<Currency> for AbsCurrency {
+    type Error = &'static str;
+
+    fn try_from(value: Currency) -> Result<Self, Self::Error> {
+        if value < 0.into() {
+            Err("currency less than 0")
+        } else {
+            Ok(AbsCurrency(value))
+        }
+    }
+}
+
+impl Into<Currency> for AbsCurrency {
+    fn into(self) -> Currency {
+        self.0
+    }
+}
+
+impl FromStr for AbsCurrency {
+    type Err = CurrencyParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Currency::from_str(s)?
+            .try_into()
+            .map_err(|_| CurrencyParseError::MatchFailed)
+    }
+}
+
+impl Display for AbsCurrency {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.0.fmt(f)
     }
 }
 

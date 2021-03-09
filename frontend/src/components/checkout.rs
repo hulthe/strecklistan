@@ -1,16 +1,19 @@
-use crate::app::StateReady;
 use crate::components::parsed_input::{ParsedInput, ParsedInputMsg};
 use crate::generated::css_classes::C;
+use crate::res::{MustBeFresh, NotAvailable, ResourceStore};
 use crate::strings;
 use crate::util::simple_ev;
 use seed::prelude::*;
 use seed::*;
+use seed_fetcher::Resources;
 use std::collections::HashMap;
-use std::ops::Deref;
+use std::convert::TryInto;
 use strecklistan_api::{
-    book_account::BookAccountId,
-    currency::Currency,
-    inventory::{InventoryBundleId, InventoryItemId, InventoryItemStock as InventoryItem},
+    book_account::{BookAccountId, MasterAccounts},
+    currency::{AbsCurrency, Currency},
+    inventory::{
+        InventoryBundle, InventoryBundleId, InventoryItemId, InventoryItemStock as InventoryItem,
+    },
     transaction::{NewTransaction, TransactionBundle, TransactionId},
 };
 
@@ -38,26 +41,37 @@ pub enum CheckoutMsg {
 
 #[derive(Clone)]
 pub struct Checkout {
-    transaction: NewTransaction,
-    transaction_total_input: ParsedInput<Currency>,
+    transaction_total_input: ParsedInput<AbsCurrency>,
+    transaction_bundles: Vec<TransactionBundle>,
+    pub debited_account: Option<BookAccountId>,
     override_transaction_total: bool,
     pub confirm_button_message: Option<&'static str>,
+    pub disabled: bool,
+}
+
+#[derive(Resources)]
+struct Res<'a> {
+    #[url = "/api/book_accounts/masters"]
+    master_accounts: &'a MasterAccounts,
+
+    #[url = "/api/inventory/items"]
+    inventory: &'a HashMap<InventoryItemId, InventoryItem>,
+
+    #[url = "/api/inventory/bundles"]
+    bundles: &'a HashMap<InventoryBundleId, InventoryBundle>,
 }
 
 impl Checkout {
-    pub fn new(global: &StateReady) -> Self {
+    pub fn new(resources: &ResourceStore, orders: &mut impl Orders<CheckoutMsg>) -> Self {
+        Res::acquire(resources, orders).ok();
         Checkout {
-            transaction: NewTransaction {
-                description: Some(strings::TRANSACTION_SALE.to_string()),
-                bundles: vec![],
-                amount: 0.into(),
-                debited_account: global.master_accounts.bank_account_id,
-                credited_account: global.master_accounts.sales_account_id,
-            },
+            transaction_bundles: vec![],
+            debited_account: None,
             transaction_total_input: ParsedInput::new("0")
                 .with_error_message(strings::INVALID_MONEY_MESSAGE_SHORT)
                 .with_input_kind("text"),
             override_transaction_total: false,
+            disabled: false,
             confirm_button_message: None,
         }
     }
@@ -65,41 +79,48 @@ impl Checkout {
     pub fn update(
         &mut self,
         msg: CheckoutMsg,
-        global: &mut StateReady,
+        resources: &ResourceStore,
         orders: &mut impl Orders<CheckoutMsg>,
     ) {
+        let res = match Res::acquire(resources, orders) {
+            Ok(res) => res,
+            Err(_) => return,
+        };
+
         match msg {
             CheckoutMsg::ConfirmPurchase => {
-                self.remove_cleared_items();
-                global.request_in_progress = true;
-                let msg = self.transaction.clone();
+                if let Some(transaction) = self.build_transaction(resources) {
+                    self.remove_cleared_items();
+                    self.disabled = true;
 
-                orders.perform_cmd(async move {
-                    let result = async {
-                        Request::new("/api/transaction")
-                            .method(Method::Post)
-                            .json(&msg)?
-                            .fetch()
-                            .await?
-                            .json()
-                            .await
-                    }
-                    .await;
-                    match result {
-                        Ok(transaction_id) => Some(CheckoutMsg::PurchaseSent { transaction_id }),
-                        Err(e) => {
-                            error!("Failed to post purchase", e);
-                            None
+                    orders.perform_cmd(async move {
+                        let result = async {
+                            Request::new("/api/transaction")
+                                .method(Method::Post)
+                                .json(&transaction)?
+                                .fetch()
+                                .await?
+                                .json()
+                                .await
                         }
-                    }
-                });
+                        .await;
+                        match result {
+                            Ok(transaction_id) => {
+                                Some(CheckoutMsg::PurchaseSent { transaction_id })
+                            }
+                            Err(e) => {
+                                error!("Failed to post purchase", e);
+                                None
+                            }
+                        }
+                    });
+                }
             }
             CheckoutMsg::PurchaseSent { transaction_id } => {
-                global.request_in_progress = false;
+                self.disabled = false;
                 log!("Posted transaction ID: ", transaction_id);
-                self.transaction.amount = 0.into();
-                self.transaction.bundles = vec![];
-                self.transaction.description = Some(strings::TRANSACTION_SALE.into());
+                self.transaction_total_input.set_value(Default::default());
+                self.transaction_bundles = vec![];
             }
             CheckoutMsg::TotalInputMsg(msg) => {
                 match &msg {
@@ -115,44 +136,36 @@ impl Checkout {
                     _ => {}
                 }
                 self.transaction_total_input.update(msg);
-
-                if self.override_transaction_total {
-                    let new_total = self.transaction_total_input.get_value().copied();
-                    log!(format!("new transaction total: {:?}", new_total));
-                    self.transaction.amount = new_total.unwrap_or(0.into());
-                }
             }
             CheckoutMsg::AddItem { item_id, amount } => {
-                let item = global
-                    .inventory
-                    .get(&item_id)
-                    .unwrap_or_else(|| panic!("No inventory item with that id exists"))
-                    .clone();
+                if !self.disabled {
+                    let item = res
+                        .inventory
+                        .get(&item_id)
+                        .unwrap_or_else(|| panic!("No inventory item with that id exists"))
+                        .clone();
 
-                let mut item_ids = HashMap::new();
-                item_ids.insert(item.id, 1);
+                    let mut item_ids = HashMap::new();
+                    item_ids.insert(item.id, 1);
 
-                let bundle = TransactionBundle {
-                    description: None,
-                    // TODO: Handle case where price is null
-                    price: Some(item.price.unwrap_or(0).into()),
-                    change: -amount,
-                    item_ids,
-                };
+                    let bundle = TransactionBundle {
+                        description: None,
+                        price: Some(item.price.unwrap_or(0).into()),
+                        change: -amount,
+                        item_ids,
+                    };
 
-                if let Some(b) =
-                    self.transaction.bundles.iter_mut().find(|b| {
+                    if let Some(b) = self.transaction_bundles.iter_mut().find(|b| {
                         b.item_ids == bundle.item_ids && b.description == bundle.description
-                    })
-                {
-                    b.change -= amount;
-                } else {
-                    log!("Pushing bundle", bundle);
-                    self.transaction.bundles.push(bundle);
+                    }) {
+                        b.change -= amount;
+                    } else {
+                        self.transaction_bundles.push(bundle);
+                    }
                 }
             }
             CheckoutMsg::AddBundle { bundle_id, amount } => {
-                let bundle = global
+                let bundle = res
                     .bundles
                     .get(&bundle_id)
                     .unwrap_or_else(|| panic!("No inventory bundle with that id exists"))
@@ -170,28 +183,22 @@ impl Checkout {
                     item_ids,
                 };
 
-                if let Some(b) =
-                    self.transaction.bundles.iter_mut().find(|b| {
-                        b.item_ids == bundle.item_ids && b.description == bundle.description
-                    })
+                if let Some(b) = self
+                    .transaction_bundles
+                    .iter_mut()
+                    .find(|b| b.item_ids == bundle.item_ids && b.description == bundle.description)
                 {
                     b.change -= amount;
                 } else {
                     log!("Pushing bundle", bundle);
-                    self.transaction.bundles.push(bundle);
+                    self.transaction_bundles.push(bundle);
                 }
             }
             CheckoutMsg::SetBundleChange {
                 bundle_index,
                 change,
             } => {
-                let bundle = &mut self.transaction.bundles[bundle_index];
-                if !self.override_transaction_total {
-                    let diff = bundle.change - change;
-                    self.transaction.amount +=
-                        (bundle.price.map(|p| p.into()).unwrap_or(0i32) * diff).into();
-                }
-                bundle.change = change;
+                self.transaction_bundles[bundle_index].change = change;
             }
         }
 
@@ -200,44 +207,67 @@ impl Checkout {
 
     fn recompute_new_transaction_total(&mut self) {
         if !self.override_transaction_total {
-            self.transaction.amount = self
-                .transaction
-                .bundles
+            let amount: Currency = self
+                .transaction_bundles
                 .iter()
                 .map(|bundle| -bundle.change * bundle.price.map(|p| p.into()).unwrap_or(0i32))
                 .sum::<i32>()
                 .into();
             self.transaction_total_input
-                .set_value(self.transaction.amount);
+                .set_value(amount.try_into().unwrap_or(Default::default()));
         }
     }
 
-    pub fn transaction(&self) -> &NewTransaction {
-        &self.transaction
+    pub fn build_transaction(&self, resources: &ResourceStore) -> Option<NewTransaction> {
+        Res::acquire_now(resources)
+            .ok()
+            .zip(self.transaction_total_input.get_value().copied())
+            .map(|(res, amount)| NewTransaction {
+                bundles: self.transaction_bundles.clone(),
+                amount: amount.into(),
+                description: Some(strings::TRANSACTION_SALE.into()),
+                credited_account: res.master_accounts.sales_account_id,
+                debited_account: self
+                    .debited_account
+                    .unwrap_or(res.master_accounts.bank_account_id),
+            })
+    }
+
+    pub fn transaction_amount(&self) -> Currency {
+        self.transaction_total_input
+            .get_value()
+            .copied()
+            .unwrap_or(Default::default())
+            .into()
     }
 
     pub fn set_debited(&mut self, acc_id: BookAccountId) {
-        self.transaction.debited_account = acc_id;
+        self.debited_account = Some(acc_id);
     }
 
     pub fn remove_cleared_items(&mut self) {
-        self.transaction.bundles.retain(|bundle| bundle.change != 0);
+        self.transaction_bundles.retain(|bundle| bundle.change != 0);
     }
 
-    pub fn view(&self, global: &StateReady) -> Node<CheckoutMsg> {
+    pub fn view(&self, rs: &ResourceStore) -> Node<CheckoutMsg> {
+        let res = match Res::acquire_now(rs) {
+            Ok(res) => res,
+            // TODO: proper loading component?
+            Err(_) => return div!["loading"],
+        };
+
         div![
             C![C.new_transaction_view],
-            self.transaction
-                .bundles
+            self.transaction_bundles
                 .iter()
                 .enumerate()
                 .rev() // display newest bundle first
                 .map(|(bundle_index, bundle)| {
-                    let mut items = bundle.item_ids.keys().map(|id| &global.inventory[id]);
+                    let mut items = bundle.item_ids.keys().map(|id| &res.inventory[id]);
 
                     // TODO: Properly display more complicated bundles
 
-                    let (item_name, item_price) = match items.next().map(|rc| rc.deref()) {
+                    let (item_name, item_price) = match items.next() {
                         None => (None, 0),
                         Some(InventoryItem { name, price, .. }) => {
                             (Some(name.as_str()), price.unwrap_or(0))
@@ -274,8 +304,6 @@ impl Checkout {
                 })
                 .collect::<Vec<_>>(),
             p![span!["Totalt: "], {
-                let amount = self.transaction.amount.to_string();
-                let _len = (amount.len() as f32) / 2.0 + 0.5;
                 let color = if self.override_transaction_total {
                     "color: #762;"
                 } else {
@@ -290,7 +318,7 @@ impl Checkout {
                     .view(attrs)
                     .map_msg(CheckoutMsg::TotalInputMsg)
             }],
-            if !global.request_in_progress {
+            if !self.disabled {
                 button![
                     C![C.wide_button, C.border_on_focus],
                     simple_ev(Ev::Click, CheckoutMsg::ConfirmPurchase),
@@ -300,13 +328,12 @@ impl Checkout {
                 button![
                     C![C.wide_button, C.border_on_focus],
                     div![
-                        C![C.lds_ripple],
+                        C![C.penguin, C.penguin_small],
                         style! {
                             St::Position => "absolute",
-                            St::MarginTop => "-20px",
+                            St::MarginTop => "-0.25em",
+                            St::Filter => "invert(100%)",
                         },
-                        div![],
-                        div![],
                     ],
                     attrs! { At::Disabled => true },
                     "Slutför Köp",
