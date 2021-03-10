@@ -44,6 +44,10 @@ features = ["serde", "wasmbind", "js-sys"]
 [dependencies.strecklistan_api]
 path="../common"
 
+[dependencies.seed_fetcher]
+git = "https://github.com/hulthe/seed_fetcher.git"
+branch = "master"
+
 [dependencies.css_typegen]
 git = "https://github.com/hulthe/css_typegen.git"
 branch = "master"

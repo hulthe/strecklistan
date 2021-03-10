@@ -5,15 +5,26 @@ use diesel::prelude::*;
 use itertools::Itertools;
 use rocket::{get, State};
 use rocket_contrib::json::Json;
+use std::collections::HashMap;
 use strecklistan_api::inventory::InventoryBundle as InventoryBundleObj;
-use strecklistan_api::inventory::{InventoryItemStock, InventoryItemTag};
+use strecklistan_api::inventory::{
+    InventoryBundleId, InventoryItemId, InventoryItemStock, InventoryItemTag,
+};
 
 #[get("/inventory/items")]
-pub fn get_inventory(db_pool: State<DatabasePool>) -> Result<Json<Vec<InventoryItemStock>>, SJ> {
+pub fn get_inventory(
+    db_pool: State<DatabasePool>,
+) -> Result<Json<HashMap<InventoryItemId, InventoryItemStock>>, SJ> {
     let connection = db_pool.inner().get()?;
 
     use crate::schema::views::inventory_stock::dsl::inventory_stock;
-    Ok(Json(inventory_stock.load(&connection)?))
+    Ok(Json(
+        inventory_stock
+            .load(&connection)?
+            .into_iter()
+            .map(|item: InventoryItemStock| (item.id, item))
+            .collect(),
+    ))
 }
 
 #[get("/inventory/tags")]
@@ -27,7 +38,7 @@ pub fn get_tags(db_pool: State<DatabasePool>) -> Result<Json<Vec<InventoryItemTa
 #[get("/inventory/bundles")]
 pub fn get_inventory_bundles(
     db_pool: State<DatabasePool>,
-) -> Result<Json<Vec<InventoryBundleObj>>, SJ> {
+) -> Result<Json<HashMap<InventoryBundleId, InventoryBundleObj>>, SJ> {
     let connection = db_pool.inner().get()?;
 
     use crate::schema::tables::inventory_bundle_items::dsl::{bundle_id, inventory_bundle_items};
@@ -55,6 +66,7 @@ pub fn get_inventory_bundles(
                     .collect(),
             }
         })
+        .map(|bundle| (bundle.id, bundle))
         .collect();
 
     Ok(Json(bundles))

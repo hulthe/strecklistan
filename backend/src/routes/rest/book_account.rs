@@ -1,20 +1,19 @@
-use std::collections::HashMap;
-
-use diesel::prelude::*;
-use rocket::{get, post, State};
-use rocket_contrib::json::Json;
-
-use strecklistan_api::book_account::{
-    BookAccount, BookAccountType, MasterAccounts, NewBookAccount,
-};
-
 use crate::database::DatabasePool;
 use crate::models::book_account as relational;
 use crate::models::transaction::relational::Transaction;
 use crate::util::status_json::StatusJson as SJ;
+use diesel::prelude::*;
+use rocket::{get, post, State};
+use rocket_contrib::json::Json;
+use std::collections::HashMap;
+use strecklistan_api::book_account::{
+    BookAccount, BookAccountId, BookAccountType, MasterAccounts, NewBookAccount,
+};
 
 #[get("/book_accounts")]
-pub fn get_accounts(db_pool: State<DatabasePool>) -> Result<Json<Vec<BookAccount>>, SJ> {
+pub fn get_accounts(
+    db_pool: State<DatabasePool>,
+) -> Result<Json<HashMap<BookAccountId, BookAccount>>, SJ> {
     let connection = db_pool.inner().get()?;
 
     let (transactions, accounts) = connection
@@ -41,7 +40,7 @@ pub fn get_accounts(db_pool: State<DatabasePool>) -> Result<Json<Vec<BookAccount
             .map(|acc| acc.debit(tr.amount.into()));
     }
 
-    Ok(Json(accounts.into_iter().map(|(_, acc)| acc).collect()))
+    Ok(Json(accounts))
 }
 
 #[post("/book_account", data = "<account>")]

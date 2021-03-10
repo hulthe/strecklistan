@@ -1,13 +1,10 @@
 pub mod export;
 
-use crate::fuzzy_search::FuzzySearch;
+use crate::fuzzy_search::{FuzzyCharMatch, FuzzyScore};
 use seed::browser::dom::event_handler::ev;
 use seed::dom_entity_names::Ev;
 use seed::virtual_dom::event_handler_manager::event_handler::EventHandler;
 use semver::Version;
-use std::rc::Rc;
-use strecklistan_api::book_account::BookAccount;
-use strecklistan_api::member::Member;
 
 pub const DATE_INPUT_FMT: &'static str = "%Y-%m-%d";
 //pub const TIME_INPUT_FMT: &'static str = "%H:%M";
@@ -66,7 +63,7 @@ pub fn simple_ev<Ms: Clone + 'static>(trigger: impl Into<Ev>, message: Ms) -> Ev
 ///
 /// Returns a tuple of the match score, as well as the indices of every char in `search` which maps
 /// to an index in `base`
-pub fn compare_fuzzy<B, S>(base: B, search: S) -> (i32, Vec<(usize, usize)>)
+pub fn compare_fuzzy<B, S>(base: B, search: S) -> FuzzyScore
 where
     B: Iterator<Item = char> + Clone,
     S: IntoIterator<Item = char>,
@@ -87,7 +84,11 @@ where
         while let Some((j, bc)) = base_tmp.next() {
             let bc = bc.to_ascii_lowercase();
             if bc == sc {
-                matches.push((i, j));
+                matches.push(FuzzyCharMatch {
+                    search_str_index: i,
+                    base_str_index: j,
+                });
+
                 score += add;
                 base = base_tmp;
                 break;
@@ -97,21 +98,7 @@ where
         }
     }
 
-    (score, matches)
-}
-
-pub fn sort_tillgodolista_search(
-    search: &str,
-    list: &mut Vec<(i32, Vec<(usize, usize)>, Rc<BookAccount>, Rc<Member>)>,
-) {
-    for (score, matches, _acc, member) in list.iter_mut() {
-        let (s, m) = member.compare_fuzzy(search);
-        *score = s;
-        *matches = m;
-    }
-    list.sort_by(|(scr_a, _, acc_a, _), (scr_b, _, acc_b, _)| {
-        scr_b.cmp(scr_a).then(acc_a.id.cmp(&acc_b.id))
-    });
+    FuzzyScore { score, matches }
 }
 
 use std::cmp::Ordering;

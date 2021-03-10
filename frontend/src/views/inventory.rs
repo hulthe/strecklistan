@@ -93,7 +93,7 @@ pub fn view_inventory_bundle(
     add_bundle_ev: impl FnOnce(InventoryBundleId, i32) -> Msg,
 ) -> Node<Msg> {
     div![
-        C![C.inventory_item],
+        C![C.inventory_item, C.unselectable],
         simple_ev(Ev::Click, add_bundle_ev(bundle.id, 1)),
         p![
             C![C.inventory_item_header],

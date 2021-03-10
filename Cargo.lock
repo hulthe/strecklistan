@@ -1408,6 +1408,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "seed_fetcher"
+version = "0.1.0"
+source = "git+https://github.com/hulthe/seed_fetcher.git?branch=master#a4a041921ccae3da8913f461946ec02617ac6003"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "regex",
+ "seed",
+ "serde",
+ "syn",
+]
+
+[[package]]
 name = "semver"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1642,6 +1655,7 @@ dependencies = [
  "js-sys",
  "mime",
  "seed",
+ "seed_fetcher",
  "semver 0.11.0",
  "serde",
  "serde_json",

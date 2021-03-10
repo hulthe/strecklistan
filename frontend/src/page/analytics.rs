@@ -1,69 +1,90 @@
-use crate::app::{Msg, StateReady};
+use crate::app::Msg;
 use crate::generated::css_classes::C;
+use crate::page::loading::Loading;
+use crate::res::{event, MustBeFresh, NotAvailable, ResourceStore};
 use crate::util::{simple_ev, DATE_INPUT_FMT};
 use chrono::{DateTime, Datelike, Duration, IsoWeek, NaiveDate, Utc, Weekday};
+use seed::app::cmds::timeout;
 use seed::{prelude::*, *};
+use seed_fetcher::Resources;
 use std::collections::{BTreeMap, HashMap};
 use std::rc::Rc;
-use strecklistan_api::{inventory::InventoryItemId, transaction::Transaction};
+use strecklistan_api::{
+    inventory::{InventoryItemId, InventoryItemStock},
+    transaction::Transaction,
+};
 
 #[derive(Clone, Debug)]
 pub enum AnalyticsMsg {
     ComputeCharts,
-    ComputedChart {
-        item_id: InventoryItemId,
-        chart: Node<AnalyticsMsg>,
-    },
+    ChartsComputed(Rc<HashMap<InventoryItemId, Node<AnalyticsMsg>>>),
     SetStartDate(String),
     SetEndDate(String),
+
+    // -- Resource Events -- //
+    ResFetched(event::Fetched),
+    ResMarkDirty(event::MarkDirty),
 }
 
-#[derive(Clone)]
+//#[derive(Clone)]
 pub struct AnalyticsPage {
     /// An index of the inventory stocks at the start of every week
-    inventory_by_week: Rc<BTreeMap<IsoWeek, HashMap<InventoryItemId, i32>>>,
+    //inventory_by_week: Rc<BTreeMap<IsoWeek, HashMap<InventoryItemId, i32>>>,
 
     /// Pre-computed and cached charts
-    charts: HashMap<InventoryItemId, Node<AnalyticsMsg>>,
+    charts: Rc<HashMap<InventoryItemId, Node<AnalyticsMsg>>>,
+
+    /// Handle for the process computing the charts
+    charts_job: Option<CmdHandle>,
 
     /// Start-date filter for computing charts
     start_date: DateTime<Utc>,
 
     /// End-date filter for computing charts
     end_date: DateTime<Utc>,
+}
 
-    /// Toggle for disabling the "calculate charts" button
-    calculation_in_progress: bool,
+#[derive(Resources)]
+struct Res<'a> {
+    #[url = "/api/transactions"]
+    transactions: &'a Vec<Transaction>,
+
+    #[url = "/api/inventory/items"]
+    inventory: &'a HashMap<InventoryItemId, InventoryItemStock>,
 }
 
 impl AnalyticsPage {
-    pub fn new(global: &StateReady) -> Self {
+    pub fn new(rs: &ResourceStore, orders: &mut impl Orders<AnalyticsMsg>) -> Self {
+        orders.subscribe(AnalyticsMsg::ResFetched);
+        orders.subscribe(AnalyticsMsg::ResMarkDirty);
+        Res::acquire(rs, orders).ok();
+
         let now = Utc::now();
         AnalyticsPage {
-            inventory_by_week: Rc::new(calculate_inventory_by_week(&global.transaction_history)),
-            charts: HashMap::new(),
+            charts: Rc::new(HashMap::new()),
+            charts_job: None,
             start_date: now - Duration::days(365),
             end_date: now,
-            calculation_in_progress: false,
         }
     }
 
     pub fn update(
         &mut self,
         msg: AnalyticsMsg,
-        global: &mut StateReady,
+        rs: &ResourceStore,
         orders: &mut impl Orders<Msg>,
-    ) {
+    ) -> Result<(), NotAvailable> {
+        let res = Res::acquire(rs, orders)?;
+
         let mut orders_local = orders.proxy(|msg| Msg::AnalyticsMsg(msg));
+
         match msg {
             AnalyticsMsg::ComputeCharts => {
-                self.charts.clear();
-                self.calculation_in_progress = true;
-                self.plot_next_item(global, &mut orders_local);
+                self.compute_charts(&res, &mut orders_local);
             }
-            AnalyticsMsg::ComputedChart { item_id, chart } => {
-                self.charts.insert(item_id, chart);
-                self.plot_next_item(global, &mut orders_local);
+            AnalyticsMsg::ChartsComputed(charts) => {
+                self.charts = charts;
+                self.charts_job = None;
             }
             AnalyticsMsg::SetStartDate(input) => {
                 if let Ok(date) = NaiveDate::parse_from_str(&input, DATE_INPUT_FMT) {
@@ -75,10 +96,28 @@ impl AnalyticsPage {
                     self.end_date = DateTime::from_utc(date.and_hms(0, 0, 0), Utc);
                 }
             }
+
+            AnalyticsMsg::ResFetched(_) => {}
+            AnalyticsMsg::ResMarkDirty(_) => {}
         }
+
+        Ok(())
     }
 
-    pub fn view(&self, global: &StateReady) -> Node<Msg> {
+    pub fn view(&self, rs: &ResourceStore) -> Node<Msg> {
+        let _res = match Res::acquire_now(rs) {
+            Ok(res) => res,
+            Err(_) => return Loading::view(),
+        };
+
+        if self.charts_job.is_some() {
+            return div![
+                C![C.accounting_page],
+                h2!["Laddar statistik..."],
+                Loading::view(),
+            ];
+        }
+
         div![
             C![C.accounting_page],
             div![
@@ -92,7 +131,7 @@ impl AnalyticsPage {
                     attrs! {At::Value => self.end_date.format(DATE_INPUT_FMT).to_string()},
                     input_ev(Ev::Input, |input| AnalyticsMsg::SetEndDate(input)),
                 ],
-                if self.calculation_in_progress {
+                if self.charts_job.is_some() {
                     button![
                         C![C.wide_button],
                         div![
@@ -115,46 +154,35 @@ impl AnalyticsPage {
                     ]
                 },
             ],
-            if self.charts.is_empty() {
-                i!["Här var det tomt... Prova att trycka på knappen ;)"]
-            } else {
-                div![global.inventory.values().map(|item| {
-                    if let Some(chart) = self.charts.get(&item.id) {
-                        chart.clone()
-                    } else {
-                        h2![&item.name, i![" - laddar..."],]
-                    }
-                })]
-            },
+            div![self.charts.values().map(|chart| chart.clone())],
         ]
         .map_msg(|msg| Msg::AnalyticsMsg(msg))
     }
 
-    fn plot_next_item(&mut self, global: &StateReady, orders: &mut impl Orders<AnalyticsMsg>) {
-        self.calculation_in_progress = false;
-        for item in global.inventory.values() {
-            if !self.charts.contains_key(&item.id) {
-                self.calculation_in_progress = true;
-
-                let inventory_by_week = self.inventory_by_week.clone();
-                let start_date = self.start_date;
-                let end_date = self.end_date;
-                let item_id = item.id;
-                let item_name = item.name.clone();
-
-                orders.after_next_render(move |_| {
-                    let chart = plot_sales_over_time(
-                        inventory_by_week,
-                        start_date,
-                        end_date,
-                        item_id,
-                        item_name,
-                    );
-                    AnalyticsMsg::ComputedChart { item_id, chart }
-                });
-                break;
-            }
+    fn compute_charts(&mut self, res: &Res, orders: &mut impl Orders<AnalyticsMsg>) {
+        if self.charts_job.is_some() {
+            return;
         }
+
+        self.charts = Rc::new(HashMap::new());
+
+        let inventory_by_week = calculate_inventory_by_week(&res.transactions);
+        let inventory = res.inventory.clone();
+        let start_date = self.start_date;
+        let end_date = self.end_date;
+
+        self.charts_job = Some(orders.perform_cmd_with_handle(async move {
+            let mut charts = HashMap::new();
+            for (id, item) in inventory {
+                let chart =
+                    plot_sales_over_time(&inventory_by_week, start_date, end_date, id, item.name);
+
+                charts.insert(id, chart);
+
+                timeout(10, || ()).await
+            }
+            AnalyticsMsg::ChartsComputed(Rc::new(charts))
+        }));
     }
 }
 
@@ -193,7 +221,7 @@ fn calculate_inventory_by_week(
 }
 
 fn plot_sales_over_time(
-    inventory_by_week: Rc<BTreeMap<IsoWeek, HashMap<InventoryItemId, i32>>>,
+    inventory_by_week: &BTreeMap<IsoWeek, HashMap<InventoryItemId, i32>>,
     start_date: DateTime<Utc>,
     end_date: DateTime<Utc>,
     item_id: InventoryItemId,
