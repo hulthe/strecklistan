@@ -1,19 +1,21 @@
 use crate::app::Msg;
+use crate::components::filter_menu::{FilterMenu, FilterMenuMsg};
 use crate::generated::css_classes::C;
 use crate::page::loading::Loading;
-use crate::res::{event, MustBeFresh, NotAvailable, ResourceStore};
 use crate::util::export::{download_file, make_csv_transaction_list, CSVStyleTransaction};
 use crate::util::simple_ev;
-use crate::views::filter_menu::{FilterMenu, FilterMenuMsg};
 use chrono::{FixedOffset, Local};
 use seed::prelude::*;
 use seed::*;
 use seed_fetcher::Resources;
+use seed_fetcher::{event, NotAvailable, ResourceStore};
 use std::collections::HashMap;
-use strecklistan_api::book_account::{BookAccount, BookAccountId, MasterAccounts};
-use strecklistan_api::currency::Currency;
-use strecklistan_api::inventory::{InventoryItemId, InventoryItemStock};
-use strecklistan_api::transaction::{Transaction, TransactionId};
+use strecklistan_api::{
+    book_account::{BookAccount, BookAccountId, MasterAccounts},
+    currency::Currency,
+    inventory::{InventoryItemId, InventoryItemStock},
+    transaction::{Transaction, TransactionId},
+};
 
 const VIEW_COUNT_CHUNK: usize = 50;
 

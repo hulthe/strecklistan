@@ -7,7 +7,6 @@ mod generated;
 mod models;
 mod notification_manager;
 mod page;
-mod res;
 mod strings;
 mod util;
 mod views;

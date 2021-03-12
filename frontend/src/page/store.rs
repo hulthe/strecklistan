@@ -5,13 +5,12 @@ use crate::fuzzy_search::{FuzzyScore, FuzzySearch};
 use crate::generated::css_classes::C;
 use crate::notification_manager::{Notification, NotificationMessage};
 use crate::page::loading::Loading;
-use crate::res::{event, MustBeFresh, NotAvailable, ResourceStore};
 use crate::strings;
 use crate::util::{compare_fuzzy, simple_ev};
 use crate::views::{view_inventory_bundle, view_inventory_item, view_tillgodo};
 use seed::prelude::*;
 use seed::*;
-use seed_fetcher::Resources;
+use seed_fetcher::{event, DontFetch, NotAvailable, ResourceStore, Resources};
 use std::collections::HashMap;
 use strecklistan_api::{
     book_account::{BookAccount, BookAccountId, MasterAccounts},
@@ -100,7 +99,6 @@ pub enum StoreMsg {
     CheckoutMsg(CheckoutMsg),
 }
 
-//#[derive(Clone)]
 pub struct StorePage {
     checkout: Checkout,
 
@@ -120,9 +118,11 @@ struct Res<'a> {
     bundles: &'a HashMap<InventoryBundleId, InventoryBundle>,
 
     #[url = "/api/inventory/items"]
+    #[policy = "SilentRefetch"]
     inventory: &'a HashMap<InventoryItemId, InventoryItem>,
 
     #[url = "/api/book_accounts"]
+    #[policy = "SilentRefetch"]
     book_accounts: &'a HashMap<BookAccountId, BookAccount>,
 
     #[url = "/api/book_accounts/masters"]
@@ -130,6 +130,10 @@ struct Res<'a> {
 
     #[url = "/api/members"]
     members: &'a HashMap<MemberId, Member>,
+
+    #[url = "/api/transactions"]
+    #[allow(dead_code)]
+    transactions: DontFetch,
 }
 
 impl StorePage {
@@ -295,8 +299,10 @@ impl StorePage {
                         None // don't forward the message
                     }
                     // show a notification & reload inventory when a purchase completes
-                    msg @ CheckoutMsg::PurchaseSent { .. } => {
+                    CheckoutMsg::PurchaseSent { .. } => {
                         rs.mark_as_dirty(Res::inventory_url(), orders);
+                        rs.mark_as_dirty(Res::book_accounts_url(), orders);
+                        rs.mark_as_dirty(Res::transactions_url(), orders);
                         orders.send_msg(Msg::NotificationMessage(
                             NotificationMessage::ShowNotification {
                                 duration_ms: 5000,
@@ -309,8 +315,12 @@ impl StorePage {
                                 },
                             },
                         ));
-                        self.checkout.confirm_button_message = None;
-                        Some(msg)
+                        self.checkout = Checkout::new(
+                            rs,
+                            &mut orders.proxy(Msg::StoreMsg).proxy(StoreMsg::CheckoutMsg),
+                        );
+                        self.izettle = true;
+                        None
                     }
                     msg => Some(msg),
                 };

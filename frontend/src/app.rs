@@ -7,10 +7,10 @@ use crate::page::{
     transactions::{TransactionsMsg, TransactionsPage},
     Page,
 };
-use crate::res::{ResourceMsg, ResourceStore};
 use crate::util::compare_semver;
 use seed::prelude::*;
 use seed::*;
+use seed_fetcher::{ResourceMsg, ResourceStore};
 use semver::Version;
 use std::fmt::Debug;
 
@@ -92,14 +92,18 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
     #[cfg(debug_assertions)]
     log!("message", msg);
 
+    let rs = &model.rs;
     match msg {
         Msg::ChangePage(page) => {
             model.page = page;
 
+            model.transactions_page = None;
+
             match page {
                 Page::Store => {
-                    model.store_page =
-                        Some(StorePage::new(&model.rs, &mut orders.proxy(Msg::StoreMsg)))
+                    model.store_page.get_or_insert_with(|| {
+                        StorePage::new(rs, &mut orders.proxy(Msg::StoreMsg))
+                    });
                 }
                 Page::TransactionHistory => {
                     model.transactions_page = Some(TransactionsPage::new(
@@ -108,16 +112,14 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                     ))
                 }
                 Page::Analytics => {
-                    model.analytics_page = Some(AnalyticsPage::new(
-                        &model.rs,
-                        &mut orders.proxy(Msg::AnalyticsMsg),
-                    ))
+                    model.analytics_page.get_or_insert_with(|| {
+                        AnalyticsPage::new(rs, &mut orders.proxy(Msg::AnalyticsMsg))
+                    });
                 }
                 Page::Deposit => {
-                    model.deposition_page = Some(DepositionPage::new(
-                        &model.rs,
-                        &mut orders.proxy(Msg::DepositionMsg),
-                    ))
+                    model.deposition_page.get_or_insert_with(|| {
+                        DepositionPage::new(rs, &mut orders.proxy(Msg::DepositionMsg))
+                    });
                 }
                 Page::NotFound => {}
             }
@@ -156,33 +158,25 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             model
                 .deposition_page
                 .as_mut()
-                .unwrap()
-                .update(msg, &model.rs, orders)
-                .ok();
+                .and_then(|p| p.update(msg, &rs, orders).ok());
         }
         Msg::AnalyticsMsg(msg) => {
             model
                 .analytics_page
                 .as_mut()
-                .unwrap()
-                .update(msg, &model.rs, orders)
-                .ok();
+                .and_then(|p| p.update(msg, &rs, orders).ok());
         }
         Msg::TransactionsMsg(msg) => {
             model
                 .transactions_page
                 .as_mut()
-                .unwrap()
-                .update(msg, &model.rs, orders)
-                .ok();
+                .and_then(|p| p.update(msg, &rs, orders).ok());
         }
         Msg::StoreMsg(msg) => {
             model
                 .store_page
                 .as_mut()
-                .unwrap()
-                .update(msg, &model.rs, orders)
-                .ok();
+                .and_then(|p| p.update(msg, &rs, orders).ok());
         }
 
         Msg::NotificationMessage(msg) => model.notifications.update(msg, orders),

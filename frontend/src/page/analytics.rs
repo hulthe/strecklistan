@@ -1,12 +1,12 @@
 use crate::app::Msg;
 use crate::generated::css_classes::C;
 use crate::page::loading::Loading;
-use crate::res::{event, MustBeFresh, NotAvailable, ResourceStore};
 use crate::util::{simple_ev, DATE_INPUT_FMT};
 use chrono::{DateTime, Datelike, Duration, IsoWeek, NaiveDate, Utc, Weekday};
 use seed::app::cmds::timeout;
 use seed::{prelude::*, *};
 use seed_fetcher::Resources;
+use seed_fetcher::{event, NotAvailable, ResourceStore};
 use std::collections::{BTreeMap, HashMap};
 use std::rc::Rc;
 use strecklistan_api::{

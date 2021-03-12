@@ -1410,7 +1410,18 @@ dependencies = [
 [[package]]
 name = "seed_fetcher"
 version = "0.1.0"
-source = "git+https://github.com/hulthe/seed_fetcher.git?branch=master#a4a041921ccae3da8913f461946ec02617ac6003"
+source = "git+https://github.com/hulthe/seed_fetcher.git?branch=master#53f95013908e60fb3398a9d8b664e2aaf3b04025"
+dependencies = [
+ "seed",
+ "seed_fetcher_derive",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "seed_fetcher_derive"
+version = "0.1.0"
+source = "git+https://github.com/hulthe/seed_fetcher.git?branch=master#53f95013908e60fb3398a9d8b664e2aaf3b04025"
 dependencies = [
  "proc-macro2",
  "quote",

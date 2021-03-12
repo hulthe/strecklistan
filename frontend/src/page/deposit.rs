@@ -5,13 +5,13 @@ use crate::fuzzy_search::{FuzzyScore, FuzzySearch};
 use crate::generated::css_classes::C;
 use crate::notification_manager::{Notification, NotificationMessage};
 use crate::page::loading::Loading;
-use crate::res::{event, MustBeFresh, NotAvailable, ResourceStore};
 use crate::strings;
 use crate::util::simple_ev;
 use crate::views::view_tillgodo;
 use seed::prelude::*;
 use seed::*;
 use seed_fetcher::Resources;
+use seed_fetcher::{event, NotAvailable, ResourceStore};
 use std::collections::HashMap;
 use strecklistan_api::{
     book_account::{BookAccount, BookAccountId, MasterAccounts},

@@ -1,10 +1,10 @@
 use crate::components::parsed_input::{ParsedInput, ParsedInputMsg};
 use crate::generated::css_classes::C;
-use crate::res::{MustBeFresh, NotAvailable, ResourceStore};
 use crate::strings;
 use crate::util::simple_ev;
 use seed::prelude::*;
 use seed::*;
+use seed_fetcher::ResourceStore;
 use seed_fetcher::Resources;
 use std::collections::HashMap;
 use std::convert::TryInto;
@@ -54,6 +54,7 @@ struct Res<'a> {
     #[url = "/api/book_accounts/masters"]
     master_accounts: &'a MasterAccounts,
 
+    #[policy = "SilentRefetch"]
     #[url = "/api/inventory/items"]
     inventory: &'a HashMap<InventoryItemId, InventoryItem>,
 
@@ -62,8 +63,8 @@ struct Res<'a> {
 }
 
 impl Checkout {
-    pub fn new(resources: &ResourceStore, orders: &mut impl Orders<CheckoutMsg>) -> Self {
-        Res::acquire(resources, orders).ok();
+    pub fn new(rs: &ResourceStore, orders: &mut impl Orders<CheckoutMsg>) -> Self {
+        Res::acquire(rs, orders).ok();
         Checkout {
             transaction_bundles: vec![],
             debited_account: None,
@@ -79,17 +80,17 @@ impl Checkout {
     pub fn update(
         &mut self,
         msg: CheckoutMsg,
-        resources: &ResourceStore,
+        rs: &ResourceStore,
         orders: &mut impl Orders<CheckoutMsg>,
     ) {
-        let res = match Res::acquire(resources, orders) {
+        let res = match Res::acquire(rs, orders) {
             Ok(res) => res,
             Err(_) => return,
         };
 
         match msg {
             CheckoutMsg::ConfirmPurchase => {
-                if let Some(transaction) = self.build_transaction(resources) {
+                if let Some(transaction) = self.build_transaction(rs) {
                     self.remove_cleared_items();
                     self.disabled = true;
 
@@ -121,6 +122,8 @@ impl Checkout {
                 log!("Posted transaction ID: ", transaction_id);
                 self.transaction_total_input.set_value(Default::default());
                 self.transaction_bundles = vec![];
+                self.debited_account = None;
+                self.override_transaction_total = false;
             }
             CheckoutMsg::TotalInputMsg(msg) => {
                 match &msg {
@@ -218,8 +221,8 @@ impl Checkout {
         }
     }
 
-    pub fn build_transaction(&self, resources: &ResourceStore) -> Option<NewTransaction> {
-        Res::acquire_now(resources)
+    pub fn build_transaction(&self, rs: &ResourceStore) -> Option<NewTransaction> {
+        Res::acquire_now(rs)
             .ok()
             .zip(self.transaction_total_input.get_value().copied())
             .map(|(res, amount)| NewTransaction {
