@@ -1058,7 +1058,26 @@ video {
 	text-align: right;
 }
 
+.new_transaction_total_row {
+    display: inline-flex;
+}
+
+.new_transaction_clear_button {
+    width: 2em;
+    height: 2em;
+    margin-bottom: auto;
+    margin-left: 0.5em;
+    background-image: url(/static/trash.svg);
+    background-size: contain;
+    background-repeat: no-repeat;
+}
+
 .new_transaction_total_field {
+    margin-left: 0.5em;
+}
+
+.new_transaction_total_text{
+    margin-top: 0.05em;
 }
 
 .wide_button {

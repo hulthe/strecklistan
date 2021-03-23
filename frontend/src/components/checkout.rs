@@ -37,6 +37,7 @@ pub enum CheckoutMsg {
         bundle_index: usize,
         change: i32,
     },
+    ClearCart,
 }
 
 #[derive(Clone)]
@@ -203,6 +204,9 @@ impl Checkout {
             } => {
                 self.transaction_bundles[bundle_index].change = change;
             }
+            CheckoutMsg::ClearCart => {
+                self.transaction_bundles.clear();
+            }
         }
 
         self.recompute_new_transaction_total();
@@ -306,21 +310,35 @@ impl Checkout {
                     ]
                 })
                 .collect::<Vec<_>>(),
-            p![span!["Totalt: "], {
-                let color = if self.override_transaction_total {
-                    "color: #762;"
-                } else {
-                    "color: black;"
-                };
-                let attrs = attrs! {
-                    At::Style => color,
-                    At::Class => C.new_transaction_total_field,
-                    At::Class => C.border_on_focus,
-                };
-                self.transaction_total_input
-                    .view(attrs)
-                    .map_msg(CheckoutMsg::TotalInputMsg)
-            }],
+            div![
+                C![C.new_transaction_total_row],
+                span![
+                    C![C.new_transaction_total_text],
+                    strings::TRANSACTION_TOTAL,
+                ],
+                { // input field
+                    let color = if self.override_transaction_total {
+                        "color: #762;"
+                    } else {
+                        "color: black;"
+                    };
+                    let attrs = attrs! {
+                        At::Style => color,
+                        At::Class => [
+                                C.new_transaction_total_field,
+                                C.border_on_focus,
+                            ].join(" "),
+                    };
+                    self.transaction_total_input
+                        .view(attrs)
+                        .map_msg(CheckoutMsg::TotalInputMsg)
+                },
+                button![
+                    C![C.new_transaction_clear_button, C.border_on_focus],
+                    simple_ev(Ev::Click, CheckoutMsg::ClearCart),
+                ],
+            ],
+
             if !self.disabled {
                 button![
                     C![C.wide_button, C.border_on_focus],
