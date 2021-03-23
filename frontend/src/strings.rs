@@ -30,3 +30,5 @@ pub const PAYMENT_CANCELLED: &str = "Betalning avbruten";
 pub const NO_PENDING_TRANSACTION: &str = "Ingen pågående transaktion";
 pub const POSTING_TRANSACTION_FAILED: &str = "Misslyckades med att skicka transaktion";
 pub const POLLING_TRANSACTION_FAILED: &str = "Misslyckades med att polla transaktion";
+
+pub const TRANSACTION_TOTAL: &str = "Totalt:";
