@@ -39,7 +39,7 @@ that you have one running. For a quick setup you can use docker. ::
     docker run --name "postgres" -d \
         --publish 5432:5432 \
         --env POSTGRES_PASSWORD=password \
-        --env POSTGRES_USER=strecklistan \
+        --env POSTGRES_USER=postgres \
         postgres:13
 
 Then make sure to setup your local ``.env``-file with the proper
@@ -56,6 +56,10 @@ For handling migrations you need to use the ``diesel`` CLI. ::
     diesel setup # Create database
 
     diesel migration run # Run migrations, generate rust bindings
+
+There is some mock data that you can use to populate the database
+in the ``backend/db_mock/``-folder. If you use the example setup
+the script ``populate.sh`` will do the work for you.
 
 You can then run the application using cargo. ::
 

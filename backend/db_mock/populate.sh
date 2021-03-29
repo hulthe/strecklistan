@@ -6,4 +6,4 @@ if [ -z "$DOCKER_NAME" ]; then
 	exit 1
 fi
 
-docker exec -u postgres -i "$1" psql -d drawit < init.sql
+docker exec -u postgres -i "$1" psql -d strecklistan < init.sql
