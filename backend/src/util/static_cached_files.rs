@@ -1,18 +1,6 @@
-//! Custom handler and options for static file serving.
+//! Custom handler and options for static file serving _with cache control_.
 //!
-//! See the [`StaticCachedFiles`](crate::serve::StaticCachedFiles) type for further details.
-//!
-//! # Enabling
-//!
-//! This module is only available when the `serve` feature is enabled. Enable it
-//! in `Cargo.toml` as follows:
-//!
-//! ```toml
-//! [dependencies.rocket_contrib]
-//! version = "0.5.0-dev"
-//! default-features = false
-//! features = ["serve"]
-//! ```
+//! Mostly stolen from [`StaticFiles`](rocket_contrib::serve::StaticFiles).
 
 use log::error;
 use rocket::handler::{Handler, Outcome};
@@ -46,76 +34,12 @@ impl StaticCachedFiles {
     /// The default `max-age` cache-control directive
     const DEFAULT_MAX_AGE: u32 = 0;
 
-    /// Constructs a new `StaticCachedFiles` that serves files from the file system
-    /// `path`. By default, [`Options::Index`] is set, and the generated routes
-    /// have a rank of `10`. To serve static files with other options, use
-    /// [`StaticCachedFiles::new()`]. To choose a different rank for generated routes,
-    /// use [`StaticCachedFiles::rank()`].
-    ///
-    /// # Panics
-    ///
-    /// Panics if `path` does not exist or is not a directory.
-    ///
-    /// # Example
-    ///
-    /// Serve the static files in the `/www/public` local directory on path
-    /// `/static`.
-    ///
-    /// ```rust,no_run
-    /// # #[macro_use] extern crate rocket;
-    /// # extern crate rocket_contrib;
-    /// use rocket_contrib::serve::StaticCachedFiles;
-    ///
-    /// #[launch]
-    /// fn rocket() -> rocket::Rocket {
-    ///     rocket::ignite().mount("/static", StaticCachedFiles::from("/www/public"))
-    /// }
-    /// ```
-    ///
-    /// Exactly as before, but set the rank for generated routes to `30`.
-    ///
-    /// ```rust,no_run
-    /// # #[macro_use] extern crate rocket;
-    /// # extern crate rocket_contrib;
-    /// use rocket_contrib::serve::StaticCachedFiles;
-    ///
-    /// #[launch]
-    /// fn rocket() -> rocket::Rocket {
-    ///     rocket::ignite().mount("/static", StaticCachedFiles::from("/www/public").rank(30))
-    /// }
-    /// ```
+    /// Constructs a new `StaticCachedFiles` that serves files from the file system `path`.
     pub fn from<P: AsRef<Path>>(path: P) -> Self {
         StaticCachedFiles::new(path)
     }
 
-    /// Constructs a new `StaticCachedFiles` that serves files from the file system
-    /// `path` with `options` enabled. By default, the handler's routes have a
-    /// rank of `10`. To choose a different rank, use [`StaticCachedFiles::rank()`].
-    ///
-    /// # Panics
-    ///
-    /// Panics if `path` does not exist or is not a directory.
-    ///
-    /// # Example
-    ///
-    /// Serve the static files in the `/www/public` local directory on path
-    /// `/static` without serving index files or dot files. Additionally, serve
-    /// the same files on `/pub` with a route rank of -1 while also serving
-    /// index files and dot files.
-    ///
-    /// ```rust,no_run
-    /// # #[macro_use] extern crate rocket;
-    /// # extern crate rocket_contrib;
-    /// use rocket_contrib::serve::{StaticCachedFiles, Options};
-    ///
-    /// #[launch]
-    /// fn rocket() -> rocket::Rocket {
-    ///     let options = Options::Index | Options::DotFiles;
-    ///     rocket::ignite()
-    ///         .mount("/static", StaticCachedFiles::from("/www/public"))
-    ///         .mount("/pub", StaticCachedFiles::new("/www/public", options).rank(-1))
-    /// }
-    /// ```
+    /// Constructs a new `StaticCachedFiles` that serves files from the file system `path`.
     pub fn new<P: AsRef<Path>>(path: P) -> Self {
         use rocket::yansi::Paint;
 
