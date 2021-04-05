@@ -1,6 +1,7 @@
 use crate::database::DatabasePool;
 use crate::models::book_account as relational;
 use crate::models::transaction::relational::Transaction;
+use crate::util::ser::{Ser, SerAccept};
 use crate::util::status_json::StatusJson as SJ;
 use diesel::prelude::*;
 use rocket::{get, post, State};
@@ -13,7 +14,8 @@ use strecklistan_api::book_account::{
 #[get("/book_accounts")]
 pub fn get_accounts(
     db_pool: State<DatabasePool>,
-) -> Result<Json<HashMap<BookAccountId, BookAccount>>, SJ> {
+    accept: SerAccept,
+) -> Result<Ser<HashMap<BookAccountId, BookAccount>>, SJ> {
     let connection = db_pool.inner().get()?;
 
     let (transactions, accounts) = connection
@@ -40,19 +42,20 @@ pub fn get_accounts(
             .map(|acc| acc.debit(tr.amount.into()));
     }
 
-    Ok(Json(accounts))
+    Ok(accept.ser(accounts))
 }
 
 #[post("/book_account", data = "<account>")]
 pub fn add_account(
     db_pool: State<DatabasePool>,
+    accept: SerAccept,
     account: Json<NewBookAccount>,
-) -> Result<Json<i32>, SJ> {
+) -> Result<Ser<i32>, SJ> {
     let connection = db_pool.inner().get()?;
 
     use crate::schema::tables::book_accounts::dsl::*;
 
-    Ok(Json(
+    Ok(accept.ser(
         diesel::insert_into(book_accounts)
             .values((
                 name.eq(&account.name),
@@ -65,7 +68,10 @@ pub fn add_account(
 }
 
 #[get("/book_accounts/masters")]
-pub fn get_master_accounts(db_pool: State<DatabasePool>) -> Result<Json<MasterAccounts>, SJ> {
+pub fn get_master_accounts(
+    db_pool: State<DatabasePool>,
+    accept: SerAccept,
+) -> Result<Ser<MasterAccounts>, SJ> {
     let connection = db_pool.inner().get()?;
     use crate::schema::tables::book_accounts::dsl::*;
 
@@ -106,7 +112,7 @@ pub fn get_master_accounts(db_pool: State<DatabasePool>) -> Result<Json<MasterAc
             .on_conflict_do_nothing()
             .execute(&connection)?;
 
-        Ok(Json(MasterAccounts {
+        Ok(accept.ser(MasterAccounts {
             bank_account_id: book_accounts
                 .filter(name.eq(bank_account_name))
                 .select(id)

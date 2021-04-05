@@ -1,18 +1,17 @@
-use diesel::{ExpressionMethods, QueryDsl};
-use rocket::http::Status;
-use rocket::{get, State};
-use log::error;
-use rocket_contrib::json::Json;
-use serde::Serialize;
-use strecklistan_api::izettle::IZettlePayment;
 use crate::database::DatabasePool;
 use crate::diesel::RunQueryDsl;
 use crate::models::izettle_transaction::{
     IZettlePostTransaction, TRANSACTION_CANCELLED, TRANSACTION_FAILED, TRANSACTION_IN_PROGRESS,
     TRANSACTION_PAID,
 };
-use crate::util::status_json::StatusJson as SJ;
+use crate::util::ser::{Ser, SerAccept};
 use crate::util::StatusJson;
+use diesel::{ExpressionMethods, QueryDsl};
+use log::error;
+use rocket::http::Status;
+use rocket::{get, State};
+use serde::Serialize;
+use strecklistan_api::izettle::IZettlePayment;
 
 #[derive(Clone, Serialize)]
 pub struct IZettleResult {
@@ -21,9 +20,10 @@ pub struct IZettleResult {
 
 #[get("/izettle/client/poll/<izettle_transaction_id>")]
 pub async fn poll_for_izettle(
-    izettle_transaction_id: i32,
     db_pool: State<'_, DatabasePool>,
-) -> Result<Json<IZettlePayment>, SJ> {
+    accept: SerAccept,
+    izettle_transaction_id: i32,
+) -> Result<Ser<IZettlePayment>, StatusJson> {
     let connection = db_pool.inner().get()?;
 
     let post_izettle_transaction: Result<IZettlePostTransaction, diesel::result::Error> = {
@@ -37,22 +37,29 @@ pub async fn poll_for_izettle(
     };
 
     match post_izettle_transaction {
-        Err(diesel::result::Error::NotFound) => Ok(Json(IZettlePayment::NoTransaction)),
+        Err(diesel::result::Error::NotFound) => Ok(accept.ser(IZettlePayment::NoTransaction)),
         Ok(IZettlePostTransaction { status, .. }) if status == TRANSACTION_IN_PROGRESS => {
-            Ok(Json(IZettlePayment::Pending))
+            Ok(accept.ser(IZettlePayment::Pending))
         }
-        Ok(IZettlePostTransaction { status, transaction_id, .. }) if status == TRANSACTION_PAID => {
+        Ok(IZettlePostTransaction {
+            status,
+            transaction_id,
+            ..
+        }) if status == TRANSACTION_PAID => {
             let transaction_id = transaction_id.ok_or_else(|| {
-                error!("izettle_post_transaction {} marked as paid, not but transaction_id was None", izettle_transaction_id);
-                SJ::new(Status::InternalServerError, "Internal Server Error")
+                error!(
+                    "izettle_post_transaction {} marked as paid, not but transaction_id was None",
+                    izettle_transaction_id
+                );
+                StatusJson::new(Status::InternalServerError, "Internal Server Error")
             })?;
-            Ok(Json(IZettlePayment::Paid { transaction_id }))
+            Ok(accept.ser(IZettlePayment::Paid { transaction_id }))
         }
         Ok(IZettlePostTransaction { status, .. }) if status == TRANSACTION_CANCELLED => {
-            Ok(Json(IZettlePayment::Cancelled))
+            Ok(accept.ser(IZettlePayment::Cancelled))
         }
         Ok(IZettlePostTransaction { status, error, .. }) if status == TRANSACTION_FAILED => {
-            Ok(Json(IZettlePayment::Failed {
+            Ok(accept.ser(IZettlePayment::Failed {
                 reason: error.unwrap_or_else(|| "Unknown error".to_string()),
             }))
         }

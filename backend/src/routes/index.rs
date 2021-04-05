@@ -11,4 +11,3 @@ pub async fn root() -> Html<&'static str> {
 pub async fn wildcard(_page: String) -> Html<&'static str> {
     Html(INDEX_HTML)
 }
-
