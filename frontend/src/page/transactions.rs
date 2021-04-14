@@ -60,6 +60,7 @@ struct Res<'a> {
     transactions: &'a Vec<Transaction>,
 
     #[url = "/api/inventory/items"]
+    #[policy = "SilentRefetch"]
     inventory: &'a HashMap<InventoryItemId, InventoryItemStock>,
 
     #[url = "/api/book_accounts"]
@@ -167,6 +168,8 @@ impl TransactionsPage {
             TransactionsMsg::TransactionDeleted(id) => {
                 log!(format!("Transaction {} deleted", id));
                 rs.mark_as_dirty(Res::transactions_url(), orders);
+                rs.mark_as_dirty(Res::book_accounts_url(), orders);
+                rs.mark_as_dirty(Res::inventory_url(), orders);
             }
 
             TransactionsMsg::SetShowDelete(show_delete) => {

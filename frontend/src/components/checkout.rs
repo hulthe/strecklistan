@@ -91,8 +91,8 @@ impl Checkout {
 
         match msg {
             CheckoutMsg::ConfirmPurchase => {
+                self.remove_cleared_items();
                 if let Some(transaction) = self.build_transaction(rs) {
-                    self.remove_cleared_items();
                     self.disabled = true;
 
                     orders.perform_cmd(async move {
@@ -312,11 +312,9 @@ impl Checkout {
                 .collect::<Vec<_>>(),
             div![
                 C![C.new_transaction_total_row],
-                span![
-                    C![C.new_transaction_total_text],
-                    strings::TRANSACTION_TOTAL,
-                ],
-                { // input field
+                span![C![C.new_transaction_total_text], strings::TRANSACTION_TOTAL],
+                {
+                    // input field
                     let color = if self.override_transaction_total {
                         "color: #762;"
                     } else {
@@ -338,7 +336,6 @@ impl Checkout {
                     simple_ev(Ev::Click, CheckoutMsg::ClearCart),
                 ],
             ],
-
             if !self.disabled {
                 button![
                     C![C.wide_button, C.border_on_focus],
