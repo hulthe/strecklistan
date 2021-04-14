@@ -1,13 +1,3 @@
-use std::iter;
-
-use diesel::r2d2::{ConnectionManager, PooledConnection};
-use diesel::{Connection, ExpressionMethods, JoinOnDsl, PgConnection, QueryDsl};
-use itertools::Itertools;
-use log::info;
-use rocket::{post, State};
-use rocket::http::Status;
-use rocket_contrib::json::Json;
-use serde::{Deserialize, Serialize};
 use crate::database::DatabasePool;
 use crate::diesel::RunQueryDsl;
 use crate::models::izettle_transaction::{
@@ -18,6 +8,15 @@ use crate::models::transaction::relational::{
     NewTransaction, NewTransactionBundle, NewTransactionItem,
 };
 use crate::util::status_json::StatusJson as SJ;
+use diesel::r2d2::{ConnectionManager, PooledConnection};
+use diesel::{Connection, ExpressionMethods, JoinOnDsl, PgConnection, QueryDsl};
+use itertools::Itertools;
+use log::info;
+use rocket::http::Status;
+use rocket::{post, State};
+use rocket_contrib::json::Json;
+use serde::{Deserialize, Serialize};
+use std::iter;
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]

@@ -1,4 +1,5 @@
 use crate::database::DatabasePool;
+use crate::util::ser::{Ser, SerAccept};
 use crate::util::status_json::StatusJson as SJ;
 use diesel::prelude::*;
 use rocket::{get, post, State};
@@ -8,11 +9,14 @@ use strecklistan_api::book_account::{BookAccountId, BookAccountType};
 use strecklistan_api::member::{Member, MemberId, NewMember};
 
 #[get("/members")]
-pub fn get_members(db_pool: State<DatabasePool>) -> Result<Json<HashMap<MemberId, Member>>, SJ> {
+pub fn get_members(
+    db_pool: State<DatabasePool>,
+    accept: SerAccept,
+) -> Result<Ser<HashMap<MemberId, Member>>, SJ> {
     let connection = db_pool.inner().get()?;
     use crate::schema::tables::members::dsl::*;
 
-    Ok(Json(
+    Ok(accept.ser(
         members
             .load(&connection)?
             .into_iter()
@@ -24,8 +28,9 @@ pub fn get_members(db_pool: State<DatabasePool>) -> Result<Json<HashMap<MemberId
 #[post("/add_member_with_book_account", data = "<data>")]
 pub fn add_member_with_book_account(
     db_pool: State<DatabasePool>,
+    accept: SerAccept,
     data: Json<(NewMember, String)>,
-) -> Result<Json<(MemberId, BookAccountId)>, SJ> {
+) -> Result<Ser<(MemberId, BookAccountId)>, SJ> {
     let connection = db_pool.inner().get()?;
 
     let (new_member, account_name) = data.into_inner();
@@ -57,6 +62,6 @@ pub fn add_member_with_book_account(
                 .get_result(&connection)?
         };
 
-        Ok(Json((member_id, acc_id)))
+        Ok(accept.ser((member_id, acc_id)))
     })
 }

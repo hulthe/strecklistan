@@ -1,10 +1,10 @@
 use crate::database::DatabasePool;
 use crate::models::inventory::{InventoryBundle as InventoryBundleRel, InventoryBundleItem};
+use crate::util::ser::{Ser, SerAccept};
 use crate::util::status_json::StatusJson as SJ;
 use diesel::prelude::*;
 use itertools::Itertools;
 use rocket::{get, State};
-use rocket_contrib::json::Json;
 use std::collections::HashMap;
 use strecklistan_api::inventory::InventoryBundle as InventoryBundleObj;
 use strecklistan_api::inventory::{
@@ -14,11 +14,12 @@ use strecklistan_api::inventory::{
 #[get("/inventory/items")]
 pub fn get_inventory(
     db_pool: State<DatabasePool>,
-) -> Result<Json<HashMap<InventoryItemId, InventoryItemStock>>, SJ> {
+    accept: SerAccept,
+) -> Result<Ser<HashMap<InventoryItemId, InventoryItemStock>>, SJ> {
     let connection = db_pool.inner().get()?;
 
     use crate::schema::views::inventory_stock::dsl::inventory_stock;
-    Ok(Json(
+    Ok(accept.ser(
         inventory_stock
             .load(&connection)?
             .into_iter()
@@ -28,17 +29,21 @@ pub fn get_inventory(
 }
 
 #[get("/inventory/tags")]
-pub fn get_tags(db_pool: State<DatabasePool>) -> Result<Json<Vec<InventoryItemTag>>, SJ> {
+pub fn get_tags(
+    db_pool: State<DatabasePool>,
+    accept: SerAccept,
+) -> Result<Ser<Vec<InventoryItemTag>>, SJ> {
     let connection = db_pool.inner().get()?;
 
     use crate::schema::tables::inventory_tags::dsl::inventory_tags;
-    Ok(Json(inventory_tags.load(&connection)?))
+    Ok(accept.ser(inventory_tags.load(&connection)?))
 }
 
 #[get("/inventory/bundles")]
 pub fn get_inventory_bundles(
     db_pool: State<DatabasePool>,
-) -> Result<Json<HashMap<InventoryBundleId, InventoryBundleObj>>, SJ> {
+    accept: SerAccept,
+) -> Result<Ser<HashMap<InventoryBundleId, InventoryBundleObj>>, SJ> {
     let connection = db_pool.inner().get()?;
 
     use crate::schema::tables::inventory_bundle_items::dsl::{bundle_id, inventory_bundle_items};
@@ -69,5 +74,5 @@ pub fn get_inventory_bundles(
         .map(|bundle| (bundle.id, bundle))
         .collect();
 
-    Ok(Json(bundles))
+    Ok(accept.ser(bundles))
 }

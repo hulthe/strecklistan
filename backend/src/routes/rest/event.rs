@@ -1,25 +1,25 @@
 use crate::database::event::{get_event_ws, get_event_ws_range};
 use crate::database::DatabasePool;
 use crate::models::event::EventWithSignups as EventWS;
+use crate::util::ser::{Ser, SerAccept};
 use crate::util::status_json::StatusJson as SJ;
 use rocket::{get, State};
-use rocket_contrib::json::Json;
 
 #[get("/event/<id>")]
-pub fn get_event(id: i32, db_pool: State<DatabasePool>) -> Result<Json<EventWS>, SJ> {
-    Ok(Json(get_event_ws(db_pool.inner().get()?, id, true)?))
+pub fn get_event(
+    db_pool: State<DatabasePool>,
+    accept: SerAccept,
+    id: i32,
+) -> Result<Ser<EventWS>, SJ> {
+    Ok(accept.ser(get_event_ws(db_pool.inner().get()?, id, true)?))
 }
 
 #[get("/events?<low>&<high>")]
 pub fn get_event_range(
+    db_pool: State<DatabasePool>,
+    accept: SerAccept,
     low: i64,
     high: i64,
-    db_pool: State<DatabasePool>,
-) -> Result<Json<Vec<EventWS>>, SJ> {
-    Ok(Json(get_event_ws_range(
-        db_pool.inner().get()?,
-        low,
-        high,
-        true,
-    )?))
+) -> Result<Ser<Vec<EventWS>>, SJ> {
+    Ok(accept.ser(get_event_ws_range(db_pool.inner().get()?, low, high, true)?))
 }

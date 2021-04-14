@@ -1,6 +1,6 @@
-use crate::models::transaction::{object, relational};
-
 use crate::database::DatabasePool;
+use crate::models::transaction::{object, relational};
+use crate::util::ser::{Ser, SerAccept};
 use crate::util::status_json::StatusJson as SJ;
 use diesel::prelude::*;
 use itertools::Itertools;
@@ -8,11 +8,15 @@ use rocket::{delete, get, post, State};
 use rocket_contrib::json::Json;
 use std::collections::HashMap;
 
+/// POST `/transaction`
+///
+/// Create a new transaction
 #[post("/transaction", data = "<transaction>")]
 pub fn post_transaction(
     db_pool: State<DatabasePool>,
+    accept: SerAccept,
     transaction: Json<object::NewTransaction>,
-) -> Result<Json<i32>, SJ> {
+) -> Result<Ser<i32>, SJ> {
     let connection = db_pool.inner().get()?;
 
     let object::NewTransaction {
@@ -24,7 +28,7 @@ pub fn post_transaction(
     } = transaction.into_inner();
 
     let transaction = relational::NewTransaction {
-        description: description,
+        description,
         time: None,
         debited_account,
         credited_account,
@@ -60,10 +64,7 @@ pub fn post_transaction(
                 .item_ids
                 .into_iter()
                 .flat_map(|(item_id, count)| std::iter::repeat(item_id).take(count as usize))
-                .map(|item_id| relational::NewTransactionItem {
-                    bundle_id: bundle_id,
-                    item_id,
-                })
+                .map(|item_id| relational::NewTransactionItem { bundle_id, item_id })
                 .collect();
 
             {
@@ -74,15 +75,17 @@ pub fn post_transaction(
             }
         }
 
-        Ok(Json(transaction_id))
+        Ok(accept.ser(transaction_id))
     })
 }
 
+/// DELETE `/transaction/<transaction_id>`
 #[delete("/transaction/<transaction_id>")]
 pub fn delete_transaction(
     db_pool: State<DatabasePool>,
+    accept: SerAccept,
     transaction_id: i32,
-) -> Result<Json<i32>, SJ> {
+) -> Result<Ser<i32>, SJ> {
     let connection = db_pool.inner().get()?;
 
     use crate::schema::tables::transactions::dsl::*;
@@ -91,13 +94,17 @@ pub fn delete_transaction(
         .returning(id)
         .get_result(&connection)?;
 
-    Ok(Json(deleted_id))
+    Ok(accept.ser(deleted_id))
 }
 
+/// GET `/transactions`
+///
+/// Returns a list of all transactions
 #[get("/transactions")]
 pub fn get_transactions(
     db_pool: State<DatabasePool>,
-) -> Result<Json<Vec<object::Transaction>>, SJ> {
+    accept: SerAccept,
+) -> Result<Ser<Vec<object::Transaction>>, SJ> {
     let connection = db_pool.inner().get()?;
 
     let joined: Vec<(
@@ -159,5 +166,5 @@ pub fn get_transactions(
         })
         .collect();
 
-    Ok(Json(transactions))
+    Ok(accept.ser(transactions))
 }
