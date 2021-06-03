@@ -340,18 +340,15 @@ impl Checkout {
                 if self.transaction_bundles.is_empty() {
                     button![
                         C![C.greyed_out, C.wide_button, C.border_on_focus],
-                        div![
-                            style! {
-                                St::Position => "absolute",
-                                St::MarginTop => "-0.25em",
-                                St::Filter => "invert(100%)",
-                            },
-                        ],
+                        div![style! {
+                            St::Position => "absolute",
+                            St::MarginTop => "-0.25em",
+                            St::Filter => "invert(100%)",
+                        },],
                         attrs! { At::Disabled => true },
                         "Slutför Köp",
-                    ] 
-                }
-                else {
+                    ]
+                } else {
                     button![
                         C![C.wide_button, C.border_on_focus],
                         simple_ev(Ev::Click, CheckoutMsg::ConfirmPurchase),
