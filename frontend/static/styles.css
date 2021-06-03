@@ -587,6 +587,7 @@ object {
  * https://github.com/mozdevs/cssremedy/issues/14
  */
 
+
 img,
 video {
 	max-width: 100%;
@@ -1277,3 +1278,7 @@ input[type=number] {
 	border: solid grey;
 }
 
+.greyed_out:disabled {
+	background-color: #a0a0a0;
+	cursor: default;
+}
