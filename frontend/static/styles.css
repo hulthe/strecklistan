@@ -587,7 +587,6 @@ object {
  * https://github.com/mozdevs/cssremedy/issues/14
  */
 
-
 img,
 video {
 	max-width: 100%;
