@@ -1,3 +1,4 @@
+use crate::components::select::{SelectInput, SelectInputMsg};
 use crate::generated::css_classes::C;
 use crate::util::{simple_ev, CompareToStr};
 use seed::prelude::*;
@@ -7,10 +8,23 @@ use std::cmp::Ordering;
 #[derive(Clone, Debug)]
 pub enum FilterMenuMsg {
     AddFilter,
-    SetField { filter_i: usize, field_i: usize },
-    SetOp { filter_i: usize, op: FilterOp },
-    SetValue { filter_i: usize, value: String },
-    DeleteFilter { filter_i: usize },
+    SetValue {
+        filter_i: usize,
+        value: String,
+    },
+    DeleteFilter {
+        filter_i: usize,
+    },
+
+    FilterFieldMsg {
+        filter_i: usize,
+        msg: SelectInputMsg<usize>,
+    },
+
+    FilterOpMsg {
+        filter_i: usize,
+        msg: SelectInputMsg<FilterOp>,
+    },
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -21,29 +35,57 @@ pub enum FilterOp {
     GrEq,
     LeTh,
     LeEq,
-    //RxMatch, // TODO: Regex matching
 }
+
+const ALL_OPS: &[FilterOp] = &[
+    // first element is the default
+    FilterOp::NotEquals,
+    FilterOp::Equals,
+    FilterOp::GrTh,
+    FilterOp::GrEq,
+    FilterOp::LeTh,
+    FilterOp::LeEq,
+];
 
 #[derive(Clone)]
 pub struct FilterMenu {
-    fields: Vec<&'static str>,
-    filters: Vec<(usize, FilterOp, String)>,
+    /// The labels of fields that are being filtered on
+    // NOTE: this is a boxed slice since because mutating it would break the field SelectInput on
+    // the filters. They take a copy of this slice, which would also need to be updated.
+    fields: Box<[&'static str]>,
+
+    filters: Vec<FilterEntry>,
+}
+
+#[derive(Clone)]
+struct FilterEntry {
+    //field: usize,
+    field: SelectInput<usize>,
+    op: SelectInput<FilterOp>,
+    value: String,
 }
 
 impl FilterMenu {
     pub fn new(fields: Vec<&'static str>) -> Self {
         assert_ne!(fields.len(), 0);
         FilterMenu {
-            fields,
+            fields: fields.into_boxed_slice(),
             filters: vec![],
         }
     }
 
     pub fn filter(&self, values: &[&dyn CompareToStr]) -> bool {
-        self.filters.iter().all(|(field_i, op, value)| {
-            let ord = values[*field_i].cmp_to_str(value);
+        self.filters.iter().all(|filter| {
+            // get the index of the selected field
+            let selected_field = *filter.field.selected();
 
-            match (op, ord) {
+            // get the value that matches the selected field
+            let value = &values[selected_field];
+
+            // compare against the filter value
+            let ord = value.cmp_to_str(&filter.value);
+
+            match (*filter.op.selected(), ord) {
                 (FilterOp::GrTh, Ordering::Greater)            // >  true if greater
                 | (FilterOp::GrEq, Ordering::Greater)          // >=     ... greater
                 | (FilterOp::GrEq, Ordering::Equal)            // >=     ... equals
@@ -58,15 +100,36 @@ impl FilterMenu {
         })
     }
 
-    pub fn update(&mut self, msg: FilterMenuMsg, _orders: &mut impl Orders<FilterMenuMsg>) {
+    pub fn update(&mut self, msg: FilterMenuMsg, orders: &mut impl Orders<FilterMenuMsg>) {
         match msg {
-            FilterMenuMsg::AddFilter => self.filters.push((0, FilterOp::NotEquals, String::new())),
-            FilterMenuMsg::SetField { filter_i, field_i } => self.filters[filter_i].0 = field_i,
-            FilterMenuMsg::SetOp { filter_i, op } => self.filters[filter_i].1 = op,
-            FilterMenuMsg::SetValue { filter_i, value } => self.filters[filter_i].2 = value,
+            FilterMenuMsg::AddFilter => {
+                let fields = self.fields.clone();
+                self.filters.push(FilterEntry {
+                    //field: 0,
+                    field: SelectInput::new(
+                        self.fields.iter().enumerate().map(|(i, _)| i).collect(),
+                        move |&i| fields[i],
+                    )
+                    .with_select_styles(&[C.filter_menu_item_elem, C.filter_menu_field]),
+                    op: SelectInput::new(ALL_OPS.to_vec(), FilterOp::as_str)
+                        .with_select_styles(&[C.filter_menu_item_elem, C.filter_menu_operator]),
+                    value: String::new(),
+                })
+            }
+            FilterMenuMsg::SetValue { filter_i, value } => self.filters[filter_i].value = value,
             FilterMenuMsg::DeleteFilter { filter_i } => {
                 self.filters.remove(filter_i);
             }
+
+            FilterMenuMsg::FilterFieldMsg { filter_i, msg } => self.filters[filter_i].field.update(
+                msg,
+                &mut orders.proxy(move |msg| FilterMenuMsg::FilterFieldMsg { filter_i, msg }),
+            ),
+
+            FilterMenuMsg::FilterOpMsg { filter_i, msg } => self.filters[filter_i].op.update(
+                msg,
+                &mut orders.proxy(move |msg| FilterMenuMsg::FilterOpMsg { filter_i, msg }),
+            ),
         }
     }
 
@@ -81,43 +144,23 @@ impl FilterMenu {
                 .filters
                 .iter()
                 .enumerate()
-                .map(|(filter_i, (_field_i, _op, value))| {
-                    let op_ev = |op, name: &str| {
-                        option![
-                            // TODO: FIXME: This event only triggers on _mouse clicks_ and not
-                            // specifically when the option changes.
-                            simple_ev(Ev::Click, FilterMenuMsg::SetOp { filter_i, op }),
-                            name,
-                        ]
-                    };
+                .map(|(filter_i, filter)| {
                     div![
                         C![C.filter_menu_item],
-                        select![
-                            C![C.filter_menu_item_elem, C.filter_menu_field],
-                            self.fields
-                                .iter()
-                                .enumerate()
-                                .map(|(field_i, field)| option![
-                                    simple_ev(
-                                        Ev::Click,
-                                        FilterMenuMsg::SetField { filter_i, field_i }
-                                    ),
-                                    field,
-                                ])
-                                .collect::<Vec<_>>()
-                        ],
-                        select![
-                            C![C.filter_menu_item_elem, C.filter_menu_operator],
-                            op_ev(FilterOp::NotEquals, "!="),
-                            op_ev(FilterOp::Equals, "=="),
-                            op_ev(FilterOp::GrTh, ">"),
-                            op_ev(FilterOp::GrEq, ">="),
-                            op_ev(FilterOp::LeTh, "<"),
-                            op_ev(FilterOp::LeEq, "<="),
-                        ],
+                        // show the filter field select tag
+                        filter
+                            .field
+                            .view()
+                            .map_msg(move |msg| FilterMenuMsg::FilterFieldMsg { msg, filter_i }),
+                        // show the filter operator select tag
+                        filter
+                            .op
+                            .view()
+                            .map_msg(move |msg| FilterMenuMsg::FilterOpMsg { msg, filter_i }),
+                        // show the filter value input
                         input![
                             C![C.filter_menu_item_elem, C.filter_menu_value],
-                            attrs! { At::Value => value },
+                            attrs! { At::Value => filter.value },
                             input_ev(Ev::Input, move |value| FilterMenuMsg::SetValue {
                                 filter_i,
                                 value,
@@ -132,5 +175,18 @@ impl FilterMenu {
                 })
                 .collect::<Vec<_>>(),],
         ]
+    }
+}
+
+impl FilterOp {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            FilterOp::NotEquals => "!=",
+            FilterOp::Equals => "==",
+            FilterOp::GrTh => ">",
+            FilterOp::GrEq => ">=",
+            FilterOp::LeTh => "<",
+            FilterOp::LeEq => "<=",
+        }
     }
 }
