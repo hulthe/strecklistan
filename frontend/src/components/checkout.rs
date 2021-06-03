@@ -371,7 +371,7 @@ impl Checkout {
                     ],
                     attrs! { At::Disabled => true },
                     "Slutför Köp",
-                ] 
+                ]
             },
             if let Some(message) = &self.confirm_button_message {
                 div![C![C.wide_button_message], message]
