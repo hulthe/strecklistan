@@ -25,6 +25,7 @@ pub mod relational {
         pub debited_account: i32,
         pub credited_account: i32,
         pub amount: i32,
+        pub deleted_at: Option<DateTime<Utc>>,
     }
 
     #[derive(Insertable, Serialize, Deserialize, Debug, PartialEq)]

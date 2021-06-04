@@ -1,7 +1,7 @@
 use crate::database::DatabasePool;
 use crate::diesel::RunQueryDsl;
 use crate::models::izettle_transaction::{
-    TRANSACTION_CANCELLED, TRANSACTION_FAILED, TRANSACTION_PAID,
+    IZettleTransaction, TRANSACTION_CANCELLED, TRANSACTION_FAILED, TRANSACTION_PAID,
 };
 use crate::models::transaction::relational;
 use crate::models::transaction::relational::{
@@ -39,7 +39,7 @@ pub async fn complete_izettle_transaction(
 
     connection.transaction::<_, SJ, _>(|| {
         let joined: Vec<(
-            relational::Transaction,
+            IZettleTransaction,
             Option<relational::TransactionBundle>,
             Option<relational::TransactionItem>,
         )> = {

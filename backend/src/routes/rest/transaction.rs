@@ -88,8 +88,9 @@ pub fn delete_transaction(
 ) -> Result<Ser<i32>, SJ> {
     let connection = db_pool.inner().get()?;
 
-    use crate::schema::tables::transactions::dsl::*;
-    let deleted_id = diesel::delete(transactions)
+    use crate::schema::tables::transactions::dsl::{deleted_at, id, transactions};
+    let deleted_id = diesel::update(transactions)
+        .set(deleted_at.eq(Some(chrono::Utc::now().naive_utc())))
         .filter(id.eq(transaction_id))
         .returning(id)
         .get_result(&connection)?;
@@ -118,8 +119,11 @@ pub fn get_transactions(
         use crate::schema::tables::transaction_items::dsl::{
             bundle_id as item_bundle_id, transaction_items,
         };
-        use crate::schema::tables::transactions::dsl::{id as transaction_id, time, transactions};
+        use crate::schema::tables::transactions::dsl::{
+            deleted_at, id as transaction_id, time, transactions,
+        };
         transactions
+            .filter(deleted_at.is_null())
             .left_join(transaction_bundles.on(transaction_id.eq(bundle_transaction_id)))
             .left_join(transaction_items.on(bundle_id.eq(item_bundle_id)))
             .order_by(time.desc())

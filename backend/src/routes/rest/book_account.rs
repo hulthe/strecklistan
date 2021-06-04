@@ -21,9 +21,11 @@ pub fn get_accounts(
     let (transactions, accounts) = connection
         .transaction::<(Vec<Transaction>, Vec<relational::BookAccount>), SJ, _>(|| {
             use crate::schema::tables::book_accounts::dsl::book_accounts;
-            use crate::schema::tables::transactions::dsl::transactions;
+            use crate::schema::tables::transactions::dsl::{deleted_at, transactions};
             Ok((
-                transactions.load(&connection)?,
+                transactions
+                    .filter(deleted_at.is_null())
+                    .load(&connection)?,
                 book_accounts.load(&connection)?,
             ))
         })?;
