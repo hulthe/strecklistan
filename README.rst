@@ -22,8 +22,30 @@ Install the latest version of Rust using rustup_.
 
 .. _rustup: https://rustup.rs/
 
-The backend and the frontend need to be individually compiled.
+The frontend and the backend need to be individually compiled.
 See the guides for each.
+
+
+Frontend
+^^^^^^^^
+
+You'll need ``cargo-make``, and the webassembly compiler target.
+
+Quick setup guide: ::
+    # Install the WebAssembly target
+    rustup target add wasm32-unknown-unknown
+
+    # Install cargo-make
+    cargo install -f cargo-make
+
+    cd frontend
+
+    # Compile the application
+    cargo make build
+
+    # Or: Automatically recompile on file changes
+    cargo make watch
+
 
 Backend
 ^^^^^^^
@@ -74,27 +96,5 @@ You can then run the application using cargo. ::
     cargo watch -x run
 
 The backend server will serve the files for the frontend.
-Make sure these are also built if you want to try the app.
-
-
-Frontend
-^^^^^^^^
-
-All commands in this section are to be run in the ``frontend``-folder.
-
-You'll need ``cargo-make``, and the webassembly compiler target.
-
-Quick setup guide: ::
-
-    # Install the webassembly toolchain
-    rustup target add wasm32-unknown-unknown
-
-    # Install cargo-make
-    cargo install -f cargo-make
-
-    # Compile the application
-    cargo make build
-
-    # Or: Automatically recompile on file changes
-    cargo make watch
+**Make sure these are also built if you want to try the app.**
 
