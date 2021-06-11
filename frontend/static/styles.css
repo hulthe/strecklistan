@@ -605,7 +605,7 @@ video {
 .header_link_box {
 	display: flex;
 	flex-direction: row;
-	overflow-x: scroll;
+	overflow-x: auto;
 }
 
 .header_link {
