@@ -13,8 +13,8 @@ use diesel::{Connection, ExpressionMethods, JoinOnDsl, PgConnection, QueryDsl};
 use itertools::Itertools;
 use log::info;
 use rocket::http::Status;
+use rocket::serde::json::Json;
 use rocket::{post, State};
-use rocket_contrib::json::Json;
 use serde::{Deserialize, Serialize};
 use std::iter;
 
@@ -33,7 +33,7 @@ pub enum PaymentResponse {
 pub async fn complete_izettle_transaction(
     reference: i32,
     payment_response: Json<PaymentResponse>,
-    db_pool: State<'_, DatabasePool>,
+    db_pool: &State<DatabasePool>,
 ) -> Result<SJ, SJ> {
     let connection = db_pool.inner().get()?;
 

@@ -3,9 +3,8 @@ use duplicate::duplicate;
 use log::{info, warn};
 use rocket::http::Status;
 use rocket::response::{Responder, Response};
-use rocket::Request;
-use rocket_contrib::json;
-use rocket_contrib::json::Json; // macro
+use rocket::serde::json::{json, Json};
+use rocket::Request; // macro
 
 /// An error message which can be serialized as JSON.
 ///
@@ -62,7 +61,6 @@ impl<'r> Responder<'r, 'static> for StatusJson {
 
 #[duplicate(
   status_code                     T;
-  [ Status::BadRequest ]          [ orion::errors::UnknownCryptoError ];
   [ Status::BadRequest ]          [ r2d2::Error ];
   [ Status::InternalServerError ] [ diesel::ConnectionError ];
 )]
@@ -78,7 +76,7 @@ impl From<T> for StatusJson {
 impl From<Status> for StatusJson {
     fn from(status: Status) -> StatusJson {
         StatusJson {
-            description: status.reason.to_string(),
+            description: status.reason().unwrap_or("").to_string(),
             status,
         }
     }

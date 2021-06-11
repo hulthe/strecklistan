@@ -4,8 +4,8 @@ use crate::util::ser::{Ser, SerAccept};
 use crate::util::status_json::StatusJson as SJ;
 use diesel::prelude::*;
 use itertools::Itertools;
+use rocket::serde::json::Json;
 use rocket::{delete, get, post, State};
-use rocket_contrib::json::Json;
 use std::collections::HashMap;
 
 /// POST `/transaction`
@@ -13,7 +13,7 @@ use std::collections::HashMap;
 /// Create a new transaction
 #[post("/transaction", data = "<transaction>")]
 pub fn post_transaction(
-    db_pool: State<DatabasePool>,
+    db_pool: &State<DatabasePool>,
     accept: SerAccept,
     transaction: Json<object::NewTransaction>,
 ) -> Result<Ser<i32>, SJ> {
@@ -82,7 +82,7 @@ pub fn post_transaction(
 /// DELETE `/transaction/<transaction_id>`
 #[delete("/transaction/<transaction_id>")]
 pub fn delete_transaction(
-    db_pool: State<DatabasePool>,
+    db_pool: &State<DatabasePool>,
     accept: SerAccept,
     transaction_id: i32,
 ) -> Result<Ser<i32>, SJ> {
@@ -103,7 +103,7 @@ pub fn delete_transaction(
 /// Returns a list of all transactions
 #[get("/transactions")]
 pub fn get_transactions(
-    db_pool: State<DatabasePool>,
+    db_pool: &State<DatabasePool>,
     accept: SerAccept,
 ) -> Result<Ser<Vec<object::Transaction>>, SJ> {
     let connection = db_pool.inner().get()?;

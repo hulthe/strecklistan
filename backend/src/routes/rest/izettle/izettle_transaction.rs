@@ -7,12 +7,12 @@ use crate::models::transaction::object;
 use crate::util::ser::{Ser, SerAccept};
 use crate::util::status_json::StatusJson as SJ;
 use diesel::{Connection, RunQueryDsl};
+use rocket::serde::json::Json;
 use rocket::{post, State};
-use rocket_contrib::json::Json;
 
 #[post("/izettle/client/transaction", data = "<transaction>")]
 pub async fn begin_izettle_transaction(
-    db_pool: State<'_, DatabasePool>,
+    db_pool: &State<DatabasePool>,
     accept: SerAccept,
     transaction: Json<object::NewTransaction>,
 ) -> Result<Ser<i32>, SJ> {

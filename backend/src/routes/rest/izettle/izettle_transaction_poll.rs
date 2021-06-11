@@ -20,7 +20,7 @@ pub struct IZettleResult {
 
 #[get("/izettle/client/poll/<izettle_transaction_id>")]
 pub async fn poll_for_izettle(
-    db_pool: State<'_, DatabasePool>,
+    db_pool: &State<DatabasePool>,
     accept: SerAccept,
     izettle_transaction_id: i32,
 ) -> Result<Ser<IZettlePayment>, StatusJson> {
@@ -65,10 +65,7 @@ pub async fn poll_for_izettle(
         }
         Err(err) => Err(err.into()),
         Ok(transaction) => Err(StatusJson {
-            status: Status {
-                code: 500,
-                reason: "invalid status",
-            },
+            status: Status::new(500),
             description: format!(
                 "Invalid status {}, perhaps add it to the match.",
                 transaction.status

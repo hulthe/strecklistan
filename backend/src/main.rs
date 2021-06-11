@@ -1,7 +1,6 @@
 #[macro_use]
 extern crate diesel;
 
-pub mod auth;
 mod database;
 pub mod models;
 pub mod routes;
@@ -10,26 +9,22 @@ pub mod util;
 
 use crate::database::create_pool;
 use crate::database::DatabasePool;
-use crate::models::user::JWTConfig;
 use crate::routes::{index, rest};
 use crate::util::{catchers, StaticCachedFiles};
-use chrono::Duration;
 use diesel_migrations::{
     find_migrations_directory, mark_migrations_in_directory, run_pending_migrations, setup_database,
 };
 use dotenv::dotenv;
-use frank_jwt::Algorithm;
+use rocket::fs::FileServer;
 use rocket::routes;
-use rocket_contrib::serve::StaticFiles;
 use std::env;
 
 fn handle_migrations(db_pool: &DatabasePool) {
     let run_migrations = env::var("RUN_MIGRATIONS")
         .map(|s| {
-            s.parse().expect(&format!(
-                "Could not parse \"{}\" as a bool for RUN_MIGRATIONS",
-                s
-            ))
+            s.parse().unwrap_or_else(|_| {
+                panic!("Could not parse \"{}\" as a bool for RUN_MIGRATIONS", s)
+            })
         })
         .unwrap_or(false);
 
@@ -44,7 +39,7 @@ fn handle_migrations(db_pool: &DatabasePool) {
         let migrations = mark_migrations_in_directory(&connection, &migrations_dir)
             .expect("Could not get database migrations");
 
-        if migrations.len() > 0 {
+        if !migrations.is_empty() {
             println!("Migrations:");
             for (migration, applied) in migrations {
                 println!(
@@ -54,7 +49,7 @@ fn handle_migrations(db_pool: &DatabasePool) {
                         .file_path()
                         .and_then(|p| p.file_name())
                         .map(|p| p.to_string_lossy())
-                        .unwrap_or("".into()),
+                        .unwrap_or_default()
                 );
             }
         } else {
@@ -76,12 +71,6 @@ async fn main() {
 
     handle_migrations(&db_pool);
 
-    let jwt_config = JWTConfig {
-        algorithm: Algorithm::HS512,
-        secret: env::var("JWT_SECRET").expect("JWT_SECRET not set"),
-        token_lifetime: Duration::weeks(2),
-    };
-
     let enable_static_file_cache: bool = env::var("ENABLE_STATIC_FILE_CACHE")
         .map(|s| {
             s.parse()
@@ -96,10 +85,9 @@ async fn main() {
         })
         .unwrap_or(0);
 
-    let mut rocket = rocket::ignite()
+    let mut rocket = rocket::build()
         .manage(db_pool)
-        .manage(jwt_config)
-        .register(catchers())
+        .register("/", catchers())
         .mount(
             "/api/",
             routes![
@@ -127,11 +115,11 @@ async fn main() {
 
     let static_routes = &[("/pkg", "www/pkg"), ("/static", "www/static")];
 
-    for (route, path) in static_routes {
+    for &(route, path) in static_routes {
         rocket = if enable_static_file_cache {
             rocket.mount(route, StaticCachedFiles::from(path).max_age(max_age))
         } else {
-            rocket.mount(route, StaticFiles::from(path))
+            rocket.mount(route, FileServer::from(path))
         };
     }
 

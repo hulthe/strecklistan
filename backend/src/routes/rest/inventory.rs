@@ -13,7 +13,7 @@ use strecklistan_api::inventory::{
 
 #[get("/inventory/items")]
 pub fn get_inventory(
-    db_pool: State<DatabasePool>,
+    db_pool: &State<DatabasePool>,
     accept: SerAccept,
 ) -> Result<Ser<HashMap<InventoryItemId, InventoryItemStock>>, SJ> {
     let connection = db_pool.inner().get()?;
@@ -30,7 +30,7 @@ pub fn get_inventory(
 
 #[get("/inventory/tags")]
 pub fn get_tags(
-    db_pool: State<DatabasePool>,
+    db_pool: &State<DatabasePool>,
     accept: SerAccept,
 ) -> Result<Ser<Vec<InventoryItemTag>>, SJ> {
     let connection = db_pool.inner().get()?;
@@ -41,7 +41,7 @@ pub fn get_tags(
 
 #[get("/inventory/bundles")]
 pub fn get_inventory_bundles(
-    db_pool: State<DatabasePool>,
+    db_pool: &State<DatabasePool>,
     accept: SerAccept,
 ) -> Result<Ser<HashMap<InventoryBundleId, InventoryBundleObj>>, SJ> {
     let connection = db_pool.inner().get()?;

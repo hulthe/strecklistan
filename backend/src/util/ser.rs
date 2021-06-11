@@ -63,7 +63,7 @@ where
 
         let content_type = ContentType(self.encoding.mime());
 
-        response::Content(content_type, bytes).respond_to(request)
+        (content_type, bytes).respond_to(request)
     }
 }
 
@@ -84,10 +84,10 @@ impl SerAccept {
 }
 
 #[rocket::async_trait]
-impl<'a, 'r> FromRequest<'a, 'r> for SerAccept {
+impl<'a> FromRequest<'a> for SerAccept {
     type Error = StatusJson;
 
-    async fn from_request(request: &'a Request<'r>) -> request::Outcome<Self, Self::Error> {
+    async fn from_request(request: &'a Request<'_>) -> request::Outcome<Self, Self::Error> {
         // extract all accept types supported by the client
         let mut accepted: Vec<_> = request
             .accept()
@@ -106,13 +106,12 @@ impl<'a, 'r> FromRequest<'a, 'r> for SerAccept {
             accepted
                 .iter()
                 .flat_map(|accept| Encoding::iter().map(move |encoding| (accept, encoding)))
-                .filter(|(accept, encoding)| encoding.matches(accept.media_type()))
-                .next()
+                .find(|(accept, encoding)| encoding.matches(accept.media_type()))
                 .map(|(_, encoding)| Outcome::Success(SerAccept { encoding }))
                 .unwrap_or_else(|| {
                     // if not, return error
                     let status = Status::NotAcceptable;
-                    Outcome::Failure((status, status.into())).into()
+                    Outcome::Failure((status, status.into()))
                 })
         }
     }

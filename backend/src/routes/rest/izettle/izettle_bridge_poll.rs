@@ -18,7 +18,7 @@ pub enum BridgePollResult {
 
 #[get("/izettle/bridge/poll")]
 pub async fn poll_for_transaction(
-    db_pool: State<'_, DatabasePool>,
+    db_pool: &State<DatabasePool>,
     accept: SerAccept,
 ) -> Result<Ser<BridgePollResult>, StatusJson> {
     let connection = db_pool.inner().get()?;

@@ -4,8 +4,8 @@ use crate::models::transaction::relational::Transaction;
 use crate::util::ser::{Ser, SerAccept};
 use crate::util::status_json::StatusJson as SJ;
 use diesel::prelude::*;
+use rocket::serde::json::Json;
 use rocket::{get, post, State};
-use rocket_contrib::json::Json;
 use std::collections::HashMap;
 use strecklistan_api::book_account::{
     BookAccount, BookAccountId, BookAccountType, MasterAccounts, NewBookAccount,
@@ -13,7 +13,7 @@ use strecklistan_api::book_account::{
 
 #[get("/book_accounts")]
 pub fn get_accounts(
-    db_pool: State<DatabasePool>,
+    db_pool: &State<DatabasePool>,
     accept: SerAccept,
 ) -> Result<Ser<HashMap<BookAccountId, BookAccount>>, SJ> {
     let connection = db_pool.inner().get()?;
@@ -36,12 +36,13 @@ pub fn get_accounts(
         .collect();
 
     for tr in transactions.iter() {
-        accounts
-            .get_mut(&tr.credited_account)
-            .map(|acc| acc.credit(tr.amount.into()));
-        accounts
-            .get_mut(&tr.debited_account)
-            .map(|acc| acc.debit(tr.amount.into()));
+        if let Some(account) = accounts.get_mut(&tr.credited_account) {
+            account.credit(tr.amount.into());
+        }
+
+        if let Some(account) = accounts.get_mut(&tr.debited_account) {
+            account.debit(tr.amount.into());
+        }
     }
 
     Ok(accept.ser(accounts))
@@ -49,7 +50,7 @@ pub fn get_accounts(
 
 #[post("/book_account", data = "<account>")]
 pub fn add_account(
-    db_pool: State<DatabasePool>,
+    db_pool: &State<DatabasePool>,
     accept: SerAccept,
     account: Json<NewBookAccount>,
 ) -> Result<Ser<i32>, SJ> {
@@ -71,7 +72,7 @@ pub fn add_account(
 
 #[get("/book_accounts/masters")]
 pub fn get_master_accounts(
-    db_pool: State<DatabasePool>,
+    db_pool: &State<DatabasePool>,
     accept: SerAccept,
 ) -> Result<Ser<MasterAccounts>, SJ> {
     let connection = db_pool.inner().get()?;

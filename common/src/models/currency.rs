@@ -1,5 +1,7 @@
+mod non_negative;
+pub use non_negative::*;
+
 use regex::Regex;
-use std::convert::{TryFrom, TryInto};
 use std::fmt::{self, Display};
 use std::ops::{Add, AddAssign, Neg, Sub, SubAssign};
 use std::str::FromStr;
@@ -7,20 +9,26 @@ use std::str::FromStr;
 #[cfg(feature = "serde_impl")]
 use serde::{Deserialize, Serialize};
 
+/// A unit of money.
+///
+/// A number with two decimals of precision, internally represented as an i32.
 #[cfg_attr(feature = "serde_impl", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "debug", derive(Debug))]
 #[derive(Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Default)]
 pub struct Currency(i32);
 
 impl Currency {
+    /// Extract the fractional part of this number
     pub fn fractional(self) -> i32 {
         self.0 % 100
     }
 
+    /// Extract the non-fractional part of this number
     pub fn whole(self) -> i32 {
         self.0 / 100
     }
 
+    /// Lossy conversion to a float. Never use for important calculations.
     pub fn as_f64(self) -> f64 {
         self.whole() as f64 + self.fractional() as f64 / 100.0
     }
@@ -79,9 +87,26 @@ lazy_static! {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CurrencyParseError {
-    FracGreaterThan100,
+    /// The fractional part of the number was > 99. Example: 0.100
+    FracGreaterThan99,
+
+    /// The string failed to match the parsing regex
     MatchFailed,
+
+    /// Parsing resulted in an integer overflow
     IntegerOverflow,
+}
+
+impl Display for CurrencyParseError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            CurrencyParseError::MatchFailed => "parsing failed",
+            CurrencyParseError::IntegerOverflow => "integer overflow",
+            CurrencyParseError::FracGreaterThan99 => "decimal fraction greater than 99",
+        };
+
+        f.write_str(s)
+    }
 }
 
 impl FromStr for Currency {
@@ -111,8 +136,8 @@ impl FromStr for Currency {
                 frac *= 10;
             }
 
-            if frac >= 100 || frac < 0 {
-                return Err(CurrencyParseError::FracGreaterThan100);
+            if !(0..100).contains(&frac) {
+                return Err(CurrencyParseError::FracGreaterThan99);
             }
 
             let num = whole
@@ -134,47 +159,9 @@ impl From<i32> for Currency {
     }
 }
 
-impl Into<i32> for Currency {
-    fn into(self) -> i32 {
-        self.0
-    }
-}
-
-#[cfg_attr(feature = "debug", derive(Debug))]
-#[derive(Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Default)]
-pub struct AbsCurrency(Currency);
-
-impl TryFrom<Currency> for AbsCurrency {
-    type Error = &'static str;
-
-    fn try_from(value: Currency) -> Result<Self, Self::Error> {
-        if value < 0.into() {
-            Err("currency less than 0")
-        } else {
-            Ok(AbsCurrency(value))
-        }
-    }
-}
-
-impl Into<Currency> for AbsCurrency {
-    fn into(self) -> Currency {
-        self.0
-    }
-}
-
-impl FromStr for AbsCurrency {
-    type Err = CurrencyParseError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Currency::from_str(s)?
-            .try_into()
-            .map_err(|_| CurrencyParseError::MatchFailed)
-    }
-}
-
-impl Display for AbsCurrency {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.0.fmt(f)
+impl From<Currency> for i32 {
+    fn from(val: Currency) -> Self {
+        val.0
     }
 }
 
@@ -186,7 +173,7 @@ mod test {
     fn test_currency_parsing() {
         assert_eq!(
             "123.123".parse::<Currency>(),
-            Err(CurrencyParseError::FracGreaterThan100)
+            Err(CurrencyParseError::FracGreaterThan99)
         );
         assert_eq!(
             "123.-3".parse::<Currency>(),

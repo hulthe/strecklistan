@@ -7,7 +7,7 @@ use rocket::{get, State};
 
 #[get("/event/<id>")]
 pub fn get_event(
-    db_pool: State<DatabasePool>,
+    db_pool: &State<DatabasePool>,
     accept: SerAccept,
     id: i32,
 ) -> Result<Ser<EventWS>, SJ> {
@@ -16,7 +16,7 @@ pub fn get_event(
 
 #[get("/events?<low>&<high>")]
 pub fn get_event_range(
-    db_pool: State<DatabasePool>,
+    db_pool: &State<DatabasePool>,
     accept: SerAccept,
     low: i64,
     high: i64,

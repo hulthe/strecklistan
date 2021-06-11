@@ -3,13 +3,13 @@
 //! Mostly stolen from [`StaticFiles`](rocket_contrib::serve::StaticFiles).
 
 use log::error;
-use rocket::handler::{Handler, Outcome};
+use rocket::fs::NamedFile;
 use rocket::http::{
     hyper::header::{CACHE_CONTROL, ETAG, IF_NONE_MATCH},
-    uri::Segments,
     Header, Method, Status,
 };
-use rocket::response::{NamedFile, Responder, Response};
+use rocket::response::{Responder, Response};
+use rocket::route::{Handler, Outcome};
 use rocket::{Data, Request, Route};
 use std::io;
 use std::path::{Path, PathBuf};
@@ -83,9 +83,9 @@ impl StaticCachedFiles {
     }
 }
 
-impl Into<Vec<Route>> for StaticCachedFiles {
-    fn into(self) -> Vec<Route> {
-        let non_index = Route::ranked(self.rank, Method::Get, "/<path..>", self.clone());
+impl From<StaticCachedFiles> for Vec<Route> {
+    fn from(val: StaticCachedFiles) -> Self {
+        let non_index = Route::ranked(val.rank, Method::Get, "/<path..>", val);
         vec![non_index]
     }
 }
@@ -154,23 +154,19 @@ impl<'r> Responder<'r, 'static> for CachedFile {
 
 #[rocket::async_trait]
 impl Handler for StaticCachedFiles {
-    async fn handle<'r, 's: 'r>(&'s self, req: &'r Request<'_>, data: Data) -> Outcome<'r> {
+    async fn handle<'r>(&self, req: &'r Request<'_>, data: Data<'r>) -> Outcome<'r> {
         // If this is not the route with segments, handle it only if the user
         // requested a handling of index files.
         let current_route = req.route().expect("route while handling");
-        let is_segments_route = current_route.uri.path().ends_with(">");
+        let is_segments_route = current_route.uri.path().ends_with('>');
         if !is_segments_route {
             return Outcome::forward(data);
         }
 
-        // Otherwise, we're handling segments. Get the segments as a `PathBuf`,
-        // only allowing dotfiles if the user allowed it.
-        let allow_dotfiles = false;
         let path = req
-            .get_segments::<Segments<'_>>(0)
-            .and_then(|res| res.ok())
-            .and_then(|segments| segments.into_path_buf(allow_dotfiles).ok())
-            .map(|path| self.root.join(path));
+            .segments(0..)
+            .map(|path: PathBuf| self.root.join(path))
+            .ok();
 
         match path {
             None => Outcome::forward(data),

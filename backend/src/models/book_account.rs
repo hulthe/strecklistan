@@ -9,13 +9,13 @@ pub struct BookAccount {
     pub creditor: Option<i32>,
 }
 
-impl Into<BookAccountCommon> for BookAccount {
-    fn into(self) -> BookAccountCommon {
+impl From<BookAccount> for BookAccountCommon {
+    fn from(val: BookAccount) -> Self {
         BookAccountCommon {
-            id: self.id,
-            name: self.name,
-            account_type: self.account_type,
-            creditor: self.creditor,
+            id: val.id,
+            name: val.name,
+            account_type: val.account_type,
+            creditor: val.creditor,
             balance: 0.into(),
         }
     }

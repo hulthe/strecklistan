@@ -2,15 +2,15 @@ use crate::database::DatabasePool;
 use crate::util::ser::{Ser, SerAccept};
 use crate::util::status_json::StatusJson as SJ;
 use diesel::prelude::*;
+use rocket::serde::json::Json;
 use rocket::{get, post, State};
-use rocket_contrib::json::Json;
 use std::collections::HashMap;
 use strecklistan_api::book_account::{BookAccountId, BookAccountType};
 use strecklistan_api::member::{Member, MemberId, NewMember};
 
 #[get("/members")]
 pub fn get_members(
-    db_pool: State<DatabasePool>,
+    db_pool: &State<DatabasePool>,
     accept: SerAccept,
 ) -> Result<Ser<HashMap<MemberId, Member>>, SJ> {
     let connection = db_pool.inner().get()?;
@@ -27,7 +27,7 @@ pub fn get_members(
 
 #[post("/add_member_with_book_account", data = "<data>")]
 pub fn add_member_with_book_account(
-    db_pool: State<DatabasePool>,
+    db_pool: &State<DatabasePool>,
     accept: SerAccept,
     data: Json<(NewMember, String)>,
 ) -> Result<Ser<(MemberId, BookAccountId)>, SJ> {

@@ -9,7 +9,7 @@ pub fn catchers() -> Vec<Catcher> {
 #[catch(404)]
 pub fn not_found(_: &Request) -> StatusJson {
     StatusJson {
-        status: Status::NotFound.into(),
+        status: Status::NotFound,
         description: "Route Not Found".into(),
     }
 }
