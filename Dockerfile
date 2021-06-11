@@ -1,7 +1,7 @@
 ###################
 ### BUILD STAGE ###
 ###################
-FROM rust:1.49 as build_stage
+FROM rust:1.52 as build_stage
 
 # Install build dependencies
 #RUN rustup update
