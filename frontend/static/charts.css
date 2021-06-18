@@ -1,124 +1,124 @@
 /* CSS rules for charts/plots */
 .chart_col_tooltip {
-  position: relative;
-  display: inline-block;
-  border-bottom: 1px dotted black;
+	position: relative;
+	display: inline-block;
+	border-bottom: 1px dotted black;
 }
 
 .chart_col_tooltip .chart_col_tooltiptext {
-  visibility: hidden;
-  width: 120px;
-  background-color: #000;
-  color: #fff;
-  text-align: center;
-  border-radius: 6px;
-  padding: 5px 0;
-  position: absolute;
-  z-index: 1;
-  bottom: 110%;
-  left: 50%;
-  margin-left: -60px;
-  opacity: 0;
-  transition: opacity 0.3s;
-  font-size: 0.5em;
+	visibility: hidden;
+	width: 120px;
+	background-color: #000;
+	color: #fff;
+	text-align: center;
+	border-radius: 6px;
+	padding: 5px 0;
+	position: absolute;
+	z-index: 1;
+	bottom: 110%;
+	left: 50%;
+	margin-left: -60px;
+	opacity: 0;
+	transition: opacity 0.3s;
+	font-size: 0.5em;
 }
 
 .chart_col_tooltip .chart_col_tooltiptext::after {
-  content: "";
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  margin-left: -5px;
-  border-width: 5px;
-  border-style: solid;
-  border-color: #000 transparent transparent transparent;
+	content: "";
+	position: absolute;
+	top: 100%;
+	left: 50%;
+	margin-left: -5px;
+	border-width: 5px;
+	border-style: solid;
+	border-color: #000 transparent transparent transparent;
 }
 
 .chart_col_tooltip:hover .chart_col_tooltiptext {
-  visibility: visible;
-  opacity: 1;
+	visibility: visible;
+	opacity: 1;
 }
 
 .chart_histogram {
-    height: 250px; /* TODO: possibly remove this */
-    padding: 0.75em;
-    padding-top: 1.5em;
-    margin: auto;
-    overflow-x: scroll;
+	height: 250px; /* TODO: possibly remove this */
+	padding: 0.75em;
+	padding-top: 1.5em;
+	margin: auto;
+	overflow-x: scroll;
 
-    display: flex;
-    flex-direction: row;
+	display: flex;
+	flex-direction: row;
 
-    /*** lined-paper background ***/
-    position: relative;
+	/*** lined-paper background ***/
+	position: relative;
 
-    background: #fff;
-    background: -webkit-gradient(linear, 0 0, 0 100%, from(#d1d1d1), color-stop(4%, #fff)) 0 0;
-    background: -webkit-linear-gradient(top, #d1d1d1 0%, #fff 4%) 0 0;
-    background: -moz-linear-gradient(top, #d1d1d1 0%, #fff 4%) 0 0;
-    background: -ms-linear-gradient(top, #d1d1d1 0%, #fff 4%) 0 0;
-    background: -o-linear-gradient(top, #d1d1d1 0%, #fff 4%) 0 0;
-    background: linear-gradient(top, #d1d1d1 0%, #fff 4%) 0 0;
+	background: #fff;
+	background: -webkit-gradient(linear, 0 0, 0 100%, from(#d1d1d1), color-stop(4%, #fff)) 0 0;
+	background: -webkit-linear-gradient(top, #d1d1d1 0%, #fff 4%) 0 0;
+	background: -moz-linear-gradient(top, #d1d1d1 0%, #fff 4%) 0 0;
+	background: -ms-linear-gradient(top, #d1d1d1 0%, #fff 4%) 0 0;
+	background: -o-linear-gradient(top, #d1d1d1 0%, #fff 4%) 0 0;
+	background: linear-gradient(top, #d1d1d1 0%, #fff 4%) 0 0;
 
-    background-size: 100% 40px;
+	background-size: 100% 40px;
 
-    border-radius: 3px;
+	border-radius: 3px;
 }
 
 .chart_histogram_col {
-    max-width: 2em;
+	max-width: 2em;
 
-    display: flex;
-    flex-direction: column;
-    flex-grow: 1;
+	display: flex;
+	flex-direction: column;
+	flex-grow: 1;
 }
 
 .chart_histogram_col_line {
-    display: flex;
-    width: 0.5em;
-    margin: auto;
+	display: flex;
+	width: 0.5em;
+	margin: auto;
 
-    background-color: #785ddc;
+	background-color: #785ddc;
 
-    border-radius: 1em;
-    border-color: #e2e8f0;
-    border-style: solid;
-    border-width: 0.1em;
+	border-radius: 1em;
+	border-color: #e2e8f0;
+	border-style: solid;
+	border-width: 0.1em;
 
-    transition: all 0.2s linear;
+	transition: all 0.2s linear;
 }
 
 .chart_histogram_col_line:hover {
-    background-color: #5538ba;
+	background-color: #5538ba;
 
-    transition: all 0.2s linear;
+	transition: all 0.2s linear;
 }
 
 .chart_histogram_col_label {
-    display: flex;
-    max-width: 100%;
-    height: 4em;
-    font-size: 0.5em;
-    text-align: center;
-    margin: auto;
-    overflow: hidden;
-    padding-left: 0.2em;
-    padding-right: 0.2em;
+	display: flex;
+	max-width: 100%;
+	height: 4em;
+	font-size: 0.5em;
+	text-align: center;
+	margin: auto;
+	overflow: hidden;
+	padding-left: 0.2em;
+	padding-right: 0.2em;
 }
 
 .paper {
-    /* font: normal 12px/1.5 "Lucida Grande", arial, sans-serif; */
+	/* font: normal 12px/1.5 "Lucida Grande", arial, sans-serif; */
 }
 
 /*
 .paper::before {
-    content: '';
-    position: absolute;
-    width: 4px;
-    top: 0;
-    left: 30px;
-    bottom: 0;
-    border: 1px solid;
-    border-color: transparent #efe4e4;
+	content: '';
+	position: absolute;
+	width: 4px;
+	top: 0;
+	left: 30px;
+	bottom: 0;
+	border: 1px solid;
+	border-color: transparent #efe4e4;
 }
 */

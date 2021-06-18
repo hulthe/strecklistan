@@ -1,20 +1,28 @@
 .notification_list {
-    position: fixed;
-    z-index: 1337;
+	position: fixed;
+	z-index: 1337;
 }
 
 .notification {
-    background-color: #7b3434;
-    color: white;
-    margin: 0.5em;
-    padding: 1em;
-    border-radius: 0.5em;
-    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, .12), 0 2px 4px 0 rgba(0, 0, 0, .08);
+	background-color: #7b3434;
+	color: white;
+	margin: 0.5em;
+	padding: 1em;
+	border-radius: 0.5em;
+	box-shadow: 0 4px 8px 0 rgba(0, 0, 0, .12), 0 2px 4px 0 rgba(0, 0, 0, .08);
+	max-width: 16em;
+	animation: notification_enter 1s 1;
 }
 
 .notification_body {
+	overflow-wrap: break-word;
 }
 
 .notification_title {
-    font-size: large;
+	font-size: large;
+}
+
+@keyframes notification_enter {
+	from { margin-left: -16em; }
+	to   { margin-left: 0.5em; }
 }
