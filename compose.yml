@@ -1,0 +1,52 @@
+version: "3.9"
+services:
+    db:
+        image: postgres
+        restart: always
+        volumes:
+            - db_vol:/var/lib/postgresql/data
+        environment:
+            POSTGRES_USER: postgres
+            POSTGRES_DB: strecklistan
+            POSTGRES_PASSWORD: password
+
+    adminer:
+        image: adminer
+        restart: always
+        ports:
+            - 8001:8080
+
+    frontend:
+        build:
+            context: .
+            dockerfile: docker/dev.frontend.Dockerfile
+        volumes:
+            - .:/app
+            - target_vol:/target
+            - pkg_vol:/app/frontend/pkg
+
+    backend:
+        depends_on:
+            - db
+        build:
+            context: .
+            dockerfile: docker/dev.backend.Dockerfile
+        volumes:
+            - .:/app
+            - target_vol:/target
+            - pkg_vol:/app/frontend/pkg
+        ports:
+            - 8000:8000
+        links:
+            - db
+        environment:
+            DATABASE_URL: "postgres://postgres:password@db/strecklistan"
+            RUN_MIGRATIONS: "true"
+            ENABLE_STATIC_FILE_CACHE: "false"
+            ROCKET_ADDRESS: 0.0.0.0
+            ROCKET_PORT: 8000
+
+volumes:
+    target_vol: {}
+    pkg_vol: {}
+    db_vol: {}
