@@ -22,8 +22,20 @@ Install the latest version of Rust using rustup_.
 
 .. _rustup: https://rustup.rs/
 
-The frontend and the backend need to be individually compiled.
-See the guides for each.
+The frontend and the backend need to be individually compiled. See
+the guides for each. Or alternatively, you can use docker-compose
+for a quick setup.
+
+Quick setup using Docker
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+You know what to do: ::
+
+    # launch the app on :8000 and launch adminer on :8001.
+    docker-compose up
+
+    # and clean up when you're done
+    docker-compose down
 
 
 Frontend
@@ -32,6 +44,7 @@ Frontend
 You'll need ``cargo-make``, and the webassembly compiler target.
 
 Quick setup guide: ::
+
     # Install the WebAssembly target
     rustup target add wasm32-unknown-unknown
 
@@ -71,7 +84,7 @@ secrets and database settings. ::
 
     $EDITOR .env
 
-For handling migrations you need to use the ``diesel`` CLI. ::
+For handling database migrations you need to use the ``diesel`` CLI. ::
 
     cargo install diesel_cli --no-default-features --features "postgres"
 
