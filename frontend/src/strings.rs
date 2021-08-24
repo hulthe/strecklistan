@@ -9,7 +9,7 @@ pub const DEPOSIT: &str = "Sätt in";
 pub const CHOOSE_TILLGODO_ACC: &str = "Välj Tillgodokonto";
 
 pub const IZETTLE: &str = "iZettle";
-pub const OTHER_EPAY: &str = "Swish";
+pub const OTHER_EPAY: &str = "Annat";
 
 pub const FIRST_NAME: &str = "Förnamn";
 pub const LAST_NAME: &str = "Efternamn";
