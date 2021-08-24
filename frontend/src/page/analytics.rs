@@ -257,7 +257,7 @@ fn plot<K>(name: String, points: &[(K, u32)]) -> Node<AnalyticsMsg>
 where
     K: std::fmt::Display,
 {
-    let y_max = points.iter().map(|(_, v)| *v).max().unwrap();
+    let y_max = points.iter().map(|(_, v)| *v).max().unwrap_or_default();
     div![
         h2![name],
         div![
