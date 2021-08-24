@@ -8,11 +8,13 @@ web server framework. Database integration and migrations
 are provided by Diesel_.
 
 The frontend is built in the Seed_ framework.
+Trunk_ is used for bundling the frontend.
 
 .. _Rust:   https://www.rust-lang.org/
 .. _Rocket: https://rocket.rs/
 .. _Diesel: https://diesel.rs/
 .. _Seed:   https://seed-rs.org/
+.. _Trunk:  https://trunkrs.dev/
 
 
 Local Development
@@ -31,7 +33,7 @@ Quick setup using Docker
 
 You know what to do: ::
 
-    # launch the app on :8000 and launch adminer on :8001.
+    # launch the app on :8080 and launch adminer on :8081.
     docker-compose up
 
     # and clean up when you're done
@@ -41,23 +43,23 @@ You know what to do: ::
 Frontend
 ^^^^^^^^
 
-You'll need ``cargo-make``, and the webassembly compiler target.
+You'll need ``trunk``, and the webassembly compiler target.
 
 Quick setup guide: ::
 
     # Install the WebAssembly target
     rustup target add wasm32-unknown-unknown
 
-    # Install cargo-make
-    cargo install -f cargo-make
+    # Install trunk
+    cargo install -f --locked trunk
 
     cd frontend
 
-    # Compile the application
-    cargo make build
+    # Lanch a server to build and host the frontend
+    trunk serve # listens on :8080
 
-    # Or: Automatically recompile on file changes
-    cargo make watch
+The trunk server will proxy api requests to the backend
+**Make sure the backend is running if you want to try the app.**
 
 
 Backend
@@ -107,7 +109,4 @@ You can then run the application using cargo. ::
     # Automatically recompile and run on file changes
     cargo install -f cargo-watch
     cargo watch -x run
-
-The backend server will serve the files for the frontend.
-**Make sure these are also built if you want to try the app.**
 

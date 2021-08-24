@@ -1,6 +1,9 @@
 #[macro_use]
 extern crate diesel;
 
+#[macro_use]
+extern crate log;
+
 mod database;
 pub mod models;
 pub mod routes;
@@ -9,13 +12,12 @@ pub mod util;
 
 use crate::database::create_pool;
 use crate::database::DatabasePool;
-use crate::routes::{index, rest};
-use crate::util::{catchers, StaticCachedFiles};
+use crate::routes::rest;
+use crate::util::{catchers, FileResponder};
 use diesel_migrations::{
     find_migrations_directory, mark_migrations_in_directory, run_pending_migrations, setup_database,
 };
 use dotenv::dotenv;
-use rocket::fs::FileServer;
 use rocket::routes;
 use std::env;
 
@@ -71,7 +73,7 @@ async fn main() {
 
     handle_migrations(&db_pool);
 
-    let enable_static_file_cache: bool = env::var("ENABLE_STATIC_FILE_CACHE")
+    let enable_cache: bool = env::var("ENABLE_STATIC_FILE_CACHE")
         .map(|s| {
             s.parse()
                 .expect("Invalid ENABLE_STATIC_FILE_CACHE. Expected true or false.")
@@ -85,9 +87,14 @@ async fn main() {
         })
         .unwrap_or(0);
 
-    let mut rocket = rocket::build()
+    let rocket = rocket::build()
         .manage(db_pool)
         .register("/", catchers())
+        .attach(FileResponder {
+            folder: "www",
+            enable_cache,
+            max_age,
+        })
         .mount(
             "/api/",
             routes![
@@ -110,18 +117,7 @@ async fn main() {
                 rest::izettle::izettle_transaction::begin_izettle_transaction,
                 rest::izettle::izettle_transaction_poll::poll_for_izettle,
             ],
-        )
-        .mount("/", routes![index::wildcard, index::root]);
-
-    let static_routes = &[("/pkg", "www/pkg"), ("/static", "www/static")];
-
-    for &(route, path) in static_routes {
-        rocket = if enable_static_file_cache {
-            rocket.mount(route, StaticCachedFiles::from(path).max_age(max_age))
-        } else {
-            rocket.mount(route, FileServer::from(path))
-        };
-    }
+        );
 
     rocket.launch().await.unwrap();
 }

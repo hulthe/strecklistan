@@ -14,7 +14,7 @@ services:
         image: adminer
         restart: always
         ports:
-            - 8001:8080
+            - 8081:8080
 
     frontend:
         build:
@@ -22,8 +22,14 @@ services:
             dockerfile: docker/dev.frontend.Dockerfile
         volumes:
             - .:/app
-            - target_vol:/target
-            - pkg_vol:/app/frontend/pkg
+            - build_vol:/out
+        environment:
+            CARGO_BUILD_TARGET_DIR: "/out/target"
+        entrypoint: ["trunk", "serve", "--dist", "/out/dist", "--proxy-backend", "http://backend:8000/api/"]
+        links:
+            - backend
+        ports:
+            - 8080:8080
 
     backend:
         depends_on:
@@ -33,13 +39,11 @@ services:
             dockerfile: docker/dev.backend.Dockerfile
         volumes:
             - .:/app
-            - target_vol:/target
-            - pkg_vol:/app/frontend/pkg
-        ports:
-            - 8000:8000
+            - build_vol:/out
         links:
             - db
         environment:
+            CARGO_BUILD_TARGET_DIR: "/out/target"
             DATABASE_URL: "postgres://postgres:password@db/strecklistan"
             RUN_MIGRATIONS: "true"
             ENABLE_STATIC_FILE_CACHE: "false"
@@ -47,6 +51,5 @@ services:
             ROCKET_PORT: 8000
 
 volumes:
-    target_vol: {}
-    pkg_vol: {}
+    build_vol: {}
     db_vol: {}

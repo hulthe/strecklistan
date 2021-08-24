@@ -1,12 +1,12 @@
-FROM rust:1.53 as build_stage
+FROM rust:1.54 as build_stage
 
-RUN cargo install -f cargo-make
+RUN cargo install --locked cargo-make trunk
+RUN rustup target add wasm32-unknown-unknown
+
+VOLUME /out
+ENV CARGO_BUILD_TARGET_DIR /out/target
+ENV TRUNK_DIST_DIR /out/dist
 
 VOLUME /app
-VOLUME /app/frontend/pkg
-
-ENV CARGO_BUILD_TARGET_DIR /target
-VOLUME /target
-
 WORKDIR /app/frontend
-CMD cargo make watch
+CMD trunk serve

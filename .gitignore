@@ -8,4 +8,5 @@
 target/
 **/*.rs.bk
 
-
+# Trunk
+dist

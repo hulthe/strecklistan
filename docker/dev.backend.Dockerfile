@@ -1,20 +1,16 @@
-FROM rust:1.53 as build_stage
+FROM rust:1.54 as build_stage
 
 RUN apt-get update &&\
     apt-get install -y postgresql-client netcat &&\
     apt-get autoremove && apt-get autoclean
 
-RUN cargo install -f cargo-watch diesel_cli
+RUN cargo install --locked cargo-watch diesel_cli
 
+VOLUME /out
+ENV CARGO_BUILD_TARGET_DIR /out/target
 
 VOLUME /app
-VOLUME /app/frontend/pkg
-
-ENV CARGO_BUILD_TARGET_DIR /target
-VOLUME /target
-
-ENV ROCKET_ADDRESS 0.0.0.0
-
 WORKDIR /app/backend
+ENV ROCKET_ADDRESS 0.0.0.0
 CMD sh /app/docker/start_backend.sh
 

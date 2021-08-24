@@ -1,0 +1,4 @@
+[[proxy]]
+rewrite = "/api/"
+backend = "http://localhost:8000/api/"
+

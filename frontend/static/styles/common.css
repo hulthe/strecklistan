@@ -1067,7 +1067,7 @@ video {
     height: 2em;
     margin-bottom: auto;
     margin-left: 0.5em;
-    background-image: url(/static/trash.svg);
+    background-image: url(/images/trash.svg);
     background-size: contain;
     background-repeat: no-repeat;
 }

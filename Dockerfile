@@ -1,11 +1,11 @@
 ###################
 ### BUILD STAGE ###
 ###################
-FROM rust:1.53 as build_stage
+FROM rust:1.54 as build_stage
 
 # Install build dependencies
-#RUN rustup update
-RUN cargo install -f cargo-make
+RUN cargo install --locked cargo-make trunk
+RUN rustup target add wasm32-unknown-unknown
 
 # Build project
 WORKDIR /app
@@ -15,7 +15,7 @@ WORKDIR /app/backend
 RUN cargo build --release
 
 WORKDIR /app/frontend
-RUN cargo make build_release
+RUN trunk build --release
 
 ########################
 ### PRODUCTION STAGE ###
@@ -48,10 +48,9 @@ WORKDIR /
 COPY --from=build_stage /app/target/release/strecklistan_backend /usr/local/bin/
 
 # Copy static web files
-COPY --from=build_stage /app/frontend/pkg    /www/pkg
-COPY --from=build_stage /app/frontend/static /www/static
+COPY --from=build_stage /app/frontend/dist /www
 
 # Copy database migrations
 COPY backend/migrations /migrations
 
-CMD /usr/local/bin/strecklistan_backend
+CMD strecklistan_backend
