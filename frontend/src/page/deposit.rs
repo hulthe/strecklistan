@@ -25,7 +25,7 @@ pub struct DepositionPage {
     accs_search: Vec<(FuzzyScore, BookAccountId)>,
     search_string: String,
 
-    debit: DebitOption,
+    debit: Option<DebitOption>,
     credit_account: Option<BookAccountId>,
     amount_input: ParsedInput<AbsCurrency>,
     izettle_pay: IZettlePay,
@@ -75,7 +75,7 @@ pub enum NewMemberMsg {
     HideMenu,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum DebitOption {
     IZettleEPay,
     OtherEPay,
@@ -101,7 +101,7 @@ impl DepositionPage {
         orders.subscribe(DepositionMsg::ResMarkDirty);
 
         let mut page = DepositionPage {
-            debit: DebitOption::IZettleEPay,
+            debit: None,
             izettle_pay: IZettlePay::new(),
             credit_account: None,
             search_string: String::new(),
@@ -155,20 +155,22 @@ impl DepositionPage {
                 self.credit_account = Some(acc_id);
             }
             DepositionMsg::SelectDebit(debit) => {
-                self.debit = debit;
+                self.debit = Some(debit);
             }
             DepositionMsg::AmountInputMsg(msg) => {
                 self.amount_input.update(msg);
             }
             DepositionMsg::Deposit => {
-                if let Some((credit_acc, &amount)) =
-                    self.credit_account.zip(self.amount_input.get_value())
+                if let Some(((credit_acc, &amount), debit)) = self
+                    .credit_account
+                    .zip(self.amount_input.get_value())
+                    .zip(self.debit)
                 {
                     let transaction = NewTransaction {
                         description: Some(strings::TRANSACTION_DEPOSIT.to_string()),
                         amount: amount.into(),
                         credited_account: credit_acc,
-                        debited_account: match self.debit {
+                        debited_account: match debit {
                             DebitOption::Cash => res.master_accounts.cash_account_id,
                             DebitOption::IZettleEPay | DebitOption::OtherEPay => {
                                 res.master_accounts.bank_account_id
@@ -179,7 +181,7 @@ impl DepositionPage {
 
                     self.request_in_progress = true;
 
-                    if let DebitOption::IZettleEPay = self.debit {
+                    if let DebitOption::IZettleEPay = debit {
                         self.izettle_pay
                             .pay(transaction, orders_local.proxy(DepositionMsg::IZettlePay));
                     } else {
@@ -475,7 +477,7 @@ impl DepositionPage {
                     div![
                         C![C.select_debit_container],
                         button![
-                            if let DebitOption::IZettleEPay = self.debit {
+                            if let Some(DebitOption::IZettleEPay) = self.debit {
                                 C![C.debit_selected]
                             } else {
                                 C![]
@@ -488,7 +490,7 @@ impl DepositionPage {
                             strings::IZETTLE,
                         ],
                         button![
-                            if let DebitOption::OtherEPay = self.debit {
+                            if let Some(DebitOption::OtherEPay) = self.debit {
                                 C![C.debit_selected]
                             } else {
                                 C![]
@@ -526,7 +528,7 @@ impl DepositionPage {
                                     None => true,
                                     Some(x) if x == Default::default() => true,
                                     Some(_) if self.credit_account.is_none() => true,
-                                    Some(_) => false,
+                                    Some(_) => self.debit.is_none(),
                                 };
 
                                 if disabled {

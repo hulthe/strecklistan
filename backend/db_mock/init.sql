@@ -5,7 +5,7 @@
 -- Data for Name: event_signups; Type: TABLE DATA; Schema: public; Owner: postgres
 COPY public.event_signups (id, event, name, email) FROM stdin;
 \.
-SELECT setval('events_id_seq', 1, true);
+SELECT setval('event_signups_id_seq', 1, true);
 
 -- Data for Name: events; Type: TABLE DATA; Schema: public; Owner: postgres
 COPY public.events (id, title, background, location, start_time, end_time, price, published) FROM stdin;
@@ -34,8 +34,8 @@ COPY public.events (id, title, background, location, start_time, end_time, price
 23	My Event 23	http://imgur.ru	Hubben 2.1	2019-12-02 17:01:00	2019-12-02 23:59:59	0	t
 24	My Event 24	http://imgur.ru	Hubben 2.1	2019-12-16 17:01:00	2019-12-16 23:59:59	0	f
 \.
+SELECT setval('events_id_seq', 25, true);
 -- ##################
-SELECT setval('inventory_id_seq', 25, true);
 
 -- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: postgres
 COPY public.users (name, display_name, salted_pass, hash_iterations) FROM stdin;
@@ -171,7 +171,7 @@ COPY public.transactions (id, description, debited_account, credited_account, am
 4	Insättning	1	5	9900
 5	Insättning	1	8	9900
 \.
-SELECT setval('transactions_id_seq', 5, true);
+SELECT setval('transactions_id_seq', 6, true);
 
 COPY public.transaction_bundles (transaction_id, id, change) FROM stdin;
 1	1	24

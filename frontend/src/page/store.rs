@@ -84,9 +84,8 @@ pub enum StoreMsg {
 
     SearchDebit(String),
     DebitKeyDown(web_sys::KeyboardEvent),
-    DebitSelect(BookAccountId),
+    DebitSelect(SelectedDebit),
 
-    DebitSelectIZettle,
     IZettleMsg(IZettlePayMsg),
     CancelIZettle {
         message_title: String,
@@ -108,8 +107,19 @@ pub struct StorePage {
     tillgodolista_search_string: String,
     tillgodolista_search: Vec<(FuzzyScore, BookAccountId, MemberId)>,
 
+    selected_debit: Option<SelectedDebit>,
+
     izettle_pay: IZettlePay,
-    izettle: bool,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum SelectedDebit {
+    IZettleEPay,
+    OtherEPay,
+    Tillgodo(BookAccountId),
+
+    #[allow(dead_code)]
+    Cash,
 }
 
 #[derive(Resources)]
@@ -149,8 +159,9 @@ impl StorePage {
             tillgodolista_search_string: String::new(),
             tillgodolista_search: vec![],
 
+            selected_debit: None,
+
             izettle_pay: IZettlePay::new(),
-            izettle: true,
         };
         if let Ok(state) = Res::acquire(rs, orders) {
             p.rebuild_data(&state);
@@ -182,16 +193,16 @@ impl StorePage {
             StoreMsg::DebitKeyDown(ev) => match ev.key().as_str() {
                 "Enter" => {
                     if let Some((_, acc_id, _)) = self.tillgodolista_search.first() {
-                        let msg = StoreMsg::DebitSelect(*acc_id);
+                        let msg = StoreMsg::DebitSelect(SelectedDebit::Tillgodo(*acc_id));
                         self.update(msg, rs, orders)?;
                     }
                 }
                 _ => {}
             },
-            StoreMsg::DebitSelect(acc_id) => {
-                self.izettle = false;
+            StoreMsg::DebitSelect(selected) => {
+                self.selected_debit = Some(selected);
                 self.tillgodolista_search_string = String::new();
-                self.checkout.set_debited(acc_id);
+                self.checkout.set_debited(selected.acc_id(&res));
             }
 
             StoreMsg::SearchInput(input) => {
@@ -258,15 +269,6 @@ impl StorePage {
                     .update(msg, orders_local.proxy(StoreMsg::IZettleMsg));
             }
 
-            StoreMsg::DebitSelectIZettle => {
-                self.update(
-                    StoreMsg::DebitSelect(res.master_accounts.bank_account_id),
-                    rs,
-                    orders,
-                )?;
-                self.izettle = true;
-            }
-
             StoreMsg::CancelIZettle {
                 message_title,
                 message_body,
@@ -287,7 +289,9 @@ impl StorePage {
             StoreMsg::CheckoutMsg(msg) => {
                 let forward_msg = match msg {
                     // if iZettle integration is enabled we intercept and handle the purchase here
-                    CheckoutMsg::ConfirmPurchase if self.izettle => {
+                    CheckoutMsg::ConfirmPurchase
+                        if self.selected_debit == Some(SelectedDebit::IZettleEPay) =>
+                    {
                         if let Some(transaction) = self.checkout.build_transaction(rs) {
                             self.checkout.disabled = true;
                             self.checkout.remove_cleared_items();
@@ -319,7 +323,7 @@ impl StorePage {
                             rs,
                             &mut orders.proxy(Msg::StoreMsg).proxy(StoreMsg::CheckoutMsg),
                         );
-                        self.izettle = true;
+                        self.selected_debit = None;
                         None
                     }
                     msg => Some(msg),
@@ -411,30 +415,10 @@ impl StorePage {
             Err(_) => return Loading::view(),
         };
 
-        #[derive(PartialEq)]
-        enum SelectedDebit {
-            IZettleEPay,
-            OtherEPay,
-            Cash,
-            Tillgodo,
-        }
-
-        let selected_debit = if self.izettle {
-            SelectedDebit::IZettleEPay
-        } else if self.checkout.debited_account == Some(res.master_accounts.bank_account_id) {
-            SelectedDebit::OtherEPay
-        } else if self.checkout.debited_account == Some(res.master_accounts.cash_account_id) {
-            SelectedDebit::Cash
-        } else {
-            SelectedDebit::Tillgodo
-        };
-
-        let apply_selection_class_on = |matching_debit| {
-            if selected_debit == matching_debit {
-                C![C.debit_selected]
-            } else {
-                C![]
-            }
+        let apply_selection_class_on = |f: &dyn Fn(SelectedDebit) -> bool| match self.selected_debit
+        {
+            Some(sd) if f(sd) => C![C.debit_selected],
+            _ => C![],
         };
 
         div![
@@ -445,15 +429,14 @@ impl StorePage {
                     C![C.pay_method_select_box, C.margin_hcenter],
                     input![
                         C![C.tillgodolista_search_field, C.rounded_t, C.border_on_focus],
-                        apply_selection_class_on(SelectedDebit::Tillgodo),
+                        apply_selection_class_on(&|sd| matches!(sd, SelectedDebit::Tillgodo(_))),
                         attrs! {At::Value => self.tillgodolista_search_string},
                         {
                             attrs! {
-                                At::Placeholder => match selected_debit {
-                                    SelectedDebit::Tillgodo => res
+                                At::Placeholder => match self.selected_debit {
+                                    Some(SelectedDebit::Tillgodo(acc_id)) => res
                                         .book_accounts
-                                        .get(&self.checkout.debited_account.unwrap_or(
-                                            res.master_accounts.bank_account_id))
+                                        .get(&acc_id)
                                         .map(|acc| format!("{}: {}:-", acc.name, acc.balance))
                                         .unwrap_or("[MISSING]".into()),
                                     _ => "Tillgodolista".into(),
@@ -484,7 +467,9 @@ impl StorePage {
                                         .map(|(acc, member)| view_tillgodo(
                                             acc,
                                             member,
-                                            Msg::StoreMsg(StoreMsg::DebitSelect(acc.id)),
+                                            Msg::StoreMsg(StoreMsg::DebitSelect(
+                                                SelectedDebit::Tillgodo(acc.id)
+                                            )),
                                         ))
                                         .collect::<Vec<_>>(),
                                 ],
@@ -493,19 +478,20 @@ impl StorePage {
                             empty![]
                         },
                         button![
-                            apply_selection_class_on(SelectedDebit::IZettleEPay),
+                            apply_selection_class_on(&|sd| sd == SelectedDebit::IZettleEPay),
                             C![C.select_debit_button, C.border_on_focus, C.rounded_bl],
-                            simple_ev(Ev::Click, Msg::StoreMsg(StoreMsg::DebitSelectIZettle)),
+                            simple_ev(
+                                Ev::Click,
+                                Msg::StoreMsg(StoreMsg::DebitSelect(SelectedDebit::IZettleEPay))
+                            ),
                             strings::IZETTLE,
                         ],
                         button![
-                            apply_selection_class_on(SelectedDebit::OtherEPay),
+                            apply_selection_class_on(&|sd| sd == SelectedDebit::OtherEPay),
                             C![C.select_debit_button, C.border_on_focus, C.rounded_br],
                             simple_ev(
                                 Ev::Click,
-                                Msg::StoreMsg(StoreMsg::DebitSelect(
-                                    res.master_accounts.bank_account_id
-                                )),
+                                Msg::StoreMsg(StoreMsg::DebitSelect(SelectedDebit::OtherEPay)),
                             ),
                             strings::OTHER_EPAY,
                         ],
@@ -548,5 +534,16 @@ impl StorePage {
                 .map_msg(StoreMsg::CheckoutMsg)
                 .map_msg(Msg::StoreMsg),
         ]
+    }
+}
+
+impl SelectedDebit {
+    fn acc_id(&self, res: &Res) -> BookAccountId {
+        match self {
+            SelectedDebit::Cash => res.master_accounts.cash_account_id,
+            SelectedDebit::IZettleEPay => res.master_accounts.bank_account_id,
+            SelectedDebit::OtherEPay => res.master_accounts.bank_account_id,
+            &SelectedDebit::Tillgodo(acc_id) => acc_id,
+        }
     }
 }

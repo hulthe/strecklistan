@@ -111,7 +111,8 @@ impl Checkout {
                                 Some(CheckoutMsg::PurchaseSent { transaction_id })
                             }
                             Err(e) => {
-                                error!("Failed to post purchase", e);
+                                // TODO: show notification
+                                error!("Failed to post transaction", e);
                                 None
                             }
                         }
@@ -229,14 +230,14 @@ impl Checkout {
         Res::acquire_now(rs)
             .ok()
             .zip(self.transaction_total_input.get_value().copied())
-            .map(|(res, amount)| NewTransaction {
-                bundles: self.transaction_bundles.clone(),
-                amount: amount.into(),
-                description: Some(strings::TRANSACTION_SALE.into()),
-                credited_account: res.master_accounts.sales_account_id,
-                debited_account: self
-                    .debited_account
-                    .unwrap_or(res.master_accounts.bank_account_id),
+            .and_then(|(res, amount)| {
+                Some(NewTransaction {
+                    bundles: self.transaction_bundles.clone(),
+                    amount: amount.into(),
+                    description: Some(strings::TRANSACTION_SALE.into()),
+                    credited_account: res.master_accounts.sales_account_id,
+                    debited_account: self.debited_account?,
+                })
             })
     }
 
@@ -337,7 +338,7 @@ impl Checkout {
                 ],
             ],
             if !self.disabled {
-                if self.transaction_bundles.is_empty() {
+                if self.transaction_bundles.is_empty() || self.debited_account.is_none() {
                     button![
                         C![C.greyed_out, C.wide_button, C.border_on_focus],
                         div![style! {
