@@ -1,13 +1,46 @@
+##################
+### BASE STAGE ###
+##################
+FROM rust:1.54 as base
+
+# Install build dependencies
+RUN cargo install --locked cargo-make trunk strip_cargo_version
+RUN rustup target add wasm32-unknown-unknown
+
+WORKDIR /app
+RUN mkdir frontend backend common
+
+###########################
+### STRIP-VERSION STAGE ###
+###########################
+FROM base AS strip-version
+
+COPY Cargo.lock Cargo.toml ./
+COPY frontend/Cargo.toml ./frontend/
+COPY backend/Cargo.toml ./backend/
+COPY common/Cargo.toml ./common/
+RUN strip_cargo_version
+
 ###################
 ### BUILD STAGE ###
 ###################
-FROM rust:1.54 as build_stage
+FROM base AS build
 
-# Install build dependencies
-RUN cargo install --locked cargo-make trunk
-RUN rustup target add wasm32-unknown-unknown
+RUN cargo init --lib frontend
+RUN cargo init --bin backend
+RUN cargo init --lib common
 
-# Build project
+COPY --from=strip-version /app/frontend/Cargo.toml /app/frontend/
+COPY --from=strip-version /app/backend/Cargo.toml /app/backend/
+COPY --from=strip-version /app/common/Cargo.toml /app/common/
+COPY --from=strip-version /app/Cargo.toml /app/Cargo.lock /app/
+
+WORKDIR /app/backend
+RUN cargo build --release
+
+WORKDIR /app/frontend
+RUN cargo build --release --target wasm32-unknown-unknown
+
 WORKDIR /app
 COPY . .
 
@@ -45,10 +78,10 @@ RUN mkdir -p /www
 WORKDIR /
 
 # Copy application binary
-COPY --from=build_stage /app/target/release/strecklistan_backend /usr/local/bin/
+COPY --from=build /app/target/release/strecklistan_backend /usr/local/bin/
 
 # Copy static web files
-COPY --from=build_stage /app/frontend/dist /www
+COPY --from=build /app/frontend/dist /www
 
 # Copy database migrations
 COPY backend/migrations /migrations
