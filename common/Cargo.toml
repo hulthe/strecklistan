@@ -1,6 +1,6 @@
 [package]
 name = "strecklistan_api"
-version = "0.11.0"
+version = "0.11.1"
 authors = ["Joakim Hulthe <joakim@hulthe.net>"]
 license = "MPL-2.0"
 description = "Public API types and functions of strecklistan: a simple web-shop"

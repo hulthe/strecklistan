@@ -10,90 +10,52 @@ pub mod routes;
 mod schema;
 pub mod util;
 
-use crate::database::create_pool;
-use crate::database::DatabasePool;
 use crate::routes::rest;
 use crate::util::{catchers, FileResponder};
-use diesel_migrations::{
-    find_migrations_directory, mark_migrations_in_directory, run_pending_migrations, setup_database,
-};
+
+use clap::{AppSettings, Clap};
 use dotenv::dotenv;
 use rocket::routes;
-use std::env;
 
-fn handle_migrations(db_pool: &DatabasePool) {
-    let run_migrations = env::var("RUN_MIGRATIONS")
-        .map(|s| {
-            s.parse().unwrap_or_else(|_| {
-                panic!("Could not parse \"{}\" as a bool for RUN_MIGRATIONS", s)
-            })
-        })
-        .unwrap_or(false);
+#[derive(Clap, Default)]
+#[clap(setting = AppSettings::ColoredHelp)]
+pub struct Opt {
+    /// Database url specified as a postgres:// uri
+    #[clap(long, short, env = "DATABASE_URL")]
+    database: String,
 
-    if run_migrations {
-        let connection = db_pool.get().expect("Could not connect to database");
+    /// Run database migrations on startup
+    #[clap(long, short = 'm', env = "RUN_MIGRATIONS")]
+    run_migrations: bool,
 
-        setup_database(&connection).expect("Could not set up database");
+    /// Enable HTTP cache control of statically served files
+    #[clap(long, env = "ENABLE_STATIC_FILE_CACHE")]
+    static_file_cache: bool,
 
-        let migrations_dir =
-            find_migrations_directory().expect("Could not find migrations directory");
-
-        let migrations = mark_migrations_in_directory(&connection, &migrations_dir)
-            .expect("Could not get database migrations");
-
-        if !migrations.is_empty() {
-            println!("Migrations:");
-            for (migration, applied) in migrations {
-                println!(
-                    "  [{}] {}",
-                    if applied { "X" } else { " " },
-                    migration
-                        .file_path()
-                        .and_then(|p| p.file_name())
-                        .map(|p| p.to_string_lossy())
-                        .unwrap_or_default()
-                );
-            }
-        } else {
-            eprintln!(
-                "No database migrations available in \"{}\".",
-                migrations_dir.to_string_lossy()
-            );
-        }
-
-        run_pending_migrations(&connection).expect("Could not run database migrations");
-    }
+    /// Time until a cached static file must be invalidated
+    #[clap(long, env = "STATIC_FILES_MAX_AGE", default_value_t)]
+    max_age: usize,
 }
 
 #[rocket::main]
 async fn main() {
     dotenv().ok();
 
-    let db_pool = create_pool().expect("Could not create database pool");
+    let opt = Opt::parse();
 
-    handle_migrations(&db_pool);
+    let db_pool = database::create_pool(&opt).expect("Could not create database pool");
 
-    let enable_cache: bool = env::var("ENABLE_STATIC_FILE_CACHE")
-        .map(|s| {
-            s.parse()
-                .expect("Invalid ENABLE_STATIC_FILE_CACHE. Expected true or false.")
-        })
-        .unwrap_or(false);
-
-    let max_age = env::var("STATIC_FILES_MAX_AGE")
-        .map(|s| {
-            s.parse()
-                .expect("Invalid STATIC_FILES_MAX_AGE. Expected a number.")
-        })
-        .unwrap_or(0);
+    if opt.run_migrations {
+        database::run_migrations(&db_pool);
+    }
 
     let rocket = rocket::build()
         .manage(db_pool)
         .register("/", catchers())
         .attach(FileResponder {
             folder: "www",
-            enable_cache,
-            max_age,
+            enable_cache: opt.static_file_cache,
+            max_age: opt.max_age,
         })
         .mount(
             "/api/",
