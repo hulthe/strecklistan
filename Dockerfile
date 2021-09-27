@@ -78,7 +78,7 @@ RUN mkdir -p /www
 WORKDIR /
 
 # Copy application binary
-COPY --from=build /app/target/release/strecklistan_backend /usr/local/bin/
+COPY --from=build /app/target/release/strecklistan_backend /usr/local/bin/strecklistan
 
 # Copy static web files
 COPY --from=build /app/frontend/dist /www
@@ -86,4 +86,4 @@ COPY --from=build /app/frontend/dist /www
 # Copy database migrations
 COPY backend/migrations /migrations
 
-CMD strecklistan_backend
+CMD strecklistan
