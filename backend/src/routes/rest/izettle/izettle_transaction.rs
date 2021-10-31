@@ -4,6 +4,7 @@ use crate::models::izettle_transaction::{
     NewIZettleTransactionItem, TRANSACTION_IN_PROGRESS,
 };
 use crate::models::transaction::object;
+use crate::routes::rest::izettle::IZettleNotifier;
 use crate::util::ser::{Ser, SerAccept};
 use crate::util::status_json::StatusJson as SJ;
 use diesel::{Connection, RunQueryDsl};
@@ -13,6 +14,7 @@ use rocket::{post, State};
 #[post("/izettle/client/transaction", data = "<transaction>")]
 pub async fn begin_izettle_transaction(
     db_pool: &State<DatabasePool>,
+    notifier: &State<IZettleNotifier>,
     accept: SerAccept,
     transaction: Json<object::NewTransaction>,
 ) -> Result<Ser<i32>, SJ> {
@@ -87,6 +89,8 @@ pub async fn begin_izettle_transaction(
                 .values(post_tran)
                 .execute(&connection)?;
         }
+
+        notifier.notify();
 
         Ok(accept.ser(transactions_id))
     })
