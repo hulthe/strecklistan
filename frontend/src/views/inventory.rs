@@ -8,6 +8,8 @@ use strecklistan_api::inventory::{
     InventoryBundle, InventoryBundleId, InventoryItemId, InventoryItemStock,
 };
 
+const MISSING_IMAGE_URL: &str = "/images/missing_image.svg";
+
 /// string: the string
 /// highlight_chars: iterator over the indexes of highlighted characters in string
 fn build_search_highlight_spans(
@@ -58,6 +60,8 @@ pub fn view_inventory_item(
     highlight_chars: impl IntoIterator<Item = usize>,
     add_item_ev: impl FnOnce(InventoryItemId, i32) -> Msg,
 ) -> Node<Msg> {
+    let image_url = item.image_url.as_deref().unwrap_or(MISSING_IMAGE_URL);
+
     div![
         C![C.inventory_item, C.unselectable],
         simple_ev(Ev::Click, add_item_ev(item.id, 1)),
@@ -67,13 +71,9 @@ pub fn view_inventory_item(
         ],
         div![
             C![C.inventory_item_image],
-            if let Some(image_url) = item.image_url.as_ref() {
-                attrs! { At::Style =>
-                    format!("background-image: url({}); background-size: contain", image_url),
-                }
-            } else {
-                attrs! {}
-            }
+            attrs! { At::Style =>
+                format!("background-image: url({}); background-size: contain", image_url),
+            },
         ],
         p![
             C![C.inventory_item_footer],
@@ -92,6 +92,8 @@ pub fn view_inventory_bundle(
     highlight_chars: impl IntoIterator<Item = usize>,
     add_bundle_ev: impl FnOnce(InventoryBundleId, i32) -> Msg,
 ) -> Node<Msg> {
+    let image_url = bundle.image_url.as_deref().unwrap_or(MISSING_IMAGE_URL);
+
     div![
         C![C.inventory_item, C.unselectable],
         simple_ev(Ev::Click, add_bundle_ev(bundle.id, 1)),
@@ -99,10 +101,6 @@ pub fn view_inventory_bundle(
             C![C.inventory_item_header],
             build_search_highlight_spans(&bundle.name, highlight_chars),
         ],
-        if let Some(image_url) = bundle.image_url.as_ref() {
-            img![C![C.inventory_item_image], attrs! { At::Src => image_url },]
-        } else {
-            div![C![C.inventory_item_no_image]]
-        },
+        img![C![C.inventory_item_image], attrs! { At::Src => image_url }]
     ]
 }
