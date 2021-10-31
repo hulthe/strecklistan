@@ -966,10 +966,6 @@ video {
 	transition-timing-function: linear;
 }
 
-.inventory_item_no_image {
-	height: 12.5rem;
-}
-
 .inventory_item_image {
 	width: 12rem;
 	height: 12rem;
