@@ -13,12 +13,11 @@ pub mod util;
 use crate::routes::rest;
 use crate::util::{catchers, FileResponder};
 
-use clap::{AppSettings, Clap};
+use clap::Parser;
 use dotenv::dotenv;
 use rocket::routes;
 
-#[derive(Clap, Default)]
-#[clap(setting = AppSettings::ColoredHelp)]
+#[derive(Default, Parser)]
 pub struct Opt {
     /// Database url specified as a postgres:// uri
     #[clap(long, short, env = "DATABASE_URL")]

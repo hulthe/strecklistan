@@ -3,7 +3,7 @@ use crate::schema::tables::event_signups;
 use crate::schema::tables::events;
 use crate::schema::tables::users;
 use crate::Opt;
-use clap::Clap;
+use clap::Parser;
 use diesel::RunQueryDsl;
 use dotenv::dotenv;
 
