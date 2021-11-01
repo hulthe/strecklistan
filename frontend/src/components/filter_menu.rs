@@ -85,18 +85,18 @@ impl FilterMenu {
             // compare against the filter value
             let ord = value.cmp_to_str(&filter.value);
 
-            match (*filter.op.selected(), ord) {
-                (FilterOp::GrTh, Ordering::Greater)            // >  true if greater
-                | (FilterOp::GrEq, Ordering::Greater)          // >=     ... greater
-                | (FilterOp::GrEq, Ordering::Equal)            // >=     ... equals
-                | (FilterOp::LeTh, Ordering::Less)             // <      ... less
-                | (FilterOp::LeEq, Ordering::Less)             // <=     ... less
-                | (FilterOp::LeEq, Ordering::Equal)            // <=     ... equals
-                | (FilterOp::NotEquals, Ordering::Greater)     // !=     ... greater
-                | (FilterOp::NotEquals, Ordering::Less)        // !=     ... less
-                | (FilterOp::Equals, Ordering::Equal) => true, // ==     ... equals
-                _ => false,                                    // otherwise false
-            }
+            matches!(
+                (*filter.op.selected(), ord),
+                (FilterOp::GrTh, Ordering::Greater)        // >  true if greater
+                | (FilterOp::GrEq, Ordering::Greater)      // >=     ... greater
+                | (FilterOp::GrEq, Ordering::Equal)        // >=     ... equals
+                | (FilterOp::LeTh, Ordering::Less)         // <      ... less
+                | (FilterOp::LeEq, Ordering::Less)         // <=     ... less
+                | (FilterOp::LeEq, Ordering::Equal)        // <=     ... equals
+                | (FilterOp::NotEquals, Ordering::Greater) // !=     ... greater
+                | (FilterOp::NotEquals, Ordering::Less)    // !=     ... less
+                | (FilterOp::Equals, Ordering::Equal) // ==     ... equals
+            )
         })
     }
 

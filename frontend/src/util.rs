@@ -6,7 +6,7 @@ use seed::dom_entity_names::Ev;
 use seed::virtual_dom::event_handler_manager::event_handler::EventHandler;
 use semver::Version;
 
-pub const DATE_INPUT_FMT: &'static str = "%Y-%m-%d";
+pub const DATE_INPUT_FMT: &str = "%Y-%m-%d";
 //pub const TIME_INPUT_FMT: &'static str = "%H:%M";
 
 /// Check if client version supports api version
@@ -122,7 +122,7 @@ impl<'a> WriteComparer<'a> {
 
 impl<'a> Write for WriteComparer<'a> {
     fn write_str(&mut self, s1: &str) -> Result<(), std::fmt::Error> {
-        if self.s1_ended && s1 != "" {
+        if self.s1_ended && !s1.is_empty() {
             self.s1_ended = false;
             self.ord = Ordering::Equal;
         }
@@ -131,12 +131,12 @@ impl<'a> Write for WriteComparer<'a> {
             //println!("s1: \"{}\"  s2: \"{}\"", s1, self.cmp_to);
             if self.ord != Ordering::Equal {
                 break;
-            } else if self.cmp_to == "" {
-                if s1 != "" {
+            } else if self.cmp_to.is_empty() {
+                if !s1.is_empty() {
                     self.ord = Ordering::Greater; // TODO
                 }
                 break;
-            } else if s1 == "" {
+            } else if s1.is_empty() {
                 self.ord = Ordering::Less; // TODO
                 self.s1_ended = true;
                 break;

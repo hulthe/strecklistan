@@ -127,7 +127,7 @@ impl DepositionPage {
     ) -> Result<(), NotAvailable> {
         let res = Res::acquire(rs, orders)?;
 
-        let mut orders_local = orders.proxy(|msg| Msg::DepositionMsg(msg));
+        let mut orders_local = orders.proxy(Msg::Deposition);
 
         match msg {
             DepositionMsg::SearchDebit(input) => {
@@ -139,7 +139,7 @@ impl DepositionPage {
 
                 self.accs_search
                     .sort_by(|(scr_a, acc_a_id), (scr_b, acc_b_id)| {
-                        scr_b.cmp(scr_a).then(acc_a_id.cmp(&acc_b_id))
+                        scr_b.cmp(scr_a).then(acc_a_id.cmp(acc_b_id))
                     });
             }
             DepositionMsg::CreditKeyDown(ev) => match ev.key().as_str() {
@@ -216,18 +216,16 @@ impl DepositionPage {
             }
 
             DepositionMsg::DepositSent { .. } => {
-                orders.send_msg(Msg::NotificationMessage(
-                    NotificationMessage::ShowNotification {
-                        duration_ms: 5000,
-                        notification: Notification {
-                            title: strings::DEPOSIT_COMPLETE.to_string(),
-                            body: self
-                                .amount_input
-                                .get_value()
-                                .map(|value| format!("{}:-", value)),
-                        },
+                orders.send_msg(Msg::Notification(NotificationMessage::ShowNotification {
+                    duration_ms: 5000,
+                    notification: Notification {
+                        title: strings::DEPOSIT_COMPLETE.to_string(),
+                        body: self
+                            .amount_input
+                            .get_value()
+                            .map(|value| format!("{}:-", value)),
                     },
-                ));
+                }));
 
                 self.request_in_progress = false;
                 self.amount_input.set_value(Default::default());
@@ -241,15 +239,13 @@ impl DepositionPage {
                 message_body,
             } => {
                 self.request_in_progress = false;
-                orders.send_msg(Msg::NotificationMessage(
-                    NotificationMessage::ShowNotification {
-                        duration_ms: 10000,
-                        notification: Notification {
-                            title: message_title,
-                            body: message_body,
-                        },
+                orders.send_msg(Msg::Notification(NotificationMessage::ShowNotification {
+                    duration_ms: 10000,
+                    notification: Notification {
+                        title: message_title,
+                        body: message_body,
                     },
-                ));
+                }));
             }
 
             DepositionMsg::IZettlePay(msg) => {
@@ -301,13 +297,13 @@ impl DepositionPage {
                         NewMemberMsg::LastNameInput(input) => *last_name = input,
                         NewMemberMsg::NicknameInput(input) => *nickname = input,
                         NewMemberMsg::AccNameInput(input) => {
-                            *acc_name = if input == "" { None } else { Some(input) }
+                            *acc_name = if input.is_empty() { None } else { Some(input) }
                         }
                         NewMemberMsg::HideMenu => {
                             self.new_member = None;
                         }
                         NewMemberMsg::Create => {
-                            if first_name == "" || last_name == "" {
+                            if first_name.is_empty() || last_name.is_empty() {
                                 log!("Missing fields: `first_name` and `last_name` required");
                             } else {
                                 let msg = (
@@ -319,9 +315,9 @@ impl DepositionPage {
                                             nickname => Some(nickname.to_string()),
                                         },
                                     },
-                                    acc_name.clone().unwrap_or(generate_tillgodo_acc_name(
-                                        first_name, nickname,
-                                    )),
+                                    acc_name.clone().unwrap_or_else(|| {
+                                        generate_tillgodo_acc_name(first_name, nickname)
+                                    }),
                                 );
                                 orders_local.perform_cmd(async move {
                                     let response = async {
@@ -412,7 +408,7 @@ impl DepositionPage {
                 ],
                 button![
                     C![C.border_on_focus, C.wide_button, C.new_member_view_item],
-                    if first_name == "" || last_name == "" {
+                    if first_name.is_empty() || last_name.is_empty() {
                         attrs! {At::Disabled => true}
                     } else {
                         attrs! {}
@@ -421,7 +417,7 @@ impl DepositionPage {
                     strings::CONFIRM,
                 ],
             ]
-            .map_msg(|msg| DepositionMsg::NewMember(msg))
+            .map_msg(DepositionMsg::NewMember)
         } else {
             div![
                 C![C.deposit_page],
@@ -541,7 +537,7 @@ impl DepositionPage {
                             strings::DEPOSIT,
                         ]
                     },
-                    if let Some(_) = &self.izettle_pay.pending() {
+                    if self.izettle_pay.pending().is_some() {
                         div![C![C.wide_button_message], strings::WAITING_FOR_PAYMENT]
                     } else {
                         empty![]
@@ -549,7 +545,7 @@ impl DepositionPage {
                 ],
             ]
         }
-        .map_msg(|msg| Msg::DepositionMsg(msg))
+        .map_msg(Msg::Deposition)
     }
 
     fn rebuild_data(&mut self, res: &Res) {

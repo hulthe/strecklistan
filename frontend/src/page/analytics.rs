@@ -76,7 +76,7 @@ impl AnalyticsPage {
     ) -> Result<(), NotAvailable> {
         let res = Res::acquire(rs, orders)?;
 
-        let mut orders_local = orders.proxy(|msg| Msg::AnalyticsMsg(msg));
+        let mut orders_local = orders.proxy(Msg::Analytics);
 
         match msg {
             AnalyticsMsg::ComputeCharts => {
@@ -124,12 +124,12 @@ impl AnalyticsPage {
                 input![
                     attrs! {At::Type => "date"},
                     attrs! {At::Value => self.start_date.format(DATE_INPUT_FMT).to_string()},
-                    input_ev(Ev::Input, |input| AnalyticsMsg::SetStartDate(input)),
+                    input_ev(Ev::Input, AnalyticsMsg::SetStartDate),
                 ],
                 input![
                     attrs! {At::Type => "date"},
                     attrs! {At::Value => self.end_date.format(DATE_INPUT_FMT).to_string()},
-                    input_ev(Ev::Input, |input| AnalyticsMsg::SetEndDate(input)),
+                    input_ev(Ev::Input, AnalyticsMsg::SetEndDate),
                 ],
                 if self.charts_job.is_some() {
                     button![
@@ -154,9 +154,9 @@ impl AnalyticsPage {
                     ]
                 },
             ],
-            div![self.charts.values().map(|chart| chart.clone())],
+            div![self.charts.values().cloned()],
         ]
-        .map_msg(|msg| Msg::AnalyticsMsg(msg))
+        .map_msg(Msg::Analytics)
     }
 
     fn compute_charts(&mut self, res: &Res, orders: &mut impl Orders<AnalyticsMsg>) {
@@ -166,7 +166,7 @@ impl AnalyticsPage {
 
         self.charts = Rc::new(HashMap::new());
 
-        let inventory_by_week = calculate_inventory_by_week(&res.transactions);
+        let inventory_by_week = calculate_inventory_by_week(res.transactions);
         let inventory = res.inventory.clone();
         let start_date = self.start_date;
         let end_date = self.end_date;
@@ -199,7 +199,7 @@ fn calculate_inventory_by_week(
     for transaction in transactions_unsorted.iter() {
         transactions
             .entry(transaction.time.iso_week())
-            .or_insert(vec![])
+            .or_insert_with(Vec::new)
             .push(transaction.clone());
     }
 

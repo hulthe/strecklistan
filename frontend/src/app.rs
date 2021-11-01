@@ -14,7 +14,7 @@ use seed_fetcher::{ResourceMsg, ResourceStore};
 use semver::Version;
 use std::fmt::Debug;
 
-const PKG_VERSION: &'static str = env!("CARGO_PKG_VERSION");
+const PKG_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub struct Model {
     pub page: Page,
@@ -34,18 +34,18 @@ pub struct Model {
 pub enum Msg {
     ChangePage(Page),
 
-    ResourceMsg(ResourceMsg),
+    Resource(ResourceMsg),
 
     FetchedApiVersion(String),
 
     ShowError { header: String, dump: String },
 
-    AnalyticsMsg(AnalyticsMsg),
-    DepositionMsg(DepositionMsg),
-    TransactionsMsg(TransactionsMsg),
-    StoreMsg(StoreMsg),
+    Analytics(AnalyticsMsg),
+    Deposition(DepositionMsg),
+    Transactions(TransactionsMsg),
+    Store(StoreMsg),
 
-    NotificationMessage(NotificationMessage),
+    Notification(NotificationMessage),
 }
 
 pub fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
@@ -61,11 +61,11 @@ pub fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
 
             Msg::ChangePage(page)
         })
-        .notify(subs::UrlChanged(url.clone()));
+        .notify(subs::UrlChanged(url));
 
     orders.perform_cmd(async move {
         let response: Result<String, FetchError> =
-            async { Ok(fetch("/api/version").await?.text().await?) }.await;
+            async { fetch("/api/version").await?.text().await }.await;
         match response {
             Ok(response) => Msg::FetchedApiVersion(response),
             Err(e) => Msg::ShowError {
@@ -75,7 +75,7 @@ pub fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
         }
     });
 
-    let rs = ResourceStore::new(&mut orders.proxy(Msg::ResourceMsg));
+    let rs = ResourceStore::new(&mut orders.proxy(Msg::Resource));
     Model {
         page: Page::Store,
         error: None,
@@ -101,32 +101,32 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
 
             match page {
                 Page::Store => {
-                    model.store_page.get_or_insert_with(|| {
-                        StorePage::new(rs, &mut orders.proxy(Msg::StoreMsg))
-                    });
+                    model
+                        .store_page
+                        .get_or_insert_with(|| StorePage::new(rs, &mut orders.proxy(Msg::Store)));
                 }
                 Page::TransactionHistory => {
                     model.transactions_page = Some(TransactionsPage::new(
                         &model.rs,
-                        &mut orders.proxy(Msg::TransactionsMsg),
+                        &mut orders.proxy(Msg::Transactions),
                     ))
                 }
                 Page::Analytics => {
                     model.analytics_page.get_or_insert_with(|| {
-                        AnalyticsPage::new(rs, &mut orders.proxy(Msg::AnalyticsMsg))
+                        AnalyticsPage::new(rs, &mut orders.proxy(Msg::Analytics))
                     });
                 }
                 Page::Deposit => {
                     model.deposition_page.get_or_insert_with(|| {
-                        DepositionPage::new(rs, &mut orders.proxy(Msg::DepositionMsg))
+                        DepositionPage::new(rs, &mut orders.proxy(Msg::Deposition))
                     });
                 }
                 Page::NotFound => {}
             }
         }
 
-        Msg::ResourceMsg(msg) => {
-            model.rs.update(msg, &mut orders.proxy(Msg::ResourceMsg));
+        Msg::Resource(msg) => {
+            model.rs.update(msg, &mut orders.proxy(Msg::Resource));
         }
 
         Msg::ShowError { header, dump } => {
@@ -154,32 +154,32 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             }
         }
 
-        Msg::DepositionMsg(msg) => {
+        Msg::Deposition(msg) => {
             model
                 .deposition_page
                 .as_mut()
-                .and_then(|p| p.update(msg, &rs, orders).ok());
+                .and_then(|p| p.update(msg, rs, orders).ok());
         }
-        Msg::AnalyticsMsg(msg) => {
+        Msg::Analytics(msg) => {
             model
                 .analytics_page
                 .as_mut()
-                .and_then(|p| p.update(msg, &rs, orders).ok());
+                .and_then(|p| p.update(msg, rs, orders).ok());
         }
-        Msg::TransactionsMsg(msg) => {
+        Msg::Transactions(msg) => {
             model
                 .transactions_page
                 .as_mut()
-                .and_then(|p| p.update(msg, &rs, orders).ok());
+                .and_then(|p| p.update(msg, rs, orders).ok());
         }
-        Msg::StoreMsg(msg) => {
+        Msg::Store(msg) => {
             model
                 .store_page
                 .as_mut()
-                .and_then(|p| p.update(msg, &rs, orders).ok());
+                .and_then(|p| p.update(msg, rs, orders).ok());
         }
 
-        Msg::NotificationMessage(msg) => model.notifications.update(msg, orders),
+        Msg::Notification(msg) => model.notifications.update(msg, orders),
     }
 }
 

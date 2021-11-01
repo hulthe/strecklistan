@@ -1,4 +1,5 @@
 #![deny(unreachable_patterns)]
+#![allow(clippy::single_match)]
 
 mod app;
 mod components;

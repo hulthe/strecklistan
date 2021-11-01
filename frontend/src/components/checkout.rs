@@ -222,7 +222,7 @@ impl Checkout {
                 .sum::<i32>()
                 .into();
             self.transaction_total_input
-                .set_value(amount.try_into().unwrap_or(Default::default()));
+                .set_value(amount.try_into().unwrap_or_default());
         }
     }
 
@@ -245,7 +245,7 @@ impl Checkout {
         self.transaction_total_input
             .get_value()
             .copied()
-            .unwrap_or(Default::default())
+            .unwrap_or_default()
             .into()
     }
 
@@ -284,10 +284,10 @@ impl Checkout {
 
                     let name = bundle
                         .description
-                        .as_ref()
-                        .map(|s| s.as_str())
-                        .unwrap_or(item_name.unwrap_or("[NAMN SAKNAS]"));
-                    let price = bundle.price.unwrap_or(item_price.into());
+                        .as_deref()
+                        .or(item_name)
+                        .unwrap_or("[NAMN SAKNAS]");
+                    let price = bundle.price.unwrap_or_else(|| item_price.into());
 
                     p![
                         if bundle.change == 0 {

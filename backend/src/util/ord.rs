@@ -4,10 +4,19 @@ use std::cmp::{Eq, Ord, Ordering, PartialEq, PartialOrd};
 ///
 /// Unorderable values (e.g. NaNs) are always compared to as being less than other values.
 /// This breaks commutativity, but is fine for the simple case.
-#[derive(PartialOrd, PartialEq, Clone, Copy, Debug)]
+#[derive(PartialEq, Clone, Copy, Debug)]
 pub struct OrdL<T>(pub T);
 
 impl<T> Eq for OrdL<T> where T: PartialEq {}
+
+impl<T> PartialOrd for OrdL<T>
+where
+    T: PartialOrd,
+{
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.0.partial_cmp(&other.0)
+    }
+}
 
 impl<T> Ord for OrdL<T>
 where

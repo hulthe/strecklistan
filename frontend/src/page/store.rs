@@ -177,7 +177,7 @@ impl StorePage {
     ) -> Result<(), NotAvailable> {
         let res = Res::acquire(rs, orders)?;
 
-        let mut orders_local = orders.proxy(Msg::StoreMsg);
+        let mut orders_local = orders.proxy(Msg::Store);
 
         match msg {
             StoreMsg::ResFetched(event::Fetched(resource)) => {
@@ -275,15 +275,13 @@ impl StorePage {
             } => {
                 self.checkout.disabled = false;
                 self.checkout.confirm_button_message = None;
-                orders.send_msg(Msg::NotificationMessage(
-                    NotificationMessage::ShowNotification {
-                        duration_ms: 10000,
-                        notification: Notification {
-                            title: message_title,
-                            body: message_body,
-                        },
+                orders.send_msg(Msg::Notification(NotificationMessage::ShowNotification {
+                    duration_ms: 10000,
+                    notification: Notification {
+                        title: message_title,
+                        body: message_body,
                     },
-                ));
+                }));
             }
 
             StoreMsg::CheckoutMsg(msg) => {
@@ -307,21 +305,19 @@ impl StorePage {
                         rs.mark_as_dirty(Res::inventory_url(), orders);
                         rs.mark_as_dirty(Res::book_accounts_url(), orders);
                         rs.mark_as_dirty(Res::transactions_url(), orders);
-                        orders.send_msg(Msg::NotificationMessage(
-                            NotificationMessage::ShowNotification {
-                                duration_ms: 5000,
-                                notification: Notification {
-                                    title: strings::PURCHASE_COMPLETE.to_string(),
-                                    body: Some(format!(
-                                        "Total: {}:-",
-                                        self.checkout.transaction_amount(),
-                                    )),
-                                },
+                        orders.send_msg(Msg::Notification(NotificationMessage::ShowNotification {
+                            duration_ms: 5000,
+                            notification: Notification {
+                                title: strings::PURCHASE_COMPLETE.to_string(),
+                                body: Some(format!(
+                                    "Total: {}:-",
+                                    self.checkout.transaction_amount(),
+                                )),
                             },
-                        ));
+                        }));
                         self.checkout = Checkout::new(
                             rs,
-                            &mut orders.proxy(Msg::StoreMsg).proxy(StoreMsg::CheckoutMsg),
+                            &mut orders.proxy(Msg::Store).proxy(StoreMsg::CheckoutMsg),
                         );
                         self.selected_debit = None;
                         None
@@ -333,7 +329,7 @@ impl StorePage {
                     self.checkout.update(
                         msg,
                         rs,
-                        &mut orders.proxy(Msg::StoreMsg).proxy(StoreMsg::CheckoutMsg),
+                        &mut orders.proxy(Msg::Store).proxy(StoreMsg::CheckoutMsg),
                     );
                 }
             }
@@ -377,14 +373,14 @@ impl StorePage {
 
         self.tillgodolista_search
             .sort_by(|(scr_a, acc_a_id, _), (scr_b, acc_b_id, _)| {
-                scr_b.cmp(scr_a).then(acc_a_id.cmp(&acc_b_id))
+                scr_b.cmp(scr_a).then(acc_a_id.cmp(acc_b_id))
             });
     }
 
     fn sort_store_list(&mut self, state: &Res) {
         for (score, item) in self.inventory_search.iter_mut() {
             *score = item
-                .acquire(&state)
+                .acquire(state)
                 .compare_fuzzy(&self.inventory_search_string);
         }
         self.inventory_search
@@ -404,7 +400,7 @@ impl StorePage {
                         item_a
                             .acquire(state)
                             .get_name()
-                            .cmp(&item_b.acquire(state).get_name()),
+                            .cmp(item_b.acquire(state).get_name()),
                     )
             });
     }
@@ -438,15 +434,13 @@ impl StorePage {
                                         .book_accounts
                                         .get(&acc_id)
                                         .map(|acc| format!("{}: {}:-", acc.name, acc.balance))
-                                        .unwrap_or("[MISSING]".into()),
+                                        .unwrap_or_else(|| "[MISSING]".to_string()),
                                     _ => "Tillgodolista".into(),
                                 },
                             }
                         },
-                        input_ev(Ev::Input, |input| Msg::StoreMsg(StoreMsg::SearchDebit(
-                            input
-                        ))),
-                        keyboard_ev(Ev::KeyDown, |ev| Msg::StoreMsg(StoreMsg::DebitKeyDown(ev))),
+                        input_ev(Ev::Input, |input| Msg::Store(StoreMsg::SearchDebit(input))),
+                        keyboard_ev(Ev::KeyDown, |ev| Msg::Store(StoreMsg::DebitKeyDown(ev))),
                     ],
                     div![
                         C![C.select_debit_container],
@@ -467,7 +461,7 @@ impl StorePage {
                                         .map(|(acc, member)| view_tillgodo(
                                             acc,
                                             member,
-                                            Msg::StoreMsg(StoreMsg::DebitSelect(
+                                            Msg::Store(StoreMsg::DebitSelect(
                                                 SelectedDebit::Tillgodo(acc.id)
                                             )),
                                         ))
@@ -482,7 +476,7 @@ impl StorePage {
                             C![C.select_debit_button, C.border_on_focus, C.rounded_bl],
                             simple_ev(
                                 Ev::Click,
-                                Msg::StoreMsg(StoreMsg::DebitSelect(SelectedDebit::IZettleEPay))
+                                Msg::Store(StoreMsg::DebitSelect(SelectedDebit::IZettleEPay))
                             ),
                             strings::IZETTLE,
                         ],
@@ -491,7 +485,7 @@ impl StorePage {
                             C![C.select_debit_button, C.border_on_focus, C.rounded_br],
                             simple_ev(
                                 Ev::Click,
-                                Msg::StoreMsg(StoreMsg::DebitSelect(SelectedDebit::OtherEPay)),
+                                Msg::Store(StoreMsg::DebitSelect(SelectedDebit::OtherEPay)),
                             ),
                             strings::OTHER_EPAY,
                         ],
@@ -501,10 +495,8 @@ impl StorePage {
                     C![C.inventory_search_field, C.rounded, C.border_on_focus],
                     attrs! {At::Value => self.inventory_search_string},
                     attrs! {At::Placeholder => "sök varor"},
-                    input_ev(Ev::Input, |input| Msg::StoreMsg(StoreMsg::SearchInput(
-                        input
-                    ))),
-                    keyboard_ev(Ev::KeyDown, |ev| Msg::StoreMsg(StoreMsg::SearchKeyDown(ev))),
+                    input_ev(Ev::Input, |input| Msg::Store(StoreMsg::SearchInput(input))),
+                    keyboard_ev(Ev::KeyDown, |ev| Msg::Store(StoreMsg::SearchKeyDown(ev))),
                 ],
             ],
             div![
@@ -515,14 +507,14 @@ impl StorePage {
                         StoreItemId::Item(item_id) => view_inventory_item(
                             &res.inventory[item_id],
                             fuzzy.matches.iter().map(|m| m.base_str_index),
-                            |item_id, amount| Msg::StoreMsg(StoreMsg::CheckoutMsg(
+                            |item_id, amount| Msg::Store(StoreMsg::CheckoutMsg(
                                 CheckoutMsg::AddItem { item_id, amount }
                             ))
                         ),
                         StoreItemId::Bundle(bundle_id) => view_inventory_bundle(
                             &res.bundles[bundle_id],
                             fuzzy.matches.iter().map(|m| m.base_str_index),
-                            |bundle_id, amount| Msg::StoreMsg(StoreMsg::CheckoutMsg(
+                            |bundle_id, amount| Msg::Store(StoreMsg::CheckoutMsg(
                                 CheckoutMsg::AddBundle { bundle_id, amount }
                             ))
                         ),
@@ -532,7 +524,7 @@ impl StorePage {
             self.checkout
                 .view(rs)
                 .map_msg(StoreMsg::CheckoutMsg)
-                .map_msg(Msg::StoreMsg),
+                .map_msg(Msg::Store),
         ]
     }
 }

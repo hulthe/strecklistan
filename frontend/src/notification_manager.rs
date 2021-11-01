@@ -44,7 +44,7 @@ impl NotificationManager {
                     },
                     simple_ev(
                         Ev::Click,
-                        Msg::NotificationMessage(NotificationMessage::RemoveNotification(*id))
+                        Msg::Notification(NotificationMessage::RemoveNotification(*id))
                     ),
                 ]
             })
@@ -62,7 +62,7 @@ impl NotificationManager {
 
                 self.notifications.insert(id, notification);
                 orders.perform_cmd(timeout(duration_ms, move || {
-                    Msg::NotificationMessage(NotificationMessage::RemoveNotification(id))
+                    Msg::Notification(NotificationMessage::RemoveNotification(id))
                 }));
             }
             NotificationMessage::RemoveNotification(id) => {

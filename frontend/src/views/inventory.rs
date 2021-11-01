@@ -36,11 +36,11 @@ fn build_search_highlight_spans(
             'outer: for (_, c) in chars {
                 let mut buf = [0u8; 4];
                 c.encode_utf8(&mut buf);
-                for i in 0..c.len_utf8() {
-                    if len >= 512 {
+                for &b in buf.iter().take(c.len_utf8()) {
+                    if len >= s.len() {
                         break 'outer; // FIXME: remove 512 byte cap
                     }
-                    s[len] = buf[i];
+                    s[len] = b;
                     len += 1;
                 }
             }

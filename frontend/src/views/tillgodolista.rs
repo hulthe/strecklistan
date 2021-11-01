@@ -21,7 +21,7 @@ pub fn view_tillgodo<M: 'static + Clone>(
         C![C.tillgodo_entry],
         div![
             C![C.tillgodo_nick],
-            member.nickname.as_ref().map(|s| s.as_str()).unwrap_or(""),
+            member.nickname.as_deref().unwrap_or(""),
         ],
         div![
             C![C.tillgodo_name],

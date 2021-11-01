@@ -21,8 +21,8 @@ const VIEW_COUNT_CHUNK: usize = 50;
 
 #[derive(Copy, Clone, Debug)]
 pub enum ExportFormat {
-    JSON,
-    CSV(CSVStyleTransaction),
+    Json,
+    Csv(CSVStyleTransaction),
 }
 
 #[derive(Clone, Debug)]
@@ -136,7 +136,7 @@ impl TransactionsPage {
     ) -> Result<(), NotAvailable> {
         let res = Res::acquire(rs, orders)?;
 
-        let mut orders_local = orders.proxy(|msg| Msg::TransactionsMsg(msg));
+        let mut orders_local = orders.proxy(Msg::Transactions);
         match msg {
             TransactionsMsg::ResFetched(event::Fetched(resource)) => {
                 if Res::has_resource(resource) {
@@ -160,7 +160,7 @@ impl TransactionsPage {
                         .map_err(|e| {
                             error!("Failed to delete transaction", e);
                         })
-                        .map(|id| TransactionsMsg::TransactionDeleted(id))
+                        .map(TransactionsMsg::TransactionDeleted)
                         .ok()
                 });
             }
@@ -179,10 +179,8 @@ impl TransactionsPage {
                 self.show_left_panel = show_left_panel;
             }
             TransactionsMsg::FilterMenuMsg(msg) => {
-                self.filter_menu.update(
-                    msg,
-                    &mut orders_local.proxy(|msg| TransactionsMsg::FilterMenuMsg(msg)),
-                );
+                self.filter_menu
+                    .update(msg, &mut orders_local.proxy(TransactionsMsg::FilterMenuMsg));
                 self.view_limit = VIEW_COUNT_CHUNK; // reset view limit
                 self.filter_transactions(&res);
             }
@@ -197,12 +195,12 @@ impl TransactionsPage {
                     .map(|&index| res.transactions[index].clone())
                     .collect();
                 match format {
-                    ExportFormat::JSON => {
+                    ExportFormat::Json => {
                         let serialized = serde_json::to_string(&transactions).unwrap();
                         download_file("transactions.json", mime::APPLICATION_JSON, &serialized)
                             .ok();
                     }
-                    ExportFormat::CSV(style) => {
+                    ExportFormat::Csv(style) => {
                         let serialized = make_csv_transaction_list(&transactions, style);
                         download_file("transactions.csv", mime::TEXT_CSV, &serialized).ok();
                     }
@@ -236,8 +234,8 @@ impl TransactionsPage {
                     .unwrap_or("[missing]"),
                 self.accounts_balance
                     .get(id)
-                    .map(|&c| c)
-                    .unwrap_or(0.into()),
+                    .copied()
+                    .unwrap_or_else(|| 0.into()),
             )
         };
 
@@ -288,21 +286,21 @@ impl TransactionsPage {
                 ],
                 self.filter_menu
                     .view()
-                    .map_msg(|msg| TransactionsMsg::FilterMenuMsg(msg)),
+                    .map_msg(TransactionsMsg::FilterMenuMsg),
                 div![
                     C![C.left_panel_entry],
                     h2![C![C.left_panel_entry_header], "Exportera Data"],
                     button![
                         C![C.wide_button],
                         "JSON",
-                        simple_ev(Ev::Click, TransactionsMsg::ExportData(ExportFormat::JSON)),
+                        simple_ev(Ev::Click, TransactionsMsg::ExportData(ExportFormat::Json)),
                     ],
                     button![
                         C![C.wide_button],
                         "CSV (En rad per vara)",
                         simple_ev(
                             Ev::Click,
-                            TransactionsMsg::ExportData(ExportFormat::CSV(
+                            TransactionsMsg::ExportData(ExportFormat::Csv(
                                 CSVStyleTransaction::PerItem
                             ))
                         ),
@@ -353,7 +351,7 @@ impl TransactionsPage {
                 },
             ],
         ]
-        .map_msg(|msg| Msg::TransactionsMsg(msg))
+        .map_msg(Msg::Transactions)
     }
 }
 
@@ -368,11 +366,7 @@ fn view_transaction(
         p![
             C![C.transaction_line],
             span![format!("#{} ", transaction.id)],
-            span![transaction
-                .description
-                .as_ref()
-                .map(|s| s.as_str())
-                .unwrap_or("Transaktion")],
+            span![transaction.description.as_deref().unwrap_or("Transaktion")],
             if show_delete {
                 button![
                     C![C.transaction_view_delete_button],
@@ -384,7 +378,7 @@ fn view_transaction(
                 ]
             } else {
                 empty![]
-            }
+            },
         ],
         p![
             C![C.transaction_line],
@@ -435,10 +429,10 @@ fn view_transaction(
 
                 let name = bundle
                     .description
-                    .as_ref()
-                    .map(|s| s.as_str())
-                    .unwrap_or(item_name.unwrap_or("[NAMN SAKNAS]"));
-                let price = bundle.price.unwrap_or(item_price.into());
+                    .as_deref()
+                    .or(item_name)
+                    .unwrap_or("[NAMN SAKNAS]");
+                let price = bundle.price.unwrap_or_else(|| item_price.into());
                 p![
                     C![C.transaction_entry],
                     span![
