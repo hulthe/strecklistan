@@ -17,7 +17,7 @@ USER="postgres"
 PASSWORD="password"
 DATABASE="strecklistan"
 HOST="localhost"
-FILE="./init.sql"
+FILE="$(dirname $0)/init.sql"
 
 set -o errexit -o noclobber -o nounset
 
