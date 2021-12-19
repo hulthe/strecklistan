@@ -1,6 +1,7 @@
 use crate::database::DatabasePool;
 use crate::diesel::RunQueryDsl;
 use crate::models::izettle_transaction::IZettleTransactionPartial;
+use crate::routes::rest::izettle::IZettleNotifier;
 use crate::schema::tables::izettle_transaction::dsl::izettle_transaction;
 use crate::util::ser::{Ser, SerAccept};
 use crate::util::StatusJson;
@@ -19,11 +20,14 @@ pub enum BridgePollResult {
 #[get("/izettle/bridge/poll")]
 pub async fn poll_for_transaction(
     db_pool: &State<DatabasePool>,
+    notifier: &State<IZettleNotifier>,
     accept: SerAccept,
 ) -> Result<Ser<BridgePollResult>, StatusJson> {
     let connection = db_pool.inner().get()?;
 
-    let transaction_res: QueryResult<IZettleTransactionPartial> = {
+    let notification = notifier.wait();
+
+    let query_transaction = move || -> QueryResult<IZettleTransactionPartial> {
         use crate::schema::tables::izettle_transaction::dsl::{amount, id, time};
 
         izettle_transaction
@@ -32,12 +36,19 @@ pub async fn poll_for_transaction(
             .first(&connection)
     };
 
+    let transaction_res = query_transaction();
     if let Err(Error::NotFound) = transaction_res {
-        return Ok(accept.ser(BridgePollResult::NoPendingTransaction));
+        if notification.await {
+            let transaction_res = query_transaction();
+            if let Err(Error::NotFound) = transaction_res {
+                Ok(accept.ser(BridgePollResult::NoPendingTransaction))
+            } else {
+                Ok(accept.ser(BridgePollResult::PendingPayment(transaction_res?)))
+            }
+        } else {
+            Ok(accept.ser(BridgePollResult::NoPendingTransaction))
+        }
+    } else {
+        Ok(accept.ser(BridgePollResult::PendingPayment(transaction_res?)))
     }
-
-    // Potential optimization: This function could sleep for up
-    // to a few seconds if there is no pending transaction.
-    // This way the latency between the server and the bridge would be lower.
-    Ok(accept.ser(BridgePollResult::PendingPayment(transaction_res?)))
 }

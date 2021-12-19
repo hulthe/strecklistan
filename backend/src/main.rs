@@ -11,6 +11,7 @@ mod schema;
 pub mod util;
 
 use crate::routes::rest;
+use crate::routes::rest::izettle::IZettleNotifier;
 use crate::util::{catchers, FileResponder};
 
 use clap::Parser;
@@ -50,6 +51,7 @@ async fn main() {
 
     let rocket = rocket::build()
         .manage(db_pool)
+        .manage(IZettleNotifier::default())
         .register("/", catchers())
         .attach(FileResponder {
             folder: "www",
