@@ -12,4 +12,5 @@ css_typegen!(
     "frontend/static/styles/charts.css",
     "frontend/static/styles/notifications.css",
     "frontend/static/styles/penguin.css",
+    "frontend/static/styles/inventory.scss",
 );

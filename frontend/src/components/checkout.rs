@@ -69,7 +69,7 @@ impl Checkout {
         Checkout {
             transaction_bundles: vec![],
             debited_account: None,
-            transaction_total_input: ParsedInput::new("0")
+            transaction_total_input: ParsedInput::new_with_text("0")
                 .with_error_message(strings::INVALID_MONEY_MESSAGE_SHORT)
                 .with_input_kind("text"),
             override_transaction_total: false,

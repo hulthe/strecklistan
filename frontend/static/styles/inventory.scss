@@ -1,0 +1,25 @@
+.inventory_page {}
+
+.inventory_page > table {
+	margin: auto;
+}
+
+.inventory_page > table > h1 {
+	font-size: 2rem;
+	margin-left: 0.2em;
+	margin-top: 0.4rem;
+	margin-bottom: 0.2rem;
+}
+
+.inventory_page > table > tr:nth-child(even) {
+	background-color: #dddddd;
+}
+
+.inventory_page > table > tr > td {
+	border: 1px solid #dddddd;
+	padding: 0.25em;
+}
+
+.inventory_page_input {
+	background: inherit;
+}

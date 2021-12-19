@@ -32,3 +32,6 @@ pub const POSTING_TRANSACTION_FAILED: &str = "Misslyckades med att skicka transa
 pub const POLLING_TRANSACTION_FAILED: &str = "Misslyckades med att polla transaktion";
 
 pub const TRANSACTION_TOTAL: &str = "Totalt:";
+
+pub const INVENTORY_ITEMS: &str = "Varor";
+pub const INVENTORY_BUNDLES: &str = "Paket";

@@ -3,6 +3,7 @@ use crate::notification_manager::{NotificationManager, NotificationMessage};
 use crate::page::{
     analytics::{AnalyticsMsg, AnalyticsPage},
     deposit::{DepositionMsg, DepositionPage},
+    inventory::{InventoryMsg, InventoryPage},
     store::{StoreMsg, StorePage},
     transactions::{TransactionsMsg, TransactionsPage},
     Page,
@@ -25,6 +26,7 @@ pub struct Model {
     pub transactions_page: Option<TransactionsPage>,
     pub analytics_page: Option<AnalyticsPage>,
     pub deposition_page: Option<DepositionPage>,
+    pub inventory_page: Option<InventoryPage>,
 
     pub rs: ResourceStore,
     pub notifications: NotificationManager,
@@ -44,6 +46,7 @@ pub enum Msg {
     Deposition(DepositionMsg),
     Transactions(TransactionsMsg),
     Store(StoreMsg),
+    Inventory(InventoryMsg),
 
     Notification(NotificationMessage),
 }
@@ -56,6 +59,7 @@ pub fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
                 ["transactions"] => Page::TransactionHistory,
                 ["analytics"] => Page::Analytics,
                 ["deposit"] => Page::Deposit,
+                ["inventory"] => Page::Inventory,
                 _ => Page::NotFound,
             };
 
@@ -83,6 +87,7 @@ pub fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
         transactions_page: None,
         analytics_page: None,
         deposition_page: None,
+        inventory_page: None,
         rs,
         notifications: Default::default(),
     }
@@ -119,6 +124,11 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 Page::Deposit => {
                     model.deposition_page.get_or_insert_with(|| {
                         DepositionPage::new(rs, &mut orders.proxy(Msg::Deposition))
+                    });
+                }
+                Page::Inventory => {
+                    model.inventory_page.get_or_insert_with(|| {
+                        InventoryPage::new(rs, &mut orders.proxy(Msg::Inventory))
                     });
                 }
                 Page::NotFound => {}
@@ -178,6 +188,12 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 .as_mut()
                 .and_then(|p| p.update(msg, rs, orders).ok());
         }
+        Msg::Inventory(msg) => {
+            model
+                .inventory_page
+                .as_mut()
+                .and_then(|p| p.update(msg, rs, orders).ok());
+        }
 
         Msg::Notification(msg) => model.notifications.update(msg, orders),
     }
@@ -214,6 +230,11 @@ pub fn view(model: &Model) -> Vec<Node<Msg>> {
                         attrs! {At::Href => "/transactions"}
                     ],
                     a![
+                        "utbud",
+                        C![C.header_link],
+                        attrs! {At::Href => "/inventory"}
+                    ],
+                    a![
                         "analys",
                         C![C.header_link],
                         attrs! {At::Href => "/analytics"}
@@ -227,6 +248,7 @@ pub fn view(model: &Model) -> Vec<Node<Msg>> {
                     Page::Deposit => model.deposition_page.as_ref().unwrap().view(&model.rs),
                     Page::TransactionHistory =>
                         model.transactions_page.as_ref().unwrap().view(&model.rs),
+                    Page::Inventory => model.inventory_page.as_ref().unwrap().view(&model.rs),
                     Page::NotFound => {
                         div![C![C.not_found_message, C.unselectable], "404"]
                     }

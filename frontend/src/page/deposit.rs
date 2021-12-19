@@ -106,7 +106,7 @@ impl DepositionPage {
             credit_account: None,
             search_string: String::new(),
             accs_search: vec![],
-            amount_input: ParsedInput::new("0")
+            amount_input: ParsedInput::new_with_text("0")
                 .with_error_message(strings::INVALID_MONEY_MESSAGE_LONG),
             new_member: None,
             request_in_progress: false,

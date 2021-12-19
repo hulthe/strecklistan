@@ -64,7 +64,10 @@ impl<T: 'static + Clone> SelectInput<T> {
         select![
             C![self.select_styles],
             input_ev(Ev::Change, SelectInputMsg::<T>::ChangeStr),
-            self.options.iter().map(&*self.display).map(|s| option![s]),
+            self.options
+                .iter()
+                .map(&*self.display)
+                .map(|s| option![C![self.option_styles], s]),
         ]
     }
 

@@ -1142,7 +1142,6 @@ video {
 
 .parsed_input {
 	display: inline-block;
-	padding-bottom: 0.8em;
 }
 
 .parsed_input_text {
@@ -1151,6 +1150,8 @@ video {
 }
 
 .parsed_input_error {
+	background: white;
+	border: 1px solid #dddddd;
 	font-family: Ubuntu;
 	position: absolute;
 	font-size: 0.6em;
@@ -1158,6 +1159,7 @@ video {
 	font-style: italic;
 	margin-top: -0.15em;
 	padding-left: 0.5em;
+	padding-right: 0.5em;
 	overflow: hidden;
 	white-space: nowrap;
 	animation: 2s ease-out 0s 1 width_slide_in;

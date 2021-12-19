@@ -10,6 +10,7 @@ pub struct ParsedInput<T> {
     parsed: Option<T>,
     input_kind: &'static str,
     error_message: Option<&'static str>,
+    empty_message: Option<&'static str>,
 }
 
 #[derive(Clone, Debug)]
@@ -23,25 +24,31 @@ impl<T> ParsedInput<T>
 where
     T: FromStr + ToString,
 {
-    pub fn new<S: ToString>(text: S) -> Self {
+    pub fn new() -> Self {
+        Self {
+            text: String::new(),
+            parsed: "".parse().ok(),
+            input_kind: "text",
+            error_message: None,
+            empty_message: None,
+        }
+    }
+
+    pub fn new_with_text<S: ToString>(text: S) -> Self {
         let text = text.to_string();
         ParsedInput {
             parsed: text.parse().ok(),
             text,
-            input_kind: "text",
-            error_message: None,
+            ..Self::new()
         }
     }
 
-    pub fn with_error_message(self, error_message: &'static str) -> Self {
+    pub fn new_with_value(value: T) -> Self {
         ParsedInput {
-            error_message: Some(error_message),
-            ..self
+            text: value.to_string(),
+            parsed: Some(value),
+            ..Self::new()
         }
-    }
-
-    pub fn with_input_kind(self, input_kind: &'static str) -> Self {
-        ParsedInput { input_kind, ..self }
     }
 
     pub fn update(&mut self, msg: ParsedInputMsg) {
@@ -52,6 +59,32 @@ where
             }
             ParsedInputMsg::FocusIn | ParsedInputMsg::FocusOut => {}
         }
+    }
+
+    pub fn set_value(&mut self, value: T) {
+        self.text = value.to_string();
+        self.parsed = Some(value);
+    }
+}
+
+impl<T> ParsedInput<T> {
+    pub fn with_error_message(self, error_message: &'static str) -> Self {
+        ParsedInput {
+            error_message: Some(error_message),
+            ..self
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn with_empty_message(self, empty_message: &'static str) -> Self {
+        ParsedInput {
+            empty_message: Some(empty_message),
+            ..self
+        }
+    }
+
+    pub fn with_input_kind(self, input_kind: &'static str) -> Self {
+        ParsedInput { input_kind, ..self }
     }
 
     pub fn view(&self, attrs: Attrs) -> Node<ParsedInputMsg> {
@@ -66,16 +99,13 @@ where
                 simple_ev(Ev::Custom("focusin".into()), ParsedInputMsg::FocusIn),
                 simple_ev(Ev::Custom("focusout".into()), ParsedInputMsg::FocusOut),
             ],
-            match (&self.parsed, self.error_message) {
-                (None, Some(msg)) => div![C![C.parsed_input_error], msg],
+            match (&self.parsed, self.error_message, self.empty_message) {
+                (None, _, Some(msg)) if self.text.is_empty() => div![C![C.parsed_input_error], msg],
+                (None, Some(msg), _) if !self.text.is_empty() =>
+                    div![C![C.parsed_input_error], msg],
                 _ => empty![],
             }
         ]
-    }
-
-    pub fn set_value(&mut self, value: T) {
-        self.text = value.to_string();
-        self.parsed = Some(value);
     }
 
     pub fn get_value(&self) -> Option<&T> {
