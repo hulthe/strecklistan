@@ -1,14 +1,20 @@
 use crate::database::DatabasePool;
-use crate::models::inventory::{InventoryBundle as InventoryBundleRel, InventoryBundleItem};
+use crate::models::inventory::{
+    InventoryBundle as InventoryBundleRel, InventoryBundleItem,
+    NewInventoryBundle as NewInventoryBundleRel, NewInventoryBundleItem,
+};
 use crate::util::ser::{Ser, SerAccept};
 use crate::util::status_json::StatusJson as SJ;
 use diesel::prelude::*;
 use itertools::Itertools;
-use rocket::{get, State};
+use rocket::http::Status;
+use rocket::serde::json::Json;
+use rocket::{delete, get, post, put, State};
 use std::collections::HashMap;
 use strecklistan_api::inventory::InventoryBundle as InventoryBundleObj;
 use strecklistan_api::inventory::{
     InventoryBundleId, InventoryItemId, InventoryItemStock, InventoryItemTag,
+    NewInventoryBundle as NewInventoryBundleObj,
 };
 
 #[get("/inventory/items")]
@@ -75,4 +81,101 @@ pub fn get_inventory_bundles(
         .collect();
 
     Ok(accept.ser(bundles))
+}
+
+#[post("/inventory/bundle", data = "<bundle>")]
+pub fn post_inventory_bundle(
+    db_pool: &State<DatabasePool>,
+    accept: SerAccept,
+    bundle: Json<NewInventoryBundleObj>,
+) -> Result<Ser<i32>, SJ> {
+    let bundle = bundle.into_inner();
+    let connection = db_pool.inner().get()?;
+    connection.transaction::<_, SJ, _>(|| {
+        let bundle_id = {
+            use crate::schema::tables::inventory_bundles::dsl::{id, inventory_bundles};
+
+            let new_bundle = NewInventoryBundleRel {
+                name: bundle.name,
+                price: bundle.price.into(),
+                image_url: bundle.image_url,
+            };
+
+            diesel::insert_into(inventory_bundles)
+                .values(new_bundle)
+                .returning(id)
+                .get_result(&connection)?
+        };
+
+        {
+            use crate::schema::tables::inventory_bundle_items::dsl::inventory_bundle_items;
+
+            let new_items: Vec<_> = bundle
+                .item_ids
+                .into_iter()
+                .map(|item_id| NewInventoryBundleItem { bundle_id, item_id })
+                .collect();
+
+            diesel::insert_into(inventory_bundle_items)
+                .values(&new_items)
+                .execute(&connection)?;
+        }
+
+        Ok(accept.ser(bundle_id))
+    })
+}
+
+#[put("/inventory/bundle/<bundle_id>", data = "<bundle>")]
+pub fn put_inventory_bundle(
+    db_pool: &State<DatabasePool>,
+    bundle_id: InventoryBundleId,
+    bundle: Json<NewInventoryBundleObj>,
+) -> Result<SJ, SJ> {
+    let connection = db_pool.inner().get()?;
+    connection.transaction::<_, SJ, _>(|| {
+        use crate::schema::tables::inventory_bundles::dsl::{id, inventory_bundles};
+
+        let bundle = bundle.into_inner();
+        let new_bundle = NewInventoryBundleRel {
+            name: bundle.name,
+            price: bundle.price.into(),
+            image_url: bundle.image_url,
+        };
+
+        diesel::update(inventory_bundles)
+            .set(&new_bundle)
+            .filter(id.eq(bundle_id))
+            .execute(&connection)?;
+
+        // TODO: handle changed items
+
+        Ok(Status::Ok.into())
+    })
+}
+
+#[delete("/inventory/bundle/<id>")]
+pub fn delete_inventory_bundle(
+    db_pool: &State<DatabasePool>,
+    id: InventoryBundleId,
+) -> Result<SJ, SJ> {
+    let connection = db_pool.inner().get()?;
+    connection.transaction::<_, SJ, _>(|| {
+        {
+            use crate::schema::tables::inventory_bundle_items::dsl::{
+                bundle_id, inventory_bundle_items,
+            };
+
+            diesel::delete(inventory_bundle_items.filter(bundle_id.eq(id))).execute(&connection)?;
+        }
+
+        {
+            use crate::schema::tables::inventory_bundles::dsl;
+            let deleted_id: i32 = diesel::delete(dsl::inventory_bundles.filter(dsl::id.eq(id)))
+                .returning(dsl::id)
+                .get_result(&connection)?;
+            assert_eq!(deleted_id, id);
+        }
+
+        Ok(Status::Ok.into())
+    })
 }

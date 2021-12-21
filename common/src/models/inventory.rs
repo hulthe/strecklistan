@@ -67,6 +67,15 @@ impl Hash for InventoryItemStock {
 
 #[cfg_attr(feature = "serde_impl", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "debug", derive(Debug))]
+#[derive(Clone, PartialEq, Eq)]
+pub struct NewInventoryItem {
+    pub name: String,
+    pub price: Option<i32>,
+    pub image_url: Option<String>,
+}
+
+#[cfg_attr(feature = "serde_impl", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "debug", derive(Debug))]
 #[cfg_attr(feature = "diesel_impl", derive(Queryable))]
 #[derive(Clone)]
 pub struct InventoryItemTag {
@@ -92,3 +101,13 @@ impl PartialEq for InventoryBundle {
 }
 
 impl Eq for InventoryBundle {}
+
+#[cfg_attr(feature = "serde_impl", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "debug", derive(Debug))]
+#[derive(Clone, PartialEq, Eq)]
+pub struct NewInventoryBundle {
+    pub name: String,
+    pub price: Currency,
+    pub image_url: Option<String>,
+    pub item_ids: Vec<InventoryItemId>,
+}
