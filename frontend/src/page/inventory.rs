@@ -1,8 +1,11 @@
 use crate::app::Msg;
 use crate::components::parsed_input::{ParsedInput, ParsedInputMsg};
 use crate::generated::css_classes::C;
+use crate::notification_manager::{Notification, NotificationMessage};
 use crate::page::loading::Loading;
 use crate::strings;
+use crate::util::simple_ev;
+use seed::fetch;
 use seed::prelude::*;
 use seed::*;
 use seed_fetcher::{event, NotAvailable, ResourceStore, Resources};
@@ -11,6 +14,7 @@ use strecklistan_api::{
     currency::Currency,
     inventory::{
         InventoryBundle, InventoryBundleId, InventoryItemId, InventoryItemStock as InventoryItem,
+        NewInventoryBundle,
     },
 };
 
@@ -19,13 +23,13 @@ pub enum InventoryMsg {
     ResFetched(event::Fetched),
     ResMarkDirty(event::MarkDirty),
 
-    BundleNameInput(InventoryBundleId, ParsedInputMsg),
-    BundlePriceInput(InventoryBundleId, ParsedInputMsg),
-    BundleImgInput(InventoryBundleId, ParsedInputMsg),
+    DeleteBundle(InventoryBundleId),
+    SaveBundles,
+    ChangesSaved,
+    ServerError(String),
 
-    ItemNameInput(InventoryItemId, ParsedInputMsg),
-    ItemPriceInput(InventoryItemId, ParsedInputMsg),
-    ItemImgInput(InventoryItemId, ParsedInputMsg),
+    BundleInput(Field, InventoryBundleId, ParsedInputMsg),
+    ItemInput(Field, InventoryItemId, ParsedInputMsg),
 }
 
 pub struct InventoryPage {
@@ -42,10 +46,18 @@ struct Res<'a> {
     items: &'a HashMap<InventoryItemId, InventoryItem>,
 }
 
+#[derive(Clone)]
 struct Row {
     name: ParsedInput<String>,
     price: ParsedInput<Currency>,
     image: ParsedInput<String>,
+}
+
+#[derive(Clone, Debug)]
+pub enum Field {
+    Name,
+    Price,
+    Image,
 }
 
 impl InventoryPage {
@@ -70,32 +82,108 @@ impl InventoryPage {
     ) -> Result<(), NotAvailable> {
         let res = Res::acquire(rs, orders)?;
 
+        let mut orders_local = orders.proxy(Msg::Inventory);
+
         match msg {
             InventoryMsg::ResFetched(_) => self.rebuild_data(&res),
             InventoryMsg::ResMarkDirty(_) => {}
-            InventoryMsg::BundleNameInput(id, msg) => {
-                self.bundle_rows
-                    .get_mut(&id)
-                    .map(|row| row.name.update(msg));
+            InventoryMsg::DeleteBundle(id) => {
+                orders_local.perform_cmd(async move {
+                    let result: fetch::Result<()> = async {
+                        Request::new(format!("/api/inventory/bundle/{}", id))
+                            .method(Method::Delete)
+                            .fetch()
+                            .await?
+                            .check_status()?;
+
+                        Ok(())
+                    }
+                    .await;
+
+                    match result {
+                        Ok(_) => InventoryMsg::ChangesSaved,
+                        Err(e) => {
+                            error!("Failed to save inventory changes", e);
+                            InventoryMsg::ServerError(format!("{:?}", e)) // TODO
+                        }
+                    }
+                });
             }
-            InventoryMsg::BundlePriceInput(id, msg) => {
-                self.bundle_rows
-                    .get_mut(&id)
-                    .map(|row| row.price.update(msg));
+            InventoryMsg::SaveBundles => {
+                let bundle_rows = self.bundle_rows.clone();
+                let bundles = res.bundles.clone();
+
+                // TODO: save items
+                //let item_rows = self.item_rows.clone();
+                //let items = res.items.clone();
+
+                orders_local.perform_cmd(async move {
+                    let result: fetch::Result<()> = async {
+                        for (id, bundle) in bundles {
+                            let new_bundle = NewInventoryBundle {
+                                name: bundle_rows[&id]
+                                    .name
+                                    .get_value()
+                                    .unwrap_or(&bundle.name)
+                                    .to_string(),
+                                price: *bundle_rows[&id].price.get_value().unwrap_or(&bundle.price),
+                                image_url: bundle_rows[&id]
+                                    .image
+                                    .get_value()
+                                    .map(|s| s.to_string())
+                                    .filter(|s| !s.is_empty()),
+                                item_ids: bundle.item_ids, // TODO: allow changing items
+                            };
+
+                            Request::new(format!("/api/inventory/bundle/{}", id))
+                                .method(Method::Put)
+                                .json(&new_bundle)?
+                                .fetch()
+                                .await?
+                                .check_status()?;
+                        }
+
+                        // TODO: save items
+                        Ok(())
+                    }
+                    .await;
+
+                    match result {
+                        Ok(_) => InventoryMsg::ChangesSaved,
+                        Err(e) => {
+                            error!("Failed to save inventory changes", e);
+                            InventoryMsg::ServerError(format!("{:?}", e)) // TODO
+                        }
+                    }
+                });
             }
-            InventoryMsg::BundleImgInput(id, msg) => {
-                self.bundle_rows
-                    .get_mut(&id)
-                    .map(|row| row.image.update(msg));
+            InventoryMsg::ChangesSaved => {
+                rs.mark_as_dirty(Res::bundles_url(), orders);
             }
-            InventoryMsg::ItemNameInput(id, msg) => {
-                self.item_rows.get_mut(&id).map(|row| row.name.update(msg));
+            InventoryMsg::ServerError(message) => {
+                orders.send_msg(Msg::Notification(NotificationMessage::ShowNotification {
+                    duration_ms: 10000,
+                    notification: Notification {
+                        title: strings::SERVER_ERROR.to_string(),
+                        body: Some(message),
+                    },
+                }));
             }
-            InventoryMsg::ItemPriceInput(id, msg) => {
-                self.item_rows.get_mut(&id).map(|row| row.price.update(msg));
+            InventoryMsg::BundleInput(field, id, msg) => {
+                let row = self.bundle_rows.get_mut(&id);
+                match field {
+                    Field::Name => row.map(|row| row.name.update(msg)),
+                    Field::Price => row.map(|row| row.price.update(msg)),
+                    Field::Image => row.map(|row| row.image.update(msg)),
+                };
             }
-            InventoryMsg::ItemImgInput(id, msg) => {
-                self.item_rows.get_mut(&id).map(|row| row.image.update(msg));
+            InventoryMsg::ItemInput(field, id, msg) => {
+                let row = self.item_rows.get_mut(&id);
+                match field {
+                    Field::Name => row.map(|row| row.name.update(msg)),
+                    Field::Price => row.map(|row| row.price.update(msg)),
+                    Field::Image => row.map(|row| row.image.update(msg)),
+                };
             }
         }
 
@@ -138,6 +226,9 @@ impl InventoryPage {
     }
 
     pub fn view(&self, rs: &ResourceStore) -> Node<Msg> {
+        use Field::*;
+        use InventoryMsg::{BundleInput, ItemInput};
+
         let res = match Res::acquire_now(rs) {
             Ok(res) => res,
             Err(_) => return Loading::view(),
@@ -150,35 +241,39 @@ impl InventoryPage {
         let bundle_row = |(&id, _bundle): (&InventoryBundleId, &InventoryBundle)| {
             let row = &self.bundle_rows[&id];
             tr![
-                view_input(&row.name).map_msg(move |msg| InventoryMsg::BundleNameInput(id, msg)),
-                view_input(&row.price).map_msg(move |msg| InventoryMsg::BundlePriceInput(id, msg)),
-                view_input(&row.image).map_msg(move |msg| InventoryMsg::BundleImgInput(id, msg)),
+                view_input(&row.name).map_msg(move |msg| BundleInput(Name, id, msg)),
+                view_input(&row.price).map_msg(move |msg| BundleInput(Price, id, msg)),
+                view_input(&row.image).map_msg(move |msg| BundleInput(Image, id, msg)),
+                td![button![
+                    "X",
+                    simple_ev(Ev::Click, InventoryMsg::DeleteBundle(id)),
+                ]],
             ]
         };
 
         let item_row = |(&id, _item): (&InventoryItemId, &InventoryItem)| {
             let row = &self.item_rows[&id];
             tr![
-                view_input(&row.name).map_msg(move |msg| InventoryMsg::ItemNameInput(id, msg)),
-                view_input(&row.price).map_msg(move |msg| InventoryMsg::ItemPriceInput(id, msg)),
-                view_input(&row.image).map_msg(move |msg| InventoryMsg::ItemImgInput(id, msg)),
+                view_input(&row.name).map_msg(move |msg| ItemInput(Name, id, msg)),
+                view_input(&row.price).map_msg(move |msg| ItemInput(Price, id, msg)),
+                view_input(&row.image).map_msg(move |msg| ItemInput(Image, id, msg)),
             ]
         };
 
         div![
             C![C.inventory_page],
             table![
+                h1![strings::INVENTORY_BUNDLES],
+                tr![th!["Namn"], th!["Pris"], th!["Bild"], th!["Radera"]],
+                res.bundles.iter().map(bundle_row),
                 tr![td![
-                    attrs! { At::ColSpan => 3 },
+                    attrs! { At::ColSpan => 4 },
                     button![
                         C![C.wide_button],
-                        attrs! { At::Disabled => true }, // TODO
+                        simple_ev(Ev::Click, InventoryMsg::SaveBundles),
                         "Spara ändringar",
                     ],
                 ]],
-                h1![strings::INVENTORY_BUNDLES],
-                tr![th!["Namn"], th!["Pris"], th!["Bild"]],
-                res.bundles.iter().map(bundle_row),
                 h1![strings::INVENTORY_ITEMS],
                 tr![th!["Namn"], th!["Pris"], th!["Bild"]],
                 res.items.iter().map(item_row),
