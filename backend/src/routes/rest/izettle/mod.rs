@@ -23,18 +23,16 @@ struct InnerNotifier {
 }
 
 impl IZettleNotifier {
-    pub const TIMEOUT: Duration = Duration::from_secs(10);
-
     /// Call notify to notify waiters that a pending transaction is ready
     pub fn notify(&self) {
         self.inner.ticker.fetch_add(1, Ordering::SeqCst);
         self.inner.notifier.notify_waiters();
     }
 
-    /// Wait for a maximum of `TIMEOUT` seconds for a pending transaction
+    /// Wait for a maximum of `millis` for a pending transaction
     ///
     /// Returns true is the wait was ended by a call to notify, otherwise returns false
-    pub fn wait(&self) -> impl Future<Output = bool> + 'static {
+    pub fn wait(&self, duration: Duration) -> impl Future<Output = bool> + 'static {
         let state = Arc::clone(&self.inner);
 
         let start_tick = state.ticker.load(Ordering::SeqCst);
@@ -47,7 +45,7 @@ impl IZettleNotifier {
             if has_ticked() {
                 true
             } else {
-                timeout(Self::TIMEOUT, notified).await.is_ok() || has_ticked()
+                timeout(duration, notified).await.is_ok() || has_ticked()
             }
         }
     }

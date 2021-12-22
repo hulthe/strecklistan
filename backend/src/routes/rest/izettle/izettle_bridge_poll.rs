@@ -9,6 +9,7 @@ use diesel::result::Error;
 use diesel::{ExpressionMethods, QueryDsl, QueryResult};
 use rocket::{get, State};
 use serde::Serialize;
+use std::time::Duration;
 
 #[derive(Serialize)]
 #[serde(tag = "type")]
@@ -17,15 +18,20 @@ pub enum BridgePollResult {
     NoPendingTransaction,
 }
 
-#[get("/izettle/bridge/poll")]
+/// Check if a pending transaction exists
+///
+/// If timeout is set, hang the request until a transaction
+/// arrives or the timeout (milliseconds) has passed
+#[get("/izettle/bridge/poll?<timeout>")]
 pub async fn poll_for_transaction(
     db_pool: &State<DatabasePool>,
     notifier: &State<IZettleNotifier>,
+    timeout: Option<u64>,
     accept: SerAccept,
 ) -> Result<Ser<BridgePollResult>, StatusJson> {
     let connection = db_pool.inner().get()?;
 
-    let notification = notifier.wait();
+    let notification = timeout.map(|millis| notifier.wait(Duration::from_millis(millis)));
 
     let query_transaction = move || -> QueryResult<IZettleTransactionPartial> {
         use crate::schema::tables::izettle_transaction::dsl::{amount, id, time};
@@ -36,19 +42,20 @@ pub async fn poll_for_transaction(
             .first(&connection)
     };
 
-    let transaction_res = query_transaction();
-    if let Err(Error::NotFound) = transaction_res {
-        if notification.await {
-            let transaction_res = query_transaction();
-            if let Err(Error::NotFound) = transaction_res {
-                Ok(accept.ser(BridgePollResult::NoPendingTransaction))
-            } else {
-                Ok(accept.ser(BridgePollResult::PendingPayment(transaction_res?)))
+    let mut transaction_result = query_transaction();
+
+    // if there was no pending transaction, query again if we were notified within the timeout
+    if let Err(Error::NotFound) = &transaction_result {
+        if let Some(notification) = notification {
+            if notification.await {
+                transaction_result = query_transaction();
             }
-        } else {
-            Ok(accept.ser(BridgePollResult::NoPendingTransaction))
         }
+    }
+
+    if let Err(Error::NotFound) = transaction_result {
+        Ok(accept.ser(BridgePollResult::NoPendingTransaction))
     } else {
-        Ok(accept.ser(BridgePollResult::PendingPayment(transaction_res?)))
+        Ok(accept.ser(BridgePollResult::PendingPayment(transaction_result?)))
     }
 }
