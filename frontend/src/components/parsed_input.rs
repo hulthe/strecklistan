@@ -108,7 +108,11 @@ impl<T> ParsedInput<T> {
         ]
     }
 
-    pub fn get_value(&self) -> Option<&T> {
+    pub fn parsed(&self) -> Option<&T> {
         self.parsed.as_ref()
+    }
+
+    pub fn text(&self) -> &str {
+        &self.text
     }
 }

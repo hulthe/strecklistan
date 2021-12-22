@@ -130,7 +130,7 @@ impl Checkout {
             CheckoutMsg::TotalInputMsg(msg) => {
                 match &msg {
                     ParsedInputMsg::FocusOut => {
-                        if self.transaction_total_input.get_value().is_none() {
+                        if self.transaction_total_input.parsed().is_none() {
                             self.override_transaction_total = false;
                             self.recompute_new_transaction_total();
                         }
@@ -229,7 +229,7 @@ impl Checkout {
     pub fn build_transaction(&self, rs: &ResourceStore) -> Option<NewTransaction> {
         Res::acquire_now(rs)
             .ok()
-            .zip(self.transaction_total_input.get_value().copied())
+            .zip(self.transaction_total_input.parsed().copied())
             .and_then(|(res, amount)| {
                 Some(NewTransaction {
                     bundles: self.transaction_bundles.clone(),
@@ -243,7 +243,7 @@ impl Checkout {
 
     pub fn transaction_amount(&self) -> Currency {
         self.transaction_total_input
-            .get_value()
+            .parsed()
             .copied()
             .unwrap_or_default()
             .into()

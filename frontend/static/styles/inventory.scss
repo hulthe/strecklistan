@@ -4,7 +4,7 @@
 	margin: auto;
 }
 
-.inventory_page > table > h1 {
+.inventory_page > table > td > h1 {
 	font-size: 2rem;
 	margin-left: 0.2em;
 	margin-top: 0.4rem;
@@ -22,4 +22,26 @@
 
 .inventory_page_input {
 	background: inherit;
+}
+
+.inventory_page_save_button {
+	background: url(/images/floppy.svg);
+}
+
+.inventory_page_delete_button {
+	background: url(/images/trash.svg);
+}
+
+.inventory_page_save_button, .inventory_page_delete_button {
+	width: 1em;
+	height: 1.3em;
+	margin-left: 0.2em;
+	margin-right: 0.2em;
+	background-size: contain;
+	background-repeat: no-repeat;
+}
+
+.inventory_page_save_button:disabled {
+	opacity: 0.0;
+	cursor: inherit;
 }

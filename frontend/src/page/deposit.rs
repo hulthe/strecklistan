@@ -163,7 +163,7 @@ impl DepositionPage {
             DepositionMsg::Deposit => {
                 if let Some(((credit_acc, &amount), debit)) = self
                     .credit_account
-                    .zip(self.amount_input.get_value())
+                    .zip(self.amount_input.parsed())
                     .zip(self.debit)
                 {
                     let transaction = NewTransaction {
@@ -222,7 +222,7 @@ impl DepositionPage {
                         title: strings::DEPOSIT_COMPLETE.to_string(),
                         body: self
                             .amount_input
-                            .get_value()
+                            .parsed()
                             .map(|value| format!("{}:-", value)),
                     },
                 }));
@@ -520,7 +520,7 @@ impl DepositionPage {
                         button![
                             C![C.wide_button, C.border_on_focus],
                             {
-                                let disabled = match self.amount_input.get_value().copied() {
+                                let disabled = match self.amount_input.parsed().copied() {
                                     None => true,
                                     Some(x) if x == Default::default() => true,
                                     Some(_) if self.credit_account.is_none() => true,
