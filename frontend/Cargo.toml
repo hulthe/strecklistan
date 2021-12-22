@@ -1,6 +1,6 @@
 [package]
 name = "strecklistan_web"
-version = "0.11.2"
+version = "0.12.0"
 authors = ["Joakim Hulthe <joakim@hulthe.net"]
 license = "MPL-2.0"
 description = "The frontend of strecklistan: a simple web-shop"
