@@ -14,11 +14,11 @@ use std::collections::HashMap;
 use strecklistan_api::inventory::InventoryBundle as InventoryBundleObj;
 use strecklistan_api::inventory::{
     InventoryBundleId, InventoryItemId, InventoryItemStock, InventoryItemTag,
-    NewInventoryBundle as NewInventoryBundleObj,
+    NewInventoryBundle as NewInventoryBundleObj, NewInventoryItem,
 };
 
 #[get("/inventory/items")]
-pub fn get_inventory(
+pub fn get_items(
     db_pool: &State<DatabasePool>,
     accept: SerAccept,
 ) -> Result<Ser<HashMap<InventoryItemId, InventoryItemStock>>, SJ> {
@@ -34,6 +34,55 @@ pub fn get_inventory(
     ))
 }
 
+#[post("/inventory/item", data = "<item>")]
+pub fn post_item(
+    db_pool: &State<DatabasePool>,
+    accept: SerAccept,
+    item: Json<NewInventoryItem>,
+) -> Result<Ser<InventoryItemId>, SJ> {
+    let NewInventoryItem {
+        name,
+        price,
+        image_url,
+    } = item.into_inner();
+    let connection = db_pool.inner().get()?;
+    use crate::schema::tables::inventory::dsl;
+    let id = diesel::insert_into(dsl::inventory)
+        .values((
+            dsl::name.eq(name),
+            dsl::price.eq(price),
+            dsl::image_url.eq(image_url),
+        ))
+        .returning(dsl::id)
+        .get_result(&connection)?;
+    Ok(accept.ser(id))
+}
+
+#[put("/inventory/item/<id>", data = "<item>")]
+pub fn put_item(
+    db_pool: &State<DatabasePool>,
+    id: InventoryItemId,
+    item: Json<NewInventoryItem>,
+) -> Result<SJ, SJ> {
+    let NewInventoryItem {
+        name,
+        price,
+        image_url,
+    } = item.into_inner();
+    let connection = db_pool.inner().get()?;
+    use crate::schema::tables::inventory::dsl;
+    diesel::update(dsl::inventory)
+        .filter(dsl::id.eq(id))
+        .set((
+            dsl::name.eq(name),
+            dsl::price.eq(price),
+            dsl::image_url.eq(image_url),
+        ))
+        .execute(&connection)?;
+
+    Ok(Status::Ok.into())
+}
+
 #[get("/inventory/tags")]
 pub fn get_tags(
     db_pool: &State<DatabasePool>,
@@ -46,7 +95,7 @@ pub fn get_tags(
 }
 
 #[get("/inventory/bundles")]
-pub fn get_inventory_bundles(
+pub fn get_bundles(
     db_pool: &State<DatabasePool>,
     accept: SerAccept,
 ) -> Result<Ser<HashMap<InventoryBundleId, InventoryBundleObj>>, SJ> {
@@ -84,7 +133,7 @@ pub fn get_inventory_bundles(
 }
 
 #[post("/inventory/bundle", data = "<bundle>")]
-pub fn post_inventory_bundle(
+pub fn post_bundle(
     db_pool: &State<DatabasePool>,
     accept: SerAccept,
     bundle: Json<NewInventoryBundleObj>,
@@ -126,7 +175,7 @@ pub fn post_inventory_bundle(
 }
 
 #[put("/inventory/bundle/<bundle_id>", data = "<bundle>")]
-pub fn put_inventory_bundle(
+pub fn put_bundle(
     db_pool: &State<DatabasePool>,
     bundle_id: InventoryBundleId,
     bundle: Json<NewInventoryBundleObj>,
