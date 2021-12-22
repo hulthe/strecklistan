@@ -114,7 +114,7 @@ impl InventoryPage {
                         Ok(_) => InventoryMsg::BundlesChanged,
                         Err(e) => {
                             error!("Failed to save inventory changes", e);
-                            InventoryMsg::ServerError(format!("{:?}", e)) // TODO
+                            InventoryMsg::ServerError(format!("{:?}", e))
                         }
                     }
                 });
@@ -209,14 +209,26 @@ impl InventoryPage {
                 });
             }
             InventoryMsg::NewItem => {
-                // TODO
-                orders.send_msg(Msg::Notification(NotificationMessage::ShowNotification {
-                    duration_ms: 5000,
-                    notification: Notification {
-                        title: "Not Implemented".to_string(),
-                        body: None,
-                    },
-                }));
+                orders_local.perform_cmd(async move {
+                    let result: fetch::Result<()> = async {
+                        Request::new("/api/inventory/item".to_string())
+                            .method(Method::Post)
+                            .json(&default_item())?
+                            .fetch()
+                            .await?
+                            .check_status()?;
+                        Ok(())
+                    }
+                    .await;
+
+                    match result {
+                        Ok(_) => InventoryMsg::ItemsChanged,
+                        Err(e) => {
+                            error!("Failed to create new item", e);
+                            InventoryMsg::ServerError(format!("{:?}", e))
+                        }
+                    }
+                });
             }
             InventoryMsg::ItemsChanged => {
                 rs.mark_as_dirty(Res::items_url(), orders);
@@ -352,7 +364,12 @@ impl InventoryPage {
                 view_input(&row.name).map_msg(move |msg| ItemInput(Name, id, msg)),
                 view_input(&row.price).map_msg(move |msg| ItemInput(Price, id, msg)),
                 view_input(&row.image).map_msg(move |msg| ItemInput(Image, id, msg)),
-                td![/* TODO: add delete button if feasable */],
+                td![
+                    // TODO:
+                    // deleting items can be a destructive action (since the cascade delete would
+                    // affect existing transactions), so implementing this needs to be done with
+                    // care
+                ],
             ]
         };
 
@@ -382,11 +399,11 @@ impl InventoryPage {
                 td![table_wide(), h1![strings::INVENTORY_BUNDLES]],
                 header(),
                 self.bundle_rows.iter().map(bundle_row),
-                wide_button("Nytt paket", InventoryMsg::NewBundle),
+                wide_button(strings::NEW_BUNDLE, InventoryMsg::NewBundle),
                 td![table_wide(), h1![strings::INVENTORY_ITEMS]],
                 header(),
                 self.item_rows.iter().map(item_row),
-                wide_button("Ny vara", InventoryMsg::NewItem),
+                wide_button(strings::NEW_ITEM, InventoryMsg::NewItem),
             ],
         ]
         .map_msg(Msg::Inventory)
@@ -395,10 +412,18 @@ impl InventoryPage {
 
 fn default_bundle() -> NewInventoryBundle {
     NewInventoryBundle {
-        name: "Nytt Paket".to_string(),
+        name: strings::NEW_BUNDLE.to_string(),
         price: 1000.into(),
         image_url: None,
         item_ids: vec![],
+    }
+}
+
+fn default_item() -> NewInventoryItem {
+    NewInventoryItem {
+        name: strings::NEW_ITEM.to_string(),
+        price: None,
+        image_url: None,
     }
 }
 

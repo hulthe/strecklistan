@@ -35,3 +35,5 @@ pub const TRANSACTION_TOTAL: &str = "Totalt:";
 
 pub const INVENTORY_ITEMS: &str = "Varor";
 pub const INVENTORY_BUNDLES: &str = "Paket";
+pub const NEW_ITEM: &str = "Ny vara";
+pub const NEW_BUNDLE: &str = "Nytt paket";
