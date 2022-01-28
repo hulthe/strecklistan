@@ -1025,7 +1025,8 @@ video {
 
 .transactions_page_show_delete {
 	background-color: #fdc;
-	padding: 0.2rem;
+	padding: 0.2rem 0.5rem;
+    border: 1px dotted black;
 	border-radius: 0.2rem;
 	font-size: 1.2rem;
 	font-family: 'Ubuntu';
