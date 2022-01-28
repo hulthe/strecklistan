@@ -1018,6 +1018,10 @@ video {
 	border-bottom: solid black;
 }
 
+.transaction_view:last-child {
+	border-bottom: none;
+}
+
 .transactions_page_button_box {
 	margin-left: auto;
 	margin-right: auto;
