@@ -1279,3 +1279,7 @@ input[type=number] {
 	background-color: #a0a0a0;
 	cursor: default;
 }
+
+.space_above {
+	margin-top: 0.5em;
+}

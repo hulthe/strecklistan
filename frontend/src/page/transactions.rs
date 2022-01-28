@@ -297,6 +297,7 @@ impl TransactionsPage {
                     ],
                     button![
                         C![C.wide_button],
+                        C![C.space_above],
                         "CSV (En rad per vara)",
                         simple_ev(
                             Ev::Click,
