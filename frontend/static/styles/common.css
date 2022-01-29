@@ -1097,6 +1097,20 @@ video {
 
 .wide_button:disabled {
 	background-color: #8ecda9;
+	cursor: default;
+}
+
+.button_danger {
+	background-color: #7b3434;
+}
+
+.button_danger:hover {
+	background-color: #6d0505;
+}
+
+.button_danger:disabled {
+	background-color: #Bb7474;
+	z-index: 2;
 }
 
 @keyframes slide_down {
@@ -1106,6 +1120,22 @@ video {
 	100% {
 		transform: translateY(0);
 	}
+}
+
+.wide_button_foldout {
+	border-top-left-radius: 0;
+	border-top-right-radius: 0;
+	width: 80%;
+	margin-left: 10%;
+	padding-top: 0.1rem;
+	padding-bottom: 0.1rem;
+	animation: 0.7s ease-out 0s 1 slide_down;
+	z-index: 1;
+}
+
+.wide_button_foldout_container {
+	display: flex;
+	flex-direction: column;
 }
 
 .wide_button_message {

@@ -202,7 +202,10 @@ impl StorePage {
             StoreMsg::DebitSelect(selected) => {
                 self.selected_debit = Some(selected);
                 self.tillgodolista_search_string = String::new();
-                self.checkout.set_debited(selected.acc_id(&res));
+                match res.book_accounts.get(&selected.acc_id(&res)) {
+                    Some(acc) => self.checkout.set_debited(acc),
+                    None => error!("Failed to retrieve account {}", selected.acc_id(&res)),
+                }
             }
 
             StoreMsg::SearchInput(input) => {

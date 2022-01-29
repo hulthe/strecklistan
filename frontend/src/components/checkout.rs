@@ -8,6 +8,7 @@ use seed_fetcher::ResourceStore;
 use seed_fetcher::Resources;
 use std::collections::HashMap;
 use std::convert::TryInto;
+use strecklistan_api::book_account::BookAccount;
 use strecklistan_api::{
     book_account::{BookAccountId, MasterAccounts},
     currency::{AbsCurrency, Currency},
@@ -20,6 +21,7 @@ use strecklistan_api::{
 #[derive(Clone, Debug)]
 pub enum CheckoutMsg {
     ConfirmPurchase,
+    OverpayConfirmPurchase,
     PurchaseSent {
         transaction_id: TransactionId,
     },
@@ -44,10 +46,11 @@ pub enum CheckoutMsg {
 pub struct Checkout {
     transaction_total_input: ParsedInput<AbsCurrency>,
     transaction_bundles: Vec<TransactionBundle>,
-    pub debited_account: Option<BookAccountId>,
     override_transaction_total: bool,
+    pub debited_account: Option<BookAccountId>,
     pub confirm_button_message: Option<&'static str>,
     pub disabled: bool,
+    pub overpay_confirm_enabled: bool,
 }
 
 #[derive(Resources)]
@@ -61,6 +64,10 @@ struct Res<'a> {
 
     #[url = "/api/inventory/bundles"]
     bundles: &'a HashMap<InventoryBundleId, InventoryBundle>,
+
+    #[url = "/api/book_accounts"]
+    #[policy = "SilentRefetch"]
+    book_accounts: &'a HashMap<BookAccountId, BookAccount>,
 }
 
 impl Checkout {
@@ -75,6 +82,7 @@ impl Checkout {
             override_transaction_total: false,
             disabled: false,
             confirm_button_message: None,
+            overpay_confirm_enabled: false,
         }
     }
 
@@ -90,6 +98,7 @@ impl Checkout {
         };
 
         match msg {
+            CheckoutMsg::OverpayConfirmPurchase => self.overpay_confirm_enabled = true,
             CheckoutMsg::ConfirmPurchase => {
                 self.remove_cleared_items();
                 if let Some(transaction) = self.build_transaction(rs) {
@@ -249,12 +258,35 @@ impl Checkout {
             .into()
     }
 
-    pub fn set_debited(&mut self, acc_id: BookAccountId) {
-        self.debited_account = Some(acc_id);
+    pub fn set_debited(&mut self, account: &BookAccount) {
+        self.debited_account = Some(account.id);
     }
 
     pub fn remove_cleared_items(&mut self) {
         self.transaction_bundles.retain(|bundle| bundle.change != 0);
+    }
+
+    pub fn too_expensive(&self, res: &Res) -> bool {
+        let abs_currency: Currency = match self.transaction_total_input.parsed().copied() {
+            None => return false,
+            Some(abs_curr) => abs_curr.into(),
+        };
+
+        let book_account_id = match self.debited_account {
+            None => {
+                // No account is selected
+                return false;
+            }
+            Some(balance) => balance,
+        };
+
+        let book_account = &res.book_accounts[&book_account_id];
+
+        if book_account.balance < abs_currency {
+            return true;
+        }
+
+        false
     }
 
     pub fn view(&self, rs: &ResourceStore) -> Node<CheckoutMsg> {
@@ -350,11 +382,41 @@ impl Checkout {
                         "Slutför Köp",
                     ]
                 } else {
-                    button![
-                        C![C.wide_button, C.border_on_focus],
-                        simple_ev(Ev::Click, CheckoutMsg::ConfirmPurchase),
-                        "Slutför Köp",
-                    ]
+                    if self.too_expensive(&res) {
+                        if self.overpay_confirm_enabled {
+                            // Double check if the user really wants to go through with the transaction.
+                            div![
+                                C![C.wide_button_foldout_container],
+                                button![
+                                    C![C.wide_button, C.border_on_focus, C.button_danger],
+                                    attrs! { At::Disabled => true },
+                                    "Slutför Köp",
+                                ],
+                                button![
+                                    C![
+                                        C.wide_button,
+                                        C.border_on_focus,
+                                        C.button_danger,
+                                        C.wide_button_foldout
+                                    ],
+                                    simple_ev(Ev::Click, CheckoutMsg::ConfirmPurchase),
+                                    "Godkänn överbetalning"
+                                ],
+                            ]
+                        } else {
+                            button![
+                                C![C.wide_button, C.border_on_focus, C.button_danger],
+                                simple_ev(Ev::Click, CheckoutMsg::OverpayConfirmPurchase),
+                                "Slutför Köp",
+                            ]
+                        }
+                    } else {
+                        button![
+                            C![C.wide_button, C.border_on_focus],
+                            simple_ev(Ev::Click, CheckoutMsg::ConfirmPurchase),
+                            "Slutför Köp",
+                        ]
+                    }
                 }
             } else {
                 button![
