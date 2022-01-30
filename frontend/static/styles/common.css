@@ -1018,7 +1018,7 @@ video {
 	border-bottom: solid black;
 }
 
-.transaction_view:last-child {
+.transaction_view:last-of-type {
 	border-bottom: none;
 }
 
