@@ -1018,6 +1018,10 @@ video {
 	border-bottom: solid black;
 }
 
+.transaction_view:last-of-type {
+	border-bottom: none;
+}
+
 .transactions_page_button_box {
 	margin-left: auto;
 	margin-right: auto;
@@ -1025,7 +1029,8 @@ video {
 
 .transactions_page_show_delete {
 	background-color: #fdc;
-	padding: 0.2rem;
+	padding: 0.2rem 0.5rem;
+    border: 1px dotted black;
 	border-radius: 0.2rem;
 	font-size: 1.2rem;
 	font-family: 'Ubuntu';
@@ -1278,4 +1283,8 @@ input[type=number] {
 .greyed_out:disabled {
 	background-color: #a0a0a0;
 	cursor: default;
+}
+
+.space_above {
+	margin-top: 0.5em;
 }

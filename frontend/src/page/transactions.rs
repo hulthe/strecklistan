@@ -297,6 +297,7 @@ impl TransactionsPage {
                     ],
                     button![
                         C![C.wide_button],
+                        C![C.space_above],
                         "CSV (En rad per vara)",
                         simple_ev(
                             Ev::Click,
@@ -335,6 +336,7 @@ impl TransactionsPage {
                     C![C.transactions_page_button_box],
                     button![
                         C![C.transactions_page_show_delete],
+                        C![C.space_above],
                         "Radera transaktioner?",
                         simple_ev(Ev::Click, TransactionsMsg::SetShowDelete(!self.show_delete)),
                     ],
