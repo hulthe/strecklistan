@@ -273,7 +273,7 @@ impl StorePage {
                 message_title,
                 message_body,
             } => {
-                self.checkout.disabled = false;
+                self.checkout.waiting_for_izettle = false;
                 self.checkout.confirm_button_message = None;
                 orders.send_msg(Msg::Notification(NotificationMessage::ShowNotification {
                     duration_ms: 10000,
@@ -291,7 +291,7 @@ impl StorePage {
                         if self.selected_debit == Some(SelectedDebit::IZettleEPay) =>
                     {
                         if let Some(transaction) = self.checkout.build_transaction(rs) {
-                            self.checkout.disabled = true;
+                            self.checkout.waiting_for_izettle = true;
                             self.checkout.remove_cleared_items();
                             self.checkout.confirm_button_message =
                                 Some(strings::WAITING_FOR_PAYMENT);
