@@ -1,4 +1,4 @@
-FROM rust:1.54 as build_stage
+FROM rust:1.58.1 as build_stage
 
 RUN apt-get update &&\
     apt-get install -y postgresql-client netcat &&\

@@ -5,7 +5,7 @@
 .vscode
 
 # Cargo
-target/
+target*/
 **/*.rs.bk
 
 # Trunk

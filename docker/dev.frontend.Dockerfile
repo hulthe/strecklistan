@@ -1,4 +1,4 @@
-FROM rust:1.54 as build_stage
+FROM rust:1.58.1 as build_stage
 
 RUN cargo install --locked cargo-make trunk
 RUN rustup target add wasm32-unknown-unknown
