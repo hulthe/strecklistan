@@ -972,6 +972,10 @@ video {
 	margin: auto;
 	margin-top: 0.25rem;
 	margin-bottom: 0.25rem;
+
+	background-position: center;
+	background-size: contain;
+	background-repeat: no-repeat;
 }
 
 .inventory_item_header {

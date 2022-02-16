@@ -72,7 +72,7 @@ pub fn view_inventory_item(
         div![
             C![C.inventory_item_image],
             attrs! { At::Style =>
-                format!("background-image: url({}); background-size: contain", image_url),
+                format!("background-image: url({})", image_url),
             },
         ],
         p![
