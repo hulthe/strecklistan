@@ -17,6 +17,7 @@ use strecklistan_api::inventory::{
     InventoryBundleId, InventoryItemId, InventoryItemStock, InventoryItemTag,
     NewInventoryBundle as NewInventoryBundleObj, NewInventoryItem,
 };
+use strecklistan_api::transaction::TransactionId;
 
 #[get("/inventory/items")]
 pub fn get_items(
@@ -87,14 +88,33 @@ pub fn put_item(
 #[delete("/inventory/item/<id>")]
 pub fn delete_item(db_pool: &State<DatabasePool>, id: InventoryItemId) -> Result<SJ, SJ> {
     let connection = db_pool.inner().get()?;
+    connection.transaction::<_, SJ, _>(|| {
+        // check if an existing transaction is referencing this item
+        let can_delete = {
+            use crate::schema::tables::transaction_items::dsl;
+            dsl::transaction_items
+                .filter(dsl::item_id.eq(id))
+                .select(dsl::id)
+                .get_result::<TransactionId>(&connection)
+                .optional()?
+                .is_none()
+        };
 
-    use crate::schema::tables::inventory::dsl;
-    diesel::update(dsl::inventory)
-        .filter(dsl::id.eq(id))
-        .set(dsl::deleted_at.eq(Utc::now()))
-        .execute(&connection)?;
+        use crate::schema::tables::inventory::dsl;
 
-    Ok(Status::Ok.into())
+        if can_delete {
+            // if no transaction references this item, we can delete it
+            diesel::delete(dsl::inventory.filter(dsl::id.eq(id))).execute(&connection)?;
+        } else {
+            // otherwise just mark it as deleted
+            diesel::update(dsl::inventory)
+                .filter(dsl::id.eq(id))
+                .set(dsl::deleted_at.eq(Utc::now()))
+                .execute(&connection)?;
+        }
+
+        Ok(Status::Ok.into())
+    })
 }
 
 #[get("/inventory/tags")]
