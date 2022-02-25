@@ -66,6 +66,7 @@ async fn main() {
                 rest::inventory::get_items,
                 rest::inventory::post_item,
                 rest::inventory::put_item,
+                rest::inventory::delete_item,
                 rest::inventory::get_tags,
                 rest::inventory::get_bundles,
                 rest::inventory::put_bundle,

@@ -342,7 +342,9 @@ impl StorePage {
         let items = res
             .inventory
             .values()
-            // Don't show items without a default price in the store view
+            // Don't show deleted items
+            .filter(|item| item.deleted_at.is_none())
+            // Don't show items without a default price
             .filter(|item| item.price.is_some())
             .map(|item| (Default::default(), StoreItemId::Item(item.id)));
 

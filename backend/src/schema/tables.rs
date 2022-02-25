@@ -37,6 +37,7 @@ table! {
         name -> Nullable<Text>,
         price -> Nullable<Int4>,
         image_url -> Nullable<Text>,
+        deleted_at -> Nullable<Timestamptz>,
     }
 }
 

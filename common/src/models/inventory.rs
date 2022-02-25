@@ -1,4 +1,5 @@
 use crate::currency::Currency;
+use chrono::{DateTime, Utc};
 
 #[cfg(feature = "diesel_impl")]
 use diesel_derives::Queryable;
@@ -21,6 +22,7 @@ pub struct InventoryItem {
     pub name: String,
     pub price: Option<i32>,
     pub image_url: Option<String>,
+    pub deleted_at: Option<DateTime<Utc>>,
 }
 
 impl PartialEq for InventoryItem {
@@ -47,6 +49,7 @@ pub struct InventoryItemStock {
     pub name: String,
     pub price: Option<i32>,
     pub image_url: Option<String>,
+    pub deleted_at: Option<DateTime<Utc>>,
     pub stock: i32,
 }
 

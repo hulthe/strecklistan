@@ -27,7 +27,7 @@ pub enum InventoryMsg {
     SaveBundle(InventoryBundleId),
     NewBundle,
 
-    //DeleteItem(InventoryItemId
+    DeleteItem(InventoryItemId),
     SaveItem(InventoryItemId),
     NewItem,
 
@@ -94,30 +94,35 @@ impl InventoryPage {
 
         let mut orders_local = orders.proxy(Msg::Inventory);
 
+        let delete_request = |uri: String, msg: InventoryMsg| async {
+            let result: fetch::Result<()> = async {
+                Request::new(uri)
+                    .method(Method::Delete)
+                    .fetch()
+                    .await?
+                    .check_status()?;
+
+                Ok(())
+            }
+            .await;
+
+            match result {
+                Ok(_) => msg,
+                Err(e) => {
+                    error!("Failed to save inventory changes", e);
+                    InventoryMsg::ServerError(format!("{:?}", e))
+                }
+            }
+        };
+
         match msg {
             InventoryMsg::ResFetched(_) => self.rebuild_data(&res),
             InventoryMsg::ResMarkDirty(_) => {}
             InventoryMsg::DeleteBundle(id) => {
-                orders_local.perform_cmd(async move {
-                    let result: fetch::Result<()> = async {
-                        Request::new(format!("/api/inventory/bundle/{}", id))
-                            .method(Method::Delete)
-                            .fetch()
-                            .await?
-                            .check_status()?;
-
-                        Ok(())
-                    }
-                    .await;
-
-                    match result {
-                        Ok(_) => InventoryMsg::BundlesChanged,
-                        Err(e) => {
-                            error!("Failed to save inventory changes", e);
-                            InventoryMsg::ServerError(format!("{:?}", e))
-                        }
-                    }
-                });
+                orders_local.perform_cmd(delete_request(
+                    format!("/api/inventory/bundle/{}", id),
+                    InventoryMsg::BundlesChanged,
+                ));
             }
             InventoryMsg::SaveBundle(id) => {
                 let row = &self.bundle_rows[&id];
@@ -174,6 +179,12 @@ impl InventoryPage {
                         }
                     }
                 });
+            }
+            InventoryMsg::DeleteItem(id) => {
+                orders_local.perform_cmd(delete_request(
+                    format!("/api/inventory/item/{}", id),
+                    InventoryMsg::ItemsChanged,
+                ));
             }
             InventoryMsg::SaveItem(id) => {
                 let row = &self.item_rows[&id];
@@ -271,9 +282,9 @@ impl InventoryPage {
             input.with_error_message(strings::INVALID_MONEY_MESSAGE_SHORT)
         }
 
+        // update bundle rows
         self.bundle_rows
             .retain(|id, _| res.bundles.contains_key(id));
-
         for (&id, bundle) in res.bundles.iter() {
             if let Some(row) = self.bundle_rows.get_mut(&id) {
                 row.original = bundle.clone();
@@ -292,8 +303,8 @@ impl InventoryPage {
             }
         }
 
+        // update item rows
         self.item_rows.retain(|id, _| res.items.contains_key(id));
-
         for (&id, item) in res.items.iter() {
             if let Some(row) = self.item_rows.get_mut(&id) {
                 row.original = item.clone();
@@ -312,6 +323,10 @@ impl InventoryPage {
                 );
             }
         }
+
+        // don't show deleted items
+        self.item_rows
+            .retain(|_, row| row.original.deleted_at.is_none());
     }
 
     pub fn view(&self, rs: &ResourceStore) -> Node<Msg> {
@@ -324,7 +339,7 @@ impl InventoryPage {
         };
 
         fn view_input<T>(input: &ParsedInput<T>) -> Node<ParsedInputMsg> {
-            td![input.view(C![C.inventory_page_input]),]
+            td![input.view(C![C.inventory_page_input])]
         }
 
         let bundle_row = |(&id, row): (&InventoryBundleId, &Row<InventoryBundle>)| {
@@ -364,12 +379,10 @@ impl InventoryPage {
                 view_input(&row.name).map_msg(move |msg| ItemInput(Name, id, msg)),
                 view_input(&row.price).map_msg(move |msg| ItemInput(Price, id, msg)),
                 view_input(&row.image).map_msg(move |msg| ItemInput(Image, id, msg)),
-                td![
-                    // TODO:
-                    // deleting items can be a destructive action (since the cascade delete would
-                    // affect existing transactions), so implementing this needs to be done with
-                    // care
-                ],
+                td![button![
+                    C![C.inventory_page_delete_button],
+                    simple_ev(Ev::Click, InventoryMsg::DeleteItem(id)),
+                ]],
             ]
         };
 

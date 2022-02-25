@@ -5,6 +5,7 @@ use crate::models::inventory::{
 };
 use crate::util::ser::{Ser, SerAccept};
 use crate::util::status_json::StatusJson as SJ;
+use chrono::Utc;
 use diesel::prelude::*;
 use itertools::Itertools;
 use rocket::http::Status;
@@ -78,6 +79,19 @@ pub fn put_item(
             dsl::price.eq(price),
             dsl::image_url.eq(image_url),
         ))
+        .execute(&connection)?;
+
+    Ok(Status::Ok.into())
+}
+
+#[delete("/inventory/item/<id>")]
+pub fn delete_item(db_pool: &State<DatabasePool>, id: InventoryItemId) -> Result<SJ, SJ> {
+    let connection = db_pool.inner().get()?;
+
+    use crate::schema::tables::inventory::dsl;
+    diesel::update(dsl::inventory)
+        .filter(dsl::id.eq(id))
+        .set(dsl::deleted_at.eq(Utc::now()))
         .execute(&connection)?;
 
     Ok(Status::Ok.into())
