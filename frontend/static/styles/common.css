@@ -1048,6 +1048,14 @@ video {
 	font-family: 'Ubuntu';
 }
 
+.transaction_view_receipt_button {
+	float: right;
+	border: black solid thin;
+	border-radius: 0.2rem;
+	padding-left: 0.5rem;
+	padding-right: 0.5rem;
+}
+
 .transaction_view_delete_button {
 	float: right;
 	border: black solid thin;

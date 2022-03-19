@@ -369,7 +369,12 @@ fn view_transaction(
             C![C.transaction_line],
             span![format!("#{} ", transaction.id)],
             span![transaction.description.as_deref().unwrap_or("Transaktion")],
-            if show_delete {
+            a![
+                C![C.transaction_view_receipt_button],
+                "R",
+                attrs! {At::Href => format!("/api/receipt/{}", transaction.id)},
+            ],
+            IF![show_delete => {
                 button![
                     C![C.transaction_view_delete_button],
                     simple_ev(
@@ -378,9 +383,7 @@ fn view_transaction(
                     ),
                     "✖",
                 ]
-            } else {
-                empty![]
-            },
+            }],
         ],
         p![
             C![C.transaction_line],
