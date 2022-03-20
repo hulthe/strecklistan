@@ -17,6 +17,7 @@ use crate::util::{catchers, FileResponder};
 use clap::Parser;
 use dotenv::dotenv;
 use rocket::routes;
+use rocket_dyn_templates::Template;
 
 #[derive(Default, Parser)]
 pub struct Opt {
@@ -58,6 +59,7 @@ async fn main() {
             enable_cache: opt.static_file_cache,
             max_age: opt.max_age,
         })
+        .attach(Template::fairing())
         .mount(
             "/api/",
             routes![
@@ -80,6 +82,7 @@ async fn main() {
                 rest::book_account::add_account,
                 rest::member::get_members,
                 rest::member::add_member_with_book_account,
+                rest::receipt::get_receipt,
                 rest::get_api_version,
                 rest::izettle::izettle_bridge_poll::poll_for_transaction,
                 rest::izettle::izettle_bridge_result::complete_izettle_transaction,

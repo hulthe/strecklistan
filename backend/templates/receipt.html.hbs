@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>Kvitto {{date}}</title>
+    <style>
+        * {
+            margin: 0;
+        }
+
+        body {
+            width: 100%;
+        }
+
+        .receipt-container {
+            width: 100%;
+            max-width: 360px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0 auto;
+        }
+
+        table {
+            width: 100%;
+            border: 2px dotted #202020;
+            border-right: none;
+            border-left: none;
+            margin-top: 1rem;
+        }
+
+        td:first-child,
+        th:first-child {
+            text-align: left;
+        }
+
+        th:not(:first-child),
+        td:not(:first-child) {
+            text-align: right;
+        }
+
+        .total-container {
+            width: 100%;
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+        }
+
+        .right-aligned {
+            margin-left: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="receipt-container">
+        <h3>Kvitto för köp hos DrawIT</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>
+                        Vara
+                    </th>
+                    <th>
+                        Antal
+                    </th>
+                    <th>
+                        Kostnad
+                    </th>
+                </tr>
+                {{#each products}}
+                <tr>
+                    <td>
+                        {{this.product}}
+                    </td>
+                    <td>
+                        {{this.count}} x
+                    </td>
+                    <td>
+                        {{this.amount}}
+                    </td>
+                </tr>
+                {{/each}}
+            </thead>
+        </table>
+        <div class="total-container">
+            <div>Totalt </div>
+            <div>{{total}}</div>
+        </div>
+        <table>
+            <tr>
+                <td>
+                    {{card_type}}
+                </td>
+                <td>
+                    ************{{card_number_last_four}}
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    Datum
+                </td>
+                <td>
+                    {{date}}
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    Typ
+                </td>
+                <td>
+                    {{payment_method}}
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    Bank
+                </td>
+                <td>
+                    {{bank}}
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    Transaktions ID
+                </td>
+                <td>
+                    {{transaction_id}}
+                </td>
+            </tr>
+        </table>
+        Välkommen åter!
+    </div>
+</body>
+
+</html>

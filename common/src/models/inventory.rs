@@ -19,7 +19,7 @@ pub type InventoryBundleId = i32;
 #[derive(Clone)]
 pub struct InventoryItem {
     pub id: InventoryItemId,
-    pub name: String,
+    pub name: Option<String>,
     pub price: Option<i32>,
     pub image_url: Option<String>,
     pub deleted_at: Option<DateTime<Utc>>,

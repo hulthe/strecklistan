@@ -3,6 +3,7 @@ pub mod event;
 pub mod inventory;
 pub mod izettle;
 pub mod member;
+pub mod receipt;
 pub mod transaction;
 
 use rocket::get;
