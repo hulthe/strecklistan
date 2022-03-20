@@ -1058,9 +1058,14 @@ video {
 	color: white;
 }
 
+.new_transaction_extra_bundle {
+	background-color: wheat;
+}
+
 .new_transaction_bundle_amount_field {
 	width: 3rem;
 	text-align: right;
+	display: inline-block;
 }
 
 .new_transaction_total_row {

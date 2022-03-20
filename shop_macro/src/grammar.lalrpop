@@ -1,0 +1,79 @@
+//! Grammar for the shop macro
+//! example:
+//! ```
+//! item any where price >= 6 and
+//! bundle "Mat" -> bundle "Rabatt"
+//! ```
+
+
+use std::str::FromStr;
+use crate::*;
+
+grammar;
+
+pub Macro: Macro =
+    <patterns:Patterns>
+    "->"
+    <effect:Effect> => Macro {
+        patterns,
+        effect,
+    };
+
+Patterns: Vec<Pattern> = {
+    <mut v:Patterns> "and" <p:Pattern> => {
+        v.push(p);
+        v
+    },
+    Pattern => vec![<>],
+}
+
+Pattern: Pattern =
+    <selector:Selector>
+    <where_clause:Where?>
+    => Pattern {
+        selector,
+        where_clause,
+    };
+
+Selector: Selector = <tag:Tag> <id:Id> => Selector { tag, id };
+
+
+Tag: Tag = {
+    "item" => Tag::Item,
+    "bundle" => Tag::Bundle,
+}
+
+Id: Id = {
+    "any" => Id::Any,
+    String => Id::Is(<>),
+}
+
+Where: Where = {
+    "where"
+    <field:Field>
+    <operator:Op>
+    <value:Value> => Where {
+        field,
+        operator,
+        value,
+    },
+};
+
+Value: f64 = r"[0-9]+(\.[0-9]+)?" => f64::from_str(<>).unwrap();
+
+Field: Field = {
+    "price" => Field::Price,
+};
+
+Op: Op = {
+    ">=" => Op::GrEq,
+    ">" => Op::GrTh,
+    "<=" => Op::LeTh,
+    "<" => Op::LeTh,
+    "==" => Op::Eq,
+    "!=" => Op::NotEq,
+};
+
+Effect: Effect = <tag:Tag> <name:String> => Effect { tag, name };
+
+String: String = r#""[^"]*""# => <>.trim_matches('"').to_owned();

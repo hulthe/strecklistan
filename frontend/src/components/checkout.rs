@@ -6,6 +6,7 @@ use seed::prelude::*;
 use seed::*;
 use seed_fetcher::ResourceStore;
 use seed_fetcher::Resources;
+use shop_macro::Macro;
 use std::collections::HashMap;
 use std::convert::TryInto;
 use strecklistan_api::book_account::{BookAccount, BookAccountType};
@@ -40,12 +41,16 @@ pub enum CheckoutMsg {
         change: i32,
     },
     ClearCart,
+    ToggleMacros,
 }
 
 #[derive(Clone)]
 pub struct Checkout {
     transaction_total_input: ParsedInput<AbsCurrency>,
     transaction_bundles: Vec<TransactionBundle>,
+    extra_transaction_bundles: Vec<TransactionBundle>,
+    macros: Vec<Macro>,
+    enable_macros: bool,
     override_transaction_total: bool,
     pub debited_account: Option<BookAccountId>,
     pub confirm_button_message: Option<&'static str>,
@@ -75,6 +80,19 @@ impl Checkout {
         Res::acquire(rs, orders).ok();
         Checkout {
             transaction_bundles: vec![],
+            extra_transaction_bundles: vec![],
+            macros: [
+                r#"bundle "Mat" and item any where price >= 6 -> bundle "Rabatt: Mat+""#,
+                r#"bundle "Rabatt" -> bundle "Rabatt""#,
+            ]
+            .map(|s| {
+                shop_macro::MacroParser::new()
+                    .parse(s)
+                    .expect("parse macro")
+            })
+            .into_iter()
+            .collect(),
+            enable_macros: true,
             debited_account: None,
             transaction_total_input: ParsedInput::new_with_text("0")
                 .with_error_message(strings::INVALID_MONEY_MESSAGE_SHORT)
@@ -181,23 +199,7 @@ impl Checkout {
                 }
             }
             CheckoutMsg::AddBundle { bundle_id, amount } => {
-                let bundle = res
-                    .bundles
-                    .get(&bundle_id)
-                    .unwrap_or_else(|| panic!("No inventory bundle with that id exists"))
-                    .clone();
-
-                let mut item_ids = HashMap::new();
-                for &id in bundle.item_ids.iter() {
-                    *item_ids.entry(id).or_default() += 1;
-                }
-
-                let bundle = TransactionBundle {
-                    description: Some(bundle.name.clone()),
-                    price: Some(bundle.price),
-                    change: -amount,
-                    item_ids,
-                };
+                let bundle = self.make_bundle(&res, bundle_id, amount);
 
                 if let Some(b) = self
                     .transaction_bundles
@@ -219,7 +221,13 @@ impl Checkout {
             CheckoutMsg::ClearCart => {
                 self.transaction_bundles.clear();
             }
+            CheckoutMsg::ToggleMacros => self.enable_macros = !self.enable_macros,
         }
+
+        self.extra_transaction_bundles = self
+            .enable_macros
+            .then(|| self.apply_macros(&res))
+            .unwrap_or_default();
 
         self.recompute_new_transaction_total();
     }
@@ -229,6 +237,7 @@ impl Checkout {
             let amount: Currency = self
                 .transaction_bundles
                 .iter()
+                .chain(self.extra_transaction_bundles.iter())
                 .map(|bundle| -bundle.change * bundle.price.map(|p| p.into()).unwrap_or(0i32))
                 .sum::<i32>()
                 .into();
@@ -242,8 +251,15 @@ impl Checkout {
             .ok()
             .zip(self.transaction_total_input.parsed().copied())
             .and_then(|(res, amount)| {
+                let bundles = self
+                    .transaction_bundles
+                    .clone()
+                    .into_iter()
+                    .chain(self.extra_transaction_bundles.iter().cloned())
+                    .collect();
+
                 Some(NewTransaction {
-                    bundles: self.transaction_bundles.clone(),
+                    bundles,
                     amount: amount.into(),
                     description: Some(strings::TRANSACTION_SALE.into()),
                     credited_account: res.master_accounts.sales_account_id,
@@ -312,37 +328,36 @@ impl Checkout {
             Err(_) => return div!["loading"],
         };
 
-        div![
-            C![C.new_transaction_view],
-            self.transaction_bundles
-                .iter()
-                .enumerate()
-                .rev() // display newest bundle first
-                .map(|(bundle_index, bundle)| {
-                    let mut items = bundle.item_ids.keys().map(|id| &res.inventory[id]);
+        let extra = &self.extra_transaction_bundles;
 
-                    // TODO: Properly display more complicated bundles
+        let view_bundle = |editable: bool| {
+            move |(bundle_index, bundle): (usize, &TransactionBundle)| {
+                let mut items = bundle.item_ids.keys().map(|id| &res.inventory[id]);
 
-                    let (item_name, item_price) = match items.next() {
-                        None => (None, 0),
-                        Some(InventoryItem { name, price, .. }) => {
-                            (Some(name.as_str()), price.unwrap_or(0))
-                        }
-                    };
+                // TODO: Properly display more complicated bundles
 
-                    let name = bundle
-                        .description
-                        .as_deref()
-                        .or(item_name)
-                        .unwrap_or("[NAMN SAKNAS]");
-                    let price = bundle.price.unwrap_or_else(|| item_price.into());
+                let (item_name, item_price) = match items.next() {
+                    None => (None, 0),
+                    Some(InventoryItem { name, price, .. }) => {
+                        (Some(name.as_str()), price.unwrap_or(0))
+                    }
+                };
 
-                    p![
-                        if bundle.change == 0 {
-                            C![C.line_through, C.transaction_entry]
-                        } else {
-                            C![C.transaction_entry]
-                        },
+                let name = bundle
+                    .description
+                    .as_deref()
+                    .or(item_name)
+                    .unwrap_or("[NAMN SAKNAS]");
+                let price = bundle.price.unwrap_or_else(|| item_price.into());
+
+                p![
+                    IF![!editable => C![C.new_transaction_extra_bundle]],
+                    if bundle.change == 0 {
+                        C![C.line_through, C.transaction_entry]
+                    } else {
+                        C![C.transaction_entry]
+                    },
+                    if editable {
                         input![
                             C![C.new_transaction_bundle_amount_field, C.border_on_focus],
                             attrs! { At::Value => -bundle.change },
@@ -353,12 +368,27 @@ impl Checkout {
                                     change: -input.parse().unwrap_or(0),
                                 }
                             }),
-                        ],
-                        span![C![C.transaction_entry_item_name], format!("x {}", name),],
-                        span![C![C.transaction_entry_item_price], format!("{}:-", price),],
-                    ]
-                })
-                .collect::<Vec<_>>(),
+                        ]
+                    } else {
+                        span![
+                            C![C.new_transaction_bundle_amount_field, C.border_on_focus],
+                            -bundle.change,
+                        ]
+                    },
+                    span![C![C.transaction_entry_item_name], format!("x {}", name),],
+                    span![C![C.transaction_entry_item_price], format!("{}:-", price),],
+                ]
+            }
+        };
+
+        div![
+            C![C.new_transaction_view],
+            self.transaction_bundles
+                .iter()
+                .enumerate()
+                .rev() // display newest bundle first
+                .map(view_bundle(true)),
+            extra.iter().enumerate().map(view_bundle(false)),
             div![
                 C![C.new_transaction_total_row],
                 span![C![C.new_transaction_total_text], strings::TRANSACTION_TOTAL],
@@ -434,5 +464,119 @@ impl Checkout {
                 empty![]
             },
         ]
+    }
+
+    fn make_bundle(&self, res: &Res, id: InventoryBundleId, amount: i32) -> TransactionBundle {
+        let bundle = res
+            .bundles
+            .get(&id)
+            .unwrap_or_else(|| panic!("No inventory bundle with that id exists"))
+            .clone();
+
+        let mut item_ids = HashMap::new();
+        for &id in bundle.item_ids.iter() {
+            *item_ids.entry(id).or_default() += 1;
+        }
+
+        TransactionBundle {
+            description: Some(bundle.name.clone()),
+            price: Some(bundle.price),
+            change: -amount,
+            item_ids,
+        }
+    }
+
+    fn apply_macros(&self, res: &Res) -> Vec<TransactionBundle> {
+        use shop_macro::*;
+        use std::cmp::min;
+
+        let mut out = vec![];
+
+        let bundles = &self.transaction_bundles;
+        for m in &self.macros {
+            let mut total_matches = None;
+
+            let cmp_op = |a: f64, b: f64, op| match op {
+                Op::GrEq => a >= b,
+                Op::GrTh => a > b,
+                Op::LeEq => a <= b,
+                Op::LeTh => a < b,
+                Op::Eq => a == b,
+                Op::NotEq => a != b,
+            };
+
+            // go through each pattern
+            for p in m.patterns.iter() {
+                let test_bundle = |bundle: &&TransactionBundle| {
+                    if let Some(where_clause) = &p.where_clause {
+                        let v = match where_clause.field {
+                            Field::Price => bundle.price.unwrap_or_default().as_f64(),
+                        };
+
+                        cmp_op(v, where_clause.value, where_clause.operator)
+                    } else {
+                        true
+                    }
+                };
+                let test_item = |item: InventoryItemId| {
+                    let item = &res.inventory[&item];
+                    if let Some(where_clause) = &p.where_clause {
+                        let v = match where_clause.field {
+                            Field::Price => Currency::from(item.price.unwrap_or(0)).as_f64(),
+                        };
+
+                        cmp_op(v, where_clause.value, where_clause.operator)
+                    } else {
+                        true
+                    }
+                };
+
+                // search transaction for matching elements
+                let bundle_items = bundles
+                    .iter()
+                    .flat_map(|b| {
+                        b.item_ids
+                            .iter()
+                            .map(|(&item, &count)| (item, count as i32 * -b.change))
+                    })
+                    .filter(|&(item, _)| test_item(item))
+                    .filter(|&(_, change)| change > 0);
+
+                let matches = match (&p.selector.tag, &p.selector.id) {
+                    (Tag::Bundle, Id::Any) => {
+                        bundles.iter().filter(test_bundle).map(|b| b.change).sum()
+                    }
+                    (Tag::Bundle, Id::Is(name)) => bundles
+                        .iter()
+                        .filter(|b| b.description.as_deref() == Some(&name))
+                        .filter(test_bundle)
+                        .map(|b| -b.change)
+                        .filter(|&change| change > 0)
+                        .sum(),
+                    (Tag::Item, Id::Any) => bundle_items.map(|(_, change)| change).sum(),
+                    (Tag::Item, Id::Is(_)) => todo!("match item by name"),
+                };
+
+                total_matches = Some(min(matches, total_matches.unwrap_or(i32::MAX)));
+            }
+
+            let total_matches = total_matches.unwrap_or(0);
+
+            if total_matches > 0 {
+                match &m.effect.tag {
+                    Tag::Bundle => {
+                        let name = &m.effect.name;
+                        if let Some(b) = res.bundles.values().find(|b| &b.name == name) {
+                            out.push(self.make_bundle(res, b.id, total_matches));
+                        } else {
+                            log!("warning: macro referenced an unknown bundle: {}", name);
+                        }
+                    }
+                    Tag::Item => todo!("macro adding items"),
+                }
+            }
+        }
+
+        out
     }
 }
