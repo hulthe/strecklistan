@@ -2,7 +2,7 @@
 <html lang="en">
 
 <head>
-    <title>Kvitto {{date}}</title>
+    <title>Kvitto #{{transaction_id}} {{date}}</title>
     <style>
         * {
             margin: 0;
@@ -10,6 +10,7 @@
 
         body {
             width: 100%;
+            font-family: Georgia, serif;
         }
 
         .receipt-container {
@@ -44,6 +45,7 @@
             display: flex;
             flex-direction: row;
             justify-content: space-between;
+            font-weight: 600;
         }
 
         .right-aligned {
@@ -54,31 +56,19 @@
 
 <body>
     <div class="receipt-container">
-        <h3>Kvitto för köp hos DrawIT</h3>
+        <h2>DrawIT</h3>
         <table>
             <thead>
                 <tr>
-                    <th>
-                        Vara
-                    </th>
-                    <th>
-                        Antal
-                    </th>
-                    <th>
-                        Kostnad
-                    </th>
+                    <th>Vara</th>
+                    <th>Antal</th>
+                    <th>Kostnad</th>
                 </tr>
                 {{#each products}}
                 <tr>
-                    <td>
-                        {{this.product}}
-                    </td>
-                    <td>
-                        {{this.count}} x
-                    </td>
-                    <td>
-                        {{this.amount}}
-                    </td>
+                    <td>{{this.product}}</td>
+                    <td>{{this.count}} x</td>
+                    <td>à {{this.amount}}</td>
                 </tr>
                 {{/each}}
             </thead>
@@ -89,44 +79,18 @@
         </div>
         <table>
             <tr>
-                <td>
-                    {{card_type}}
-                </td>
-                <td>
-                    ************{{card_number_last_four}}
-                </td>
+                <td>Datum</td>
+                <td>{{date}}</td>
             </tr>
+            {{#each payment_meta}}
             <tr>
-                <td>
-                    Datum
-                </td>
-                <td>
-                    {{date}}
-                </td>
+                <td>{{key}}</td>
+                <td>{{value}}</td>
             </tr>
+            {{/each}}
             <tr>
-                <td>
-                    Typ
-                </td>
-                <td>
-                    {{payment_method}}
-                </td>
-            </tr>
-            <tr>
-                <td>
-                    Bank
-                </td>
-                <td>
-                    {{bank}}
-                </td>
-            </tr>
-            <tr>
-                <td>
-                    Transaktions ID
-                </td>
-                <td>
-                    {{transaction_id}}
-                </td>
+                <td>Referensnr.</td>
+                <td>{{transaction_id}}</td>
             </tr>
         </table>
         Välkommen åter!

@@ -7,42 +7,48 @@ use rocket::response::content::Html;
 use rocket::{get, State};
 use rocket_dyn_templates::Template;
 use serde::Serialize;
+use strecklistan_api::currency::Currency;
 use strecklistan_api::inventory::InventoryItem;
+use strecklistan_api::transaction::TransactionId;
 
 const RECEIPT_TEMPLATE_NAME: &str = "receipt";
-
-#[derive(Debug, Serialize)]
-struct ReceiptItem {
-    pub product: String,
-    pub count: u32,
-    pub amount: f32,
-}
-
-impl ReceiptItem {
-    fn new(product: String, count: u32, amount: i32) -> ReceiptItem {
-        ReceiptItem {
-            product,
-            count,
-            amount: amount as f32 / 100f32,
-        }
-    }
-}
 
 #[derive(Debug, Serialize)]
 struct ReceiptTemplateData {
     date: String,
     products: Vec<ReceiptItem>,
-    total: f32,
-    card_type: String,
-    card_number_last_four: String,
-    payment_method: String,
-    bank: String,
+    total: f64,
+    transaction_id: TransactionId,
+    payment_meta: Vec<ReceiptMetaItem>,
+}
+
+#[derive(Debug, Serialize)]
+struct ReceiptItem {
+    pub product: String,
+    pub count: i32,
+    pub amount: f64,
+}
+
+#[derive(Debug, Serialize)]
+struct ReceiptMetaItem {
+    key: String,
+    value: String,
+}
+
+impl ReceiptItem {
+    fn new(product: String, count: i32, amount: Currency) -> ReceiptItem {
+        ReceiptItem {
+            product,
+            count,
+            amount: amount.as_f64(),
+        }
+    }
 }
 
 #[get("/receipt/<transaction_id>")]
 pub async fn get_receipt(
     db_pool: &State<DatabasePool>,
-    transaction_id: i32,
+    transaction_id: TransactionId,
 ) -> Result<Html<Template>, SJ> {
     let connection = db_pool.inner().get()?;
 
@@ -55,14 +61,15 @@ pub async fn get_receipt(
             .first(&connection)?
     };
 
-    let izettle_transaction: IZettlePostTransaction = {
+    let izettle: Option<IZettlePostTransaction> = {
         use crate::schema::tables::izettle_post_transaction::dsl::{
             izettle_post_transaction, transaction_id as iz_trans_id,
         };
 
         izettle_post_transaction
             .filter(iz_trans_id.eq(transaction_id))
-            .first(&connection)?
+            .first(&connection)
+            .optional()?
     };
 
     let items: Vec<(
@@ -87,34 +94,30 @@ pub async fn get_receipt(
         .map(|(bundle, _)| {
             ReceiptItem::new(
                 bundle.description.clone().unwrap_or_default(),
-                bundle.change.abs() as u32,
-                bundle.price.unwrap_or_default(),
+                -bundle.change,
+                bundle.price.unwrap_or(0).into(),
             )
         })
         .collect();
 
     let mut trans_item_products: Vec<ReceiptItem> = items
         .into_iter()
-        .filter(|(_, item)| item.is_some())
         .filter_map(|(bundle, item)| {
-            use crate::schema::tables::inventory::dsl::{deleted_at, id as item_id, inventory};
+            use crate::schema::tables::inventory::dsl::{id as item_id, inventory};
 
-            // Safe because of previous is_some() check.
-            let item = item.unwrap();
+            let item = item?;
 
             if let Ok(inventory_item) = inventory
-                .filter(deleted_at.is_null())
                 .filter(item_id.eq(item.item_id))
                 .first::<InventoryItem>(&connection)
             {
                 Some(ReceiptItem::new(
-                    inventory_item
-                        .name
-                        .unwrap_or_else(|| bundle.description.unwrap_or_default()),
-                    bundle.change.abs() as u32,
                     bundle
-                        .price
-                        .unwrap_or_else(|| inventory_item.price.unwrap_or_default()),
+                        .description
+                        .or(inventory_item.name)
+                        .unwrap_or_default(),
+                    -bundle.change,
+                    bundle.price.or(inventory_item.price).unwrap_or(0).into(),
                 ))
             } else {
                 None
@@ -125,16 +128,29 @@ pub async fn get_receipt(
     let mut receipt_items = bundle_only_products;
     receipt_items.append(&mut trans_item_products);
 
+    fn meta<K: ToString>(key: K, value: Option<String>) -> Option<ReceiptMetaItem> {
+        value.map(|value| ReceiptMetaItem {
+            key: key.to_string(),
+            value,
+        })
+    }
+
+    let mut payment_meta = vec![];
+
+    if let Some(izettle) = izettle {
+        payment_meta.append(&mut vec![
+            izettle.card_type.and_then(|t| meta(t, izettle.masked_pan)),
+            meta("Betalsätt", izettle.card_payment_entry_mode),
+            meta("Bank", izettle.card_issuing_bank),
+        ]);
+    }
+
     let data = ReceiptTemplateData {
         date: transaction.time.format("%Y-%m-%d").to_string(),
         products: receipt_items,
-        total: transaction.amount as f32 / 100f32,
-        card_type: izettle_transaction.card_type.unwrap_or_default(),
-        card_number_last_four: izettle_transaction.masked_pan.unwrap_or_default(),
-        payment_method: izettle_transaction
-            .card_payment_entry_mode
-            .unwrap_or_default(),
-        bank: izettle_transaction.card_issuing_bank.unwrap_or_default(),
+        total: Currency::from(transaction.amount).as_f64(),
+        transaction_id,
+        payment_meta: payment_meta.into_iter().flatten().collect(),
     };
 
     Ok(Html(Template::render(RECEIPT_TEMPLATE_NAME, &data)))
