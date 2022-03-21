@@ -371,7 +371,6 @@ fn view_transaction(
             span![transaction.description.as_deref().unwrap_or("Transaktion")],
             a![
                 C![C.transaction_view_receipt_button],
-                "R",
                 attrs! {At::Href => format!("/api/receipt/{}", transaction.id)},
             ],
             IF![show_delete => {
