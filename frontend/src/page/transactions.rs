@@ -34,6 +34,7 @@ pub enum TransactionsMsg {
     FilterMenuMsg(FilterMenuMsg),
     IncreaseViewLimit,
     ExportData(ExportFormat),
+    ShowReceipt(TransactionId),
 
     ResFetched(event::Fetched),
     ResMarkDirty(event::MarkDirty),
@@ -206,6 +207,9 @@ impl TransactionsPage {
                     }
                 }
             }
+            TransactionsMsg::ShowReceipt(id) => {
+                window().open_with_url(&format!("/api/receipt/{id}")).ok();
+            }
         }
 
         Ok(())
@@ -369,9 +373,9 @@ fn view_transaction(
             C![C.transaction_line],
             span![format!("#{} ", transaction.id)],
             span![transaction.description.as_deref().unwrap_or("Transaktion")],
-            a![
+            button![
                 C![C.transaction_view_receipt_button],
-                attrs! {At::Href => format!("/api/receipt/{}", transaction.id)},
+                simple_ev(Ev::Click, TransactionsMsg::ShowReceipt(transaction.id)),
             ],
             IF![show_delete => {
                 button![
