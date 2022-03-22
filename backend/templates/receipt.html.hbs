@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="se">
 
 <head>
     <title>Kvitto #{{transaction_id}} {{date}}</title>
@@ -62,13 +62,13 @@
                 <tr>
                     <th>Vara</th>
                     <th>Antal</th>
-                    <th>Kostnad</th>
+                    <th>Styckpris</th>
                 </tr>
                 {{#each products}}
                 <tr>
                     <td>{{this.product}}</td>
                     <td>{{this.count}} x</td>
-                    <td>à {{this.amount}}</td>
+                    <td>{{this.amount}}</td>
                 </tr>
                 {{/each}}
             </thead>

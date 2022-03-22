@@ -1,4 +1,5 @@
 pub mod event;
+pub mod transaction;
 
 use crate::Opt;
 use diesel::pg::PgConnection;

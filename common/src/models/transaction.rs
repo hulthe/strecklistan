@@ -50,3 +50,42 @@ pub struct TransactionBundle {
     pub change: i32,
     pub item_ids: HashMap<InventoryItemId, u32>,
 }
+
+impl TransactionBundle {
+    pub fn render<'a, F>(
+        &'a self,
+        get_item: &'a F,
+    ) -> RenderedBundle<'a, impl Iterator<Item = RenderedItem<'a>>>
+    where
+        F: Fn(InventoryItemId) -> &'a str + 'a,
+    {
+        let mut items = self
+            .item_ids
+            .iter()
+            .map(|(&id, &count)| (count, get_item(id)));
+
+        RenderedBundle {
+            name: self
+                .description
+                .as_deref()
+                .or_else(|| items.next().map(|(_, name)| name))
+                .unwrap_or("---"),
+
+            price: self.price,
+            change: self.change,
+            items,
+        }
+    }
+}
+
+pub type RenderedItem<'a> = (u32, &'a str);
+
+pub struct RenderedBundle<'a, I>
+where
+    I: Iterator<Item = RenderedItem<'a>> + 'a,
+{
+    pub name: &'a str,
+    pub change: i32,
+    pub price: Option<Currency>,
+    pub items: I,
+}
