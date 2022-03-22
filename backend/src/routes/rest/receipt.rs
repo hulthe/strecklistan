@@ -112,10 +112,7 @@ pub async fn get_receipt(
                 .first::<InventoryItem>(&connection)
             {
                 Some(ReceiptItem::new(
-                    bundle
-                        .description
-                        .or(inventory_item.name)
-                        .unwrap_or_default(),
+                    bundle.description.unwrap_or(inventory_item.name),
                     -bundle.change,
                     bundle.price.or(inventory_item.price).unwrap_or(0).into(),
                 ))

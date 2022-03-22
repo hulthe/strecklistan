@@ -34,7 +34,7 @@ table! {
 table! {
     inventory (id) {
         id -> Int4,
-        name -> Nullable<Text>,
+        name -> Text,
         price -> Nullable<Int4>,
         image_url -> Nullable<Text>,
         deleted_at -> Nullable<Timestamptz>,
