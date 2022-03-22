@@ -23,7 +23,7 @@ pub struct IZettleTransaction {
     pub amount: i32,
 }
 
-#[derive(Queryable, Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Queryable, Serialize, Deserialize, Debug, Default, PartialEq)]
 pub struct IZettlePostTransaction {
     pub izettle_transaction_id: i32,
     pub transaction_id: Option<i32>,
