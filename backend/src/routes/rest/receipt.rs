@@ -48,7 +48,7 @@ pub async fn get_receipt(
         let transaction = query_transaction(
             &connection,
             TransactionFilter {
-                has_id: Some(transaction_id),
+                id: Some(transaction_id),
                 ..Default::default()
             },
         )?;

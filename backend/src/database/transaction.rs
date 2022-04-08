@@ -15,8 +15,11 @@ pub type TransactionJoined = Vec<(
 #[derive(Default)]
 #[non_exhaustive]
 pub struct TransactionFilter {
-    pub include_deleted: bool,
-    pub has_id: Option<TransactionId>,
+    /// Whether to include rows marked as deleted
+    pub deleted: bool,
+
+    /// Only yield rows with this transaction id
+    pub id: Option<TransactionId>,
 }
 
 pub fn query_transaction(
@@ -34,11 +37,11 @@ pub fn query_transaction(
     };
 
     transactions
-        .filter(deleted_at.is_null().or(filter.include_deleted))
+        .filter(deleted_at.is_null().or(filter.deleted))
         .filter(
             transaction_id
-                .eq(filter.has_id.unwrap_or(-1))
-                .or(filter.has_id.is_none()),
+                .eq(filter.id.unwrap_or(-1))
+                .or(filter.id.is_none()),
         )
         .left_join(transaction_bundles.on(transaction_id.eq(bundle_transaction_id)))
         .left_join(transaction_items.on(bundle_id.eq(item_bundle_id)))
