@@ -50,6 +50,7 @@ pub fn query_transaction(
         .load(connection)
 }
 
+/// Convert the flat joined rows of a transaction in the database, to a hierarchical object.
 pub fn objectify_transations(transactions: TransactionJoined) -> Vec<object::Transaction> {
     transactions
         .into_iter()
