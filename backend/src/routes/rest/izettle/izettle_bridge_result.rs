@@ -19,14 +19,21 @@ use rocket::{post, State};
 use serde::{Deserialize, Serialize};
 use std::iter;
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 #[serde(tag = "type")]
 pub enum PaymentResponse {
     TransactionPaid {
+        /// For example, "MASTERCARD"
         card_type: Option<String>,
+
+        /// For example, "CONTACTLESS_EMV"
         card_payment_entry_mode: Option<String>,
+
+        /// For example, "SWEDBANK"
         card_issuing_bank: Option<String>,
-        masked_pan: Option<String>, // Last 4 digits of card number.
+
+        /// Masked primary account number, e.g. "************1234"
+        masked_pan: Option<String>,
     },
     TransactionFailed {
         reason: String,
