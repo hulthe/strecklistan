@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="se">
+
+<head>
+    <title>Kvitto #{{transaction_id}} {{date}}</title>
+    <style>
+        * {
+            margin: 0;
+        }
+
+        body {
+            width: 100%;
+            font-family: Georgia, serif;
+        }
+
+        .receipt-container {
+            width: 100%;
+            max-width: 360px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0 auto;
+        }
+
+        table {
+            width: 100%;
+            border: 2px dotted #202020;
+            border-right: none;
+            border-left: none;
+            margin-top: 1rem;
+        }
+
+        td:first-child,
+        th:first-child {
+            text-align: left;
+        }
+
+        th:not(:first-child),
+        td:not(:first-child) {
+            text-align: right;
+        }
+
+        .total-container {
+            width: 100%;
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            font-weight: 600;
+        }
+
+        .right-aligned {
+            margin-left: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="receipt-container">
+        <h2>DrawIT</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Vara</th>
+                    <th>Antal</th>
+                    <th>Styckpris</th>
+                </tr>
+                {{#each products}}
+                <tr>
+                    <td>{{this.product}}</td>
+                    <td>{{this.count}} x</td>
+                    <td>{{this.amount}}</td>
+                </tr>
+                {{/each}}
+            </thead>
+        </table>
+        <div class="total-container">
+            <div>Totalt </div>
+            <div>{{total}}</div>
+        </div>
+        <table>
+            <tr>
+                <td>Datum</td>
+                <td>{{date}}</td>
+            </tr>
+            {{#each payment_meta}}
+            <tr>
+                <td>{{key}}</td>
+                <td>{{value}}</td>
+            </tr>
+            {{/each}}
+            <tr>
+                <td>Referensnr.</td>
+                <td>{{transaction_id}}</td>
+            </tr>
+        </table>
+        Välkommen åter!
+    </div>
+</body>
+
+</html>

@@ -34,7 +34,7 @@ table! {
 table! {
     inventory (id) {
         id -> Int4,
-        name -> Nullable<Text>,
+        name -> Text,
         price -> Nullable<Int4>,
         image_url -> Nullable<Text>,
         deleted_at -> Nullable<Timestamptz>,
@@ -71,6 +71,10 @@ table! {
         transaction_id -> Nullable<Int4>,
         status -> Text,
         error -> Nullable<Text>,
+        card_type -> Nullable<Text>,
+        card_payment_entry_mode -> Nullable<Text>,
+        card_issuing_bank -> Nullable<Text>,
+        masked_pan -> Nullable<Text>,
     }
 }
 
