@@ -1,7 +1,8 @@
 use crate::database::DatabasePool;
 use crate::diesel::RunQueryDsl;
 use crate::models::izettle_transaction::{
-    IZettleTransaction, TRANSACTION_CANCELLED, TRANSACTION_FAILED, TRANSACTION_PAID,
+    IZettlePostTransaction, IZettleTransaction, TRANSACTION_CANCELLED, TRANSACTION_FAILED,
+    TRANSACTION_PAID,
 };
 use crate::models::transaction::relational;
 use crate::models::transaction::relational::{
@@ -18,11 +19,25 @@ use rocket::{post, State};
 use serde::{Deserialize, Serialize};
 use std::iter;
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 #[serde(tag = "type")]
 pub enum PaymentResponse {
-    TransactionPaid,
-    TransactionFailed { reason: String },
+    TransactionPaid {
+        /// For example, "MASTERCARD"
+        card_type: Option<String>,
+
+        /// For example, "CONTACTLESS_EMV"
+        card_payment_entry_mode: Option<String>,
+
+        /// For example, "SWEDBANK"
+        card_issuing_bank: Option<String>,
+
+        /// Masked primary account number, e.g. "************1234"
+        masked_pan: Option<String>,
+    },
+    TransactionFailed {
+        reason: String,
+    },
     TransactionCancelled,
 }
 
@@ -83,8 +98,13 @@ pub async fn complete_izettle_transaction(
                 .execute(&connection)?;
         }
 
-        match &*payment_response {
-            PaymentResponse::TransactionPaid => {
+        match payment_response.into_inner() {
+            PaymentResponse::TransactionPaid {
+                card_payment_entry_mode,
+                card_type,
+                card_issuing_bank,
+                masked_pan,
+            } => {
                 // Get all the joined rows for the selected izettle transaction
                 let (izettle_transaction, bundle0, item0) = transaction_rows.next().unwrap();
 
@@ -149,10 +169,16 @@ pub async fn complete_izettle_transaction(
 
                 // Mark the transaction in izettle_transaction as paid
                 update_izettle_post_transaction(
-                    izettle_transaction_id,
-                    TRANSACTION_PAID.to_string(),
-                    Some(new_transaction_id),
-                    None,
+                    IZettlePostTransaction {
+                        izettle_transaction_id,
+                        transaction_id: Some(new_transaction_id),
+                        status: TRANSACTION_PAID.to_string(),
+                        error: None,
+                        card_type,
+                        card_payment_entry_mode,
+                        card_issuing_bank,
+                        masked_pan,
+                    },
                     &connection,
                 )?;
 
@@ -163,10 +189,12 @@ pub async fn complete_izettle_transaction(
 
                 // Mark the transaction as failed
                 update_izettle_post_transaction(
-                    izettle_transaction_id,
-                    TRANSACTION_FAILED.to_string(),
-                    None,
-                    Some(reason.clone()),
+                    IZettlePostTransaction {
+                        izettle_transaction_id,
+                        status: TRANSACTION_FAILED.to_string(),
+                        error: Some(reason),
+                        ..Default::default()
+                    },
                     &connection,
                 )?;
 
@@ -175,10 +203,11 @@ pub async fn complete_izettle_transaction(
             PaymentResponse::TransactionCancelled => {
                 // Mark the transaction as cancelled
                 update_izettle_post_transaction(
-                    izettle_transaction_id,
-                    TRANSACTION_CANCELLED.to_string(),
-                    None,
-                    None,
+                    IZettlePostTransaction {
+                        izettle_transaction_id,
+                        status: TRANSACTION_CANCELLED.to_string(),
+                        ..Default::default()
+                    },
                     &connection,
                 )?;
 
@@ -189,20 +218,36 @@ pub async fn complete_izettle_transaction(
 }
 
 fn update_izettle_post_transaction(
-    izettle_transaction_id: i32,
-    status: String,
-    transaction_id: Option<i32>,
-    error: Option<String>,
+    transaction: IZettlePostTransaction,
     connection: &PooledConnection<ConnectionManager<PgConnection>>,
 ) -> Result<(), diesel::result::Error> {
     use crate::schema::tables::izettle_post_transaction::dsl::{
+        card_issuing_bank as bank, card_payment_entry_mode as payment_mode, card_type as c_type,
         error as err, izettle_post_transaction, izettle_transaction_id as iz_tran_id,
-        status as stat, transaction_id as tran_id,
+        masked_pan as last_four, status as stat, transaction_id as tran_id,
     };
+    let IZettlePostTransaction {
+        izettle_transaction_id,
+        status,
+        transaction_id,
+        error,
+        card_type,
+        card_payment_entry_mode,
+        card_issuing_bank,
+        masked_pan,
+    } = transaction;
 
     diesel::update(izettle_post_transaction)
         .filter(iz_tran_id.eq(izettle_transaction_id))
-        .set((tran_id.eq(transaction_id), stat.eq(status), err.eq(error)))
+        .set((
+            tran_id.eq(transaction_id),
+            stat.eq(status),
+            err.eq(error),
+            c_type.eq(card_type),
+            payment_mode.eq(card_payment_entry_mode),
+            bank.eq(card_issuing_bank),
+            last_four.eq(masked_pan),
+        ))
         .execute(connection)?;
 
     Ok(())

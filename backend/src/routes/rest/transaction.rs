@@ -1,3 +1,4 @@
+use crate::database::transaction::query_transaction;
 use crate::database::DatabasePool;
 use crate::models::transaction::{object, relational};
 use crate::util::ser::{Ser, SerAccept};
@@ -108,28 +109,7 @@ pub fn get_transactions(
 ) -> Result<Ser<Vec<object::Transaction>>, SJ> {
     let connection = db_pool.inner().get()?;
 
-    let joined: Vec<(
-        relational::Transaction,
-        Option<relational::TransactionBundle>,
-        Option<relational::TransactionItem>,
-    )> = {
-        use crate::schema::tables::transaction_bundles::dsl::{
-            id as bundle_id, transaction_bundles, transaction_id as bundle_transaction_id,
-        };
-        use crate::schema::tables::transaction_items::dsl::{
-            bundle_id as item_bundle_id, transaction_items,
-        };
-        use crate::schema::tables::transactions::dsl::{
-            deleted_at, id as transaction_id, time, transactions,
-        };
-        transactions
-            .filter(deleted_at.is_null())
-            .left_join(transaction_bundles.on(transaction_id.eq(bundle_transaction_id)))
-            .left_join(transaction_items.on(bundle_id.eq(item_bundle_id)))
-            .order_by(time.desc())
-            .order_by(transaction_id.desc())
-            .load(&connection)?
-    };
+    let joined = query_transaction(&connection, Default::default())?;
 
     let transactions: Vec<object::Transaction> = joined
         .into_iter()

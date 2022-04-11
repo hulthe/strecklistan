@@ -80,6 +80,10 @@ pub async fn begin_izettle_transaction(
             let post_tran: NewIZettlePostTransaction = NewIZettlePostTransaction {
                 izettle_transaction_id: transactions_id,
                 transaction_id: None,
+                card_type: None,
+                card_payment_entry_mode: None,
+                card_issuing_bank: None,
+                masked_pan: None,
                 status: TRANSACTION_IN_PROGRESS.to_string(),
                 error: None,
             };

@@ -23,12 +23,16 @@ pub struct IZettleTransaction {
     pub amount: i32,
 }
 
-#[derive(Queryable, Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Queryable, Serialize, Deserialize, Debug, Default, PartialEq)]
 pub struct IZettlePostTransaction {
     pub izettle_transaction_id: i32,
     pub transaction_id: Option<i32>,
     pub status: String,
     pub error: Option<String>,
+    pub card_type: Option<String>,
+    pub card_payment_entry_mode: Option<String>,
+    pub card_issuing_bank: Option<String>,
+    pub masked_pan: Option<String>,
 }
 
 #[derive(Insertable, Serialize, Deserialize, Debug, PartialEq)]
@@ -62,6 +66,10 @@ pub struct NewIZettleTransactionItem {
 pub struct NewIZettlePostTransaction {
     pub izettle_transaction_id: i32,
     pub transaction_id: Option<i32>,
+    pub card_type: Option<String>,
+    pub card_payment_entry_mode: Option<String>,
+    pub card_issuing_bank: Option<String>,
+    pub masked_pan: Option<String>,
     pub status: String,
     pub error: Option<String>,
 }

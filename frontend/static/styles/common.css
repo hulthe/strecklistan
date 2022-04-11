@@ -1048,12 +1048,24 @@ video {
 	font-family: 'Ubuntu';
 }
 
+.transaction_view_receipt_button {
+	float: right;
+	border: black solid thin;
+	border-radius: 0.2rem;
+	width: 1.4em;
+	height: 1.5em;
+
+	background-image: url(/images/print.svg);
+	background-size: contain;
+	background-repeat: no-repeat;
+}
+
 .transaction_view_delete_button {
 	float: right;
 	border: black solid thin;
 	border-radius: 0.2rem;
-	padding-left: 0.5rem;
-	padding-right: 0.5rem;
+	width: 1.4em;
+	height: 1.5em;
 	background-color: red;
 	color: white;
 }
@@ -1082,7 +1094,7 @@ video {
 }
 
 .new_transaction_total_text{
-    margin-top: 0.05em;
+	margin-top: 0.05em;
 }
 
 .wide_button {
