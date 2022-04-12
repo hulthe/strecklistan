@@ -86,4 +86,7 @@ COPY --from=build /app/frontend/dist /www
 # Copy database migrations
 COPY backend/migrations /migrations
 
+# Copy html templates
+COPY backend/templates /templates
+
 CMD strecklistan
