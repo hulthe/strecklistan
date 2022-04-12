@@ -2086,7 +2086,7 @@ checksum = "213701ba3370744dcd1a12960caa4843b3d68b4d1c0a5d575e0d65b2ee9d16c0"
 
 [[package]]
 name = "strecklistan_api"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "chrono",
  "diesel",
@@ -2100,7 +2100,7 @@ dependencies = [
 
 [[package]]
 name = "strecklistan_backend"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "chrono",
  "clap",
@@ -2132,7 +2132,7 @@ dependencies = [
 
 [[package]]
 name = "strecklistan_web"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "cfg-if 1.0.0",
  "chrono",
