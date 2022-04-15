@@ -39,6 +39,9 @@ version = "0.4.19"
 default-features = false
 features = ["serde", "wasmbind", "js-sys"]
 
+[dependencies.shop_macro]
+path="../shop_macro"
+
 [dependencies.strecklistan_api]
 path="../common"
 

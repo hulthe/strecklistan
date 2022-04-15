@@ -1,5 +1,5 @@
 [workspace]
-members = ["backend", "common", "frontend"]
+members = ["backend", "common", "frontend", "shop_macro"]
 
 [profile.dev]
 # Issue with const-generics
