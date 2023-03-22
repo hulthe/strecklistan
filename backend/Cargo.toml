@@ -29,7 +29,7 @@ uuid = { version = "0.8", features = ["v4", "serde"] }
 tokio = { version = "1", features = ["time", "sync"] }
 lazy_static="1"
 sha2 = "0.9.3"
-rmp-serde = "0.15.4"
+rmp-serde = "1.1.1"
 ron = "0.6.4"
 strum = "0.20"
 strum_macros = "0.20"
